@@ -39,7 +39,7 @@ function handleAction(action: string) {
 
 <template>
   <section class="w-full h-full relative" ref="editorRef">
-    <div class="absolute !top-8 !left-1/2 -translate-x-1/2 border rounded-box p-2 flex gap-2">
+    <div class="absolute !top-8 !left-1/2 -translate-x-1/2 border rounded-box p-2 flex gap-2 z-10">
       <EditorToolbar @tool="handleTool" ref="toolbarRef" />
       <div class="divider divider-horizontal mx-1"></div>
       <EditorButton @action="handleAction" />

@@ -11,6 +11,7 @@ export default class Editor {
   app: App
   plugins: IEditorPlugin[] = []
   tools = new Map()
+  private tool: IEditorTool | null = null
   constructor(config: IAppConfig = INIT_CONFIG) {
     this.app = new App(config)
   }
@@ -31,8 +32,15 @@ export default class Editor {
     const tool = tools.get(command)
     if (!tool) return
 
+    if (this.tool) {
+      this.tool.cancel() // 取消上一次操作
+      this.tool = tool
+    }
+
     app.editor.config.boxSelect = false
     tool.execute((arg: T) => {
+      this.tool = null
+
       app.editor.config.boxSelect = true
       callback(arg)
     })
