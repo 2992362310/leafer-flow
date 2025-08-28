@@ -37,7 +37,7 @@ export class DrawArrow {
     const { app } = this.editor || {}
     if (!app) return
 
-    app.off(PointerEvent.CLICK, this.onDown)
+    app.off(PointerEvent.DOWN, this.onDown)
     app.off(PointerEvent.MOVE, this.onMove)
     app.off(PointerEvent.UP, this.onUp)
   }
