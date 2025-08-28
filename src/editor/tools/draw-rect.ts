@@ -20,6 +20,10 @@ export class DrawRect {
     this.callback = callback
     this.bindEvents()
   }
+  cancel() {
+    this.callback = undefined
+    this.unBindEvents()
+  }
   bindEvents() {
     const { app } = this.editor || {}
     if (!app) return
@@ -38,7 +42,7 @@ export class DrawRect {
     app.off(PointerEvent.UP, this.onUp)
   }
   onDown = (evt: PointerEvent) => {
-    const point = { x: evt.x, y: evt.y }
+    const point = evt.getPagePoint()
     const rect = new Rect({
       ...point,
       editable: true,
@@ -51,7 +55,7 @@ export class DrawRect {
     this.rect = rect
   }
 
-  onMove = (e: PointerEvent) => {
+  onMove = (evt: PointerEvent) => {
     const { app } = this.editor || {}
     const { rect, isDrawing, points, calculateRectBounds } = this
     if (!rect) return
@@ -61,7 +65,8 @@ export class DrawRect {
       this.isDrawing = true
     }
 
-    const bounds = calculateRectBounds(points[0], { x: e.x, y: e.y })
+    const endPoint = evt.getPagePoint()
+    const bounds = calculateRectBounds(points[0], endPoint)
     rect.x = bounds.x
     rect.y = bounds.y
     rect.width = bounds.width

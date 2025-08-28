@@ -20,6 +20,10 @@ export class DrawArrow {
     this.callback = callback
     this.bindEvents()
   }
+  cancel() {
+    this.callback = undefined
+    this.unBindEvents()
+  }
   bindEvents() {
     const { app } = this.editor || {}
     if (!app) return
@@ -38,7 +42,7 @@ export class DrawArrow {
     app.off(PointerEvent.UP, this.onUp)
   }
   onDown = (evt: PointerEvent) => {
-    const points = [{ x: evt.x, y: evt.y }]
+    const points = [evt.getPagePoint()]
     const arrow = new Arrow({
       points,
       editable: true,
@@ -56,8 +60,8 @@ export class DrawArrow {
     const { arrow, points, isDrawing } = this
     if (!arrow) return
 
-    const point = { x: evt.x, y: evt.y }
-    arrow.points = [points[0], point]
+    const endPint = evt.getPagePoint()
+    arrow.points = [points[0], endPint]
 
     if (app && !isDrawing) {
       app.tree.add(arrow)

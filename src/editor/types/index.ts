@@ -10,6 +10,7 @@ export interface IEditorPlugin {
 export interface IEditorTool {
   init: (app: Editor) => void
   execute: (callback: TCallback) => void
+  cancel: () => void
 }
 
 export type TCallback = <T>(arg: T) => void

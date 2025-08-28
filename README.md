@@ -37,3 +37,9 @@ pnpm run build
 ```sh
 pnpm run lint
 ```
+
+# 参考
+
+- [Vue3 + TypeScript + Vite](https://v3.cn.vuejs.org/guide/typescript-support.html)
+- [leafjs](https://www.leaferjs.com/ui/guide/)
+- [excalidraw](https://excalidraw.com/)
