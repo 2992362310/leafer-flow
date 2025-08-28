@@ -1,0 +1,6 @@
+hoist-pattern:
+  - leafer-ui
+  - '@leafer-in/*'
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
