@@ -8,6 +8,8 @@ import { editorDotMatrix } from './plugins/dot-matrix'
 // tools
 import { DrawRect } from './tools/draw-rect'
 import { DrawArrow } from './tools/draw-arrow'
+import { DrawCircle } from './tools/draw-circle'
+import { DrawDiamond } from './tools/draw-diamond'
 
 export function initEditor(view: HTMLElement) {
   const editor = new Editor({
@@ -22,6 +24,8 @@ export function initEditor(view: HTMLElement) {
 
   editor.register('draw_rect', new DrawRect())
   editor.register('draw_arrow', new DrawArrow())
+  editor.register('draw_circle', new DrawCircle())
+  editor.register('draw_diamond', new DrawDiamond())
 
   return editor
 }
