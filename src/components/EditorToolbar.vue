@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import Icon from './Icon.vue'
 
 const emits = defineEmits(['tool', 'operation'])
 
@@ -22,69 +23,37 @@ defineExpose({
 
 <template>
   <!-- 选择工具 -->
-  <button
-    @click.prevent="handleClick('select')"
-    :class="{ 'btn-active': selectedTool === 'select' }"
-    class="btn btn-sm join-item"
-    title="选择"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="h-4 w-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.122 2.122"
-      />
-    </svg>
+  <button @click.prevent="handleClick('select')" :class="{ 'btn-active': selectedTool === 'select' }"
+    class="btn btn-sm join-item">
+    <Icon name="select" class="h-4 w-4" />
     选择
   </button>
 
   <!-- 矩形工具 -->
-  <button
-    @click.prevent="handleClick('draw_rect')"
-    :class="{ 'btn-active': selectedTool === 'draw_rect' }"
-    class="btn btn-sm join-item"
-    title="绘制矩形"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="h-4 w-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16v12H4z" />
-    </svg>
+  <button @click.prevent="handleClick('draw_rect')" :class="{ 'btn-active': selectedTool === 'draw_rect' }"
+    class="btn btn-sm join-item">
+    <Icon name="rectangle" class="h-4 w-4" />
     矩形
   </button>
 
+  <!-- 圆形工具 -->
+  <button @click.prevent="handleClick('draw_circle')" :class="{ 'btn-active': selectedTool === 'draw_circle' }"
+    class="btn btn-sm join-item">
+    <Icon name="circle" class="h-4 w-4" />
+    圆形
+  </button>
+
+  <!-- 菱形工具 -->
+  <button @click.prevent="handleClick('draw_diamond')" :class="{ 'btn-active': selectedTool === 'draw_diamond' }"
+    class="btn btn-sm join-item">
+    <Icon name="diamond" class="h-4 w-4" />
+    菱形
+  </button>
+
   <!-- 箭头工具 -->
-  <button
-    @click.prevent="handleClick('draw_arrow')"
-    :class="{ 'btn-active': selectedTool === 'draw_arrow' }"
-    class="btn btn-sm join-item"
-    title="绘制箭头"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="h-4 w-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M13 7l5 5m0 0l-5 5m5-5H6"
-      />
-    </svg>
+  <button @click.prevent="handleClick('draw_arrow')" :class="{ 'btn-active': selectedTool === 'draw_arrow' }"
+    class="btn btn-sm join-item">
+    <Icon name="arrow" class="h-4 w-4" />
     箭头
   </button>
 </template>
