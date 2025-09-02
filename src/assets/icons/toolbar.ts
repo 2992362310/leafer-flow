@@ -24,6 +24,11 @@ export const toolbarIcons = {
     viewBox: '0 0 24 24',
     title: '箭头工具'
   },
+  text: {
+    path: 'M5 4h3v16H5V4zm11 0h-2v16h2V4z',
+    viewBox: '0 0 24 24',
+    title: '文本工具'
+  },
   undo: {
     path: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6',
     viewBox: '0 0 24 24',

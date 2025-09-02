@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@leafer-in/arrow": "^1.9.4",
+    "@leafer-in/text-editor": "^1.9.5",
     "@leafer-in/view": "^1.9.4",
     "@leafer-in/viewport": "^1.9.4",
     "leafer": "^1.9.4",

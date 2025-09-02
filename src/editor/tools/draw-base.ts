@@ -1,7 +1,5 @@
 import { PointerEvent, type IPointData, type IUI } from 'leafer'
-import type { Editor, TCallback, IDrawOptions, IDrawResult } from '../types'
-
-export { type IDrawOptions, type IDrawResult }
+import type { Editor, TCallback, IDrawResult } from '../types'
 
 export abstract class DrawBase {
   protected editor: Editor | null = null
