@@ -56,4 +56,11 @@ defineExpose({
     <Icon name="arrow" class="h-4 w-4" />
     箭头
   </button>
+
+  <!-- 文本工具 -->
+  <button @click.prevent="handleClick('draw_text')" :class="{ 'btn-active': selectedTool === 'draw_text' }"
+    class="btn btn-sm join-item">
+    <Icon name="text" class="h-4 w-4" />
+    文本
+  </button>
 </template>
