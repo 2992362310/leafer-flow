@@ -1,39 +1,75 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
+import Icon from './Icon.vue'
 
-const selectedTool = ref<string | null>(null)
+const props = defineProps<{
+  selectedTool?: string | null
+  isDrawing?: boolean
+  elementCount?: number
+}>()
+
+// 工具名称映射
+const toolNames: Record<string, string> = {
+  select: '选择',
+  draw_rect: '矩形',
+  draw_circle: '圆形',
+  draw_diamond: '菱形',
+  draw_arrow: '箭头',
+  draw_text: '文本'
+}
+
+// 获取当前工具的显示名称
+const currentToolName = computed(() => {
+  if (!props.selectedTool) return '无'
+  return toolNames[props.selectedTool] || props.selectedTool
+})
+
+// 获取工具状态描述
+const toolStatus = computed(() => {
+  if (!props.selectedTool || props.selectedTool === 'select') {
+    return '选择模式：点击元素可选中并编辑'
+  }
+  return '绘制模式：所有元素已锁定，无法编辑'
+})
+
+// 获取状态类
+const statusClass = computed(() => {
+  if (!props.selectedTool || props.selectedTool === 'select') {
+    return 'alert-success'
+  }
+  return 'alert-info'
+})
 </script>
 
 <template>
-  <!-- 工具选中时的提示 -->
-  <div v-if="selectedTool && selectedTool !== 'select'" class="mb-2">
-    <div class="alert alert-info py-2 px-3 text-xs">
-      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <span>绘制模式：所有元素已锁定，无法编辑</span>
+  <!-- 元素统计 -->
+  <div v-if="elementCount !== undefined" class="mb-2">
+    <div class="badge badge-ghost text-xs">
+      元素总数: {{ elementCount }}
     </div>
   </div>
 
-  <!-- 选择模式提示 -->
-  <div v-if="selectedTool === 'select'" class="mb-2">
-    <div class="alert alert-success py-2 px-3 text-xs">
-      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <span>选择模式：点击元素可选中并编辑</span>
+  <!-- 当前工具显示 -->
+  <div class="mb-2">
+    <div class="badge badge-neutral text-xs">
+      当前工具: {{ currentToolName }}
     </div>
   </div>
 
   <!-- 绘制状态提示 -->
-  <!-- <div v-if="isDrawing && !connectionMode.active" class="badge badge-warning mb-2">
-    正在绘制 {{ selectedTool }}... (ESC或右键取消)
-  </div> -->
+  <div v-if="isDrawing && selectedTool && selectedTool !== 'select'" class="mb-2">
+    <div class="alert alert-warning py-2 px-3 text-xs">
+      <Icon name="clear" class="stroke-current shrink-0 h-4 w-4" />
+      <span>正在绘制 {{ currentToolName }}... (ESC或右键取消)</span>
+    </div>
+  </div>
 
-  <!-- 连接状态提示 -->
-  <!-- <div v-if="isDrawing && connectionMode.active" class="badge badge-info mb-2">
-    正在连接元素... (拖拽到目标元素)
-  </div> -->
+  <!-- 工具状态提示 -->
+  <div class="mb-2">
+    <div class="alert py-2 px-3 text-xs" :class="statusClass">
+      <Icon v-if="!selectedTool || selectedTool === 'select'" name="select" class="stroke-current shrink-0 h-4 w-4" />
+      <Icon v-else name="circle" class="stroke-current shrink-0 h-4 w-4" />
+      <span>{{ toolStatus }}</span>
+    </div>
+  </div>
 </template>

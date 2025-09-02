@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue'
+import { onMounted, useTemplateRef, ref } from 'vue'
 import { initEditor, type Editor } from './editor'
 import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
-// import StatusBar from './components/StatusBar.vue'
+import StatusBar from './components/StatusBar.vue'
 
 const editorRef = useTemplateRef('editorRef')
 const toolbarRef = useTemplateRef('toolbarRef')
+const logRef = useTemplateRef('logRef')
 
 let editor: Editor
+
+// 元素计数
+const elementCount = ref(0)
 
 // 初始化 Leafer 应用
 const initializeApp = () => {
@@ -17,7 +21,16 @@ const initializeApp = () => {
 
   editor = initEditor(editorRef.value)
 
-  // addEventLog('应用初始化完成')
+  // 监听元素变化以更新计数
+  editor.app.tree.on('add', () => {
+    elementCount.value = editor.app.tree.children.length
+  })
+
+  editor.app.tree.on('remove', () => {
+    elementCount.value = editor.app.tree.children.length
+  })
+
+  logRef.value?.addSuccessLog('应用初始化完成')
 }
 
 onMounted(() => {
@@ -27,14 +40,16 @@ onMounted(() => {
 function handleTool(tool: string) {
   editor.execute(tool, () => {
     toolbarRef.value?.changeTool('select')
-    // addEventLog('执行完成')
+    logRef.value?.addInfoLog(`执行 ${tool} 完成`)
   })
 }
 
 function handleAction(action: string) {
   console.log(action)
+  logRef.value?.addInfoLog(`执行操作: ${action}`)
   // editor.execute(action)
 }
+
 </script>
 
 <template>
@@ -47,13 +62,11 @@ function handleAction(action: string) {
     </div>
 
     <!-- 状态栏 -->
-    <div class="absolute bottom-4 left-4 z-10">
-      <div class="badge badge-neutral mb-2">当前工具: {{ toolbarRef?.selectedTool || '无' }}</div>
-
-      <!-- <StatusBar /> -->
-
-      <!-- 事件日志 -->
-      <EditorLog />
+    <div class="absolute bottom-2 left-8 z-10 w-fit">
+      <StatusBar :selected-tool="toolbarRef?.selectedTool" :element-count="elementCount" />
     </div>
+
+    <!-- 事件日志 -->
+    <EditorLog ref="logRef" class="absolute bottom-2 right-4 z-10" />
   </section>
 </template>
