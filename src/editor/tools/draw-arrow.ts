@@ -1,82 +1,51 @@
-import { PointerEvent, Arrow, type IPointData } from 'leafer'
-import type { Editor, TCallback } from '../types'
+import { Arrow, type IPointData, type IUI } from 'leafer'
+import type { TCallback, IDrawOptions, IDrawResult } from '../types'
+import { DrawBase } from './draw-base'
 
-interface IDrawArrow {
-  action: string
-  arrow: Arrow | null
-}
+export class DrawArrow extends DrawBase {
+  private options: IDrawOptions
 
-export class DrawArrow {
-  private editor: Editor | null = null
-  private arrow: Arrow | null = null
-  private points: IPointData[] = []
-  private isDrawing = false
-  private callback?: TCallback
-
-  init(editor: Editor) {
-    this.editor = editor
-  }
-  execute(callback: TCallback) {
-    this.callback = callback
-    this.bindEvents()
-  }
-  cancel() {
-    this.callback = undefined
-    this.unBindEvents()
-  }
-  bindEvents() {
-    const { app } = this.editor || {}
-    if (!app) return
-
-    // 使用箭头函数，this指向外部作用域
-    app.on(PointerEvent.DOWN, this.onDown)
-    app.on(PointerEvent.MOVE, this.onMove)
-    app.on(PointerEvent.UP, this.onUp)
-  }
-  unBindEvents() {
-    const { app } = this.editor || {}
-    if (!app) return
-
-    app.off(PointerEvent.DOWN, this.onDown)
-    app.off(PointerEvent.MOVE, this.onMove)
-    app.off(PointerEvent.UP, this.onUp)
-  }
-  onDown = (evt: PointerEvent) => {
-    const points = [evt.getPagePoint()]
-    const arrow = new Arrow({
-      points,
-      editable: true,
+  constructor(options?: IDrawOptions) {
+    super()
+    this.options = {
       stroke: '#278bfe',
       strokeWidth: 2,
       cornerRadius: 10,
       opacity: 0.7,
-    })
-
-    this.points = points
-    this.arrow = arrow
-  }
-  onMove = (evt: PointerEvent) => {
-    const { app } = this.editor || {}
-    const { arrow, points, isDrawing } = this
-    if (!arrow) return
-
-    const endPint = evt.getPagePoint()
-    arrow.points = [points[0], endPint]
-
-    if (app && !isDrawing) {
-      app.tree.add(arrow)
-      this.isDrawing = true
+      ...options
     }
   }
-  onUp = () => {
-    const params: IDrawArrow = { action: 'arrow', arrow: this.arrow }
-    this.callback?.(params)
 
-    // 结束绘制
-    this.isDrawing = false
-    this.arrow = null
-    this.points = []
+  protected createElement(startPoint: IPointData): IUI {
+    const points = [startPoint]
+    const arrow = new Arrow({
+      points,
+      editable: true,
+      stroke: this.options.stroke,
+      strokeWidth: this.options.strokeWidth,
+      cornerRadius: this.options.cornerRadius,
+      opacity: this.options.opacity,
+    })
 
-    this.unBindEvents()
+    return arrow
+  }
+
+  protected updateElement(element: IUI, endPoint: IPointData): void {
+    this.points[1] = endPoint
+
+    const startPoint = this.points[0]
+    const arrow = element as Arrow
+    arrow.points = [startPoint, endPoint]
+  }
+
+  protected getResult(): IDrawResult {
+    return {
+      action: 'arrow',
+      element: this.element
+    }
+  }
+
+  execute(callback: TCallback) {
+    super.execute(callback)
   }
 }
