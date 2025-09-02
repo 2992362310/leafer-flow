@@ -1,118 +1,92 @@
-import { Rect, PointerEvent, type IPointData } from 'leafer'
-import type { TCallback, Editor } from '../types'
+import { Rect, type IPointData, type IUI } from 'leafer'
+import type { TCallback, IDrawOptions, IDrawResult } from '../types'
+import { DrawBase } from './draw-base'
 
-interface IDrawRect {
-  action: string
-  rect: Rect | null
-}
+export class DrawRect extends DrawBase {
+  private options: IDrawOptions
 
-export class DrawRect {
-  private editor: Editor | null = null
-  private rect: Rect | null = null
-  private points: IPointData[] = []
-  private isDrawing = false
-  private callback?: TCallback
-
-  init(editor: Editor) {
-    this.editor = editor
-  }
-  execute(callback: TCallback) {
-    this.callback = callback
-    this.bindEvents()
-  }
-  cancel() {
-    this.callback = undefined
-    this.unBindEvents()
-  }
-  bindEvents() {
-    const { app } = this.editor || {}
-    if (!app) return
-
-    // 使用箭头函数，this指向外部作用域
-    app.on(PointerEvent.DOWN, this.onDown)
-    app.on(PointerEvent.MOVE, this.onMove)
-    app.on(PointerEvent.UP, this.onUp)
-  }
-  unBindEvents() {
-    const { app } = this.editor || {}
-    if (!app) return
-
-    app.off(PointerEvent.DOWN, this.onDown)
-    app.off(PointerEvent.MOVE, this.onMove)
-    app.off(PointerEvent.UP, this.onUp)
-  }
-  onDown = (evt: PointerEvent) => {
-    const point = evt.getPagePoint()
-    const rect = new Rect({
-      ...point,
-      editable: true,
+  constructor(options?: IDrawOptions) {
+    super()
+    this.options = {
       fill: '#FEB027',
       cornerRadius: 10,
       opacity: 0.7,
+      ...options
+    }
+  }
+
+  protected createElement(startPoint: IPointData): IUI {
+    const rect = new Rect({
+      x: startPoint.x,
+      y: startPoint.y,
+      editable: true,
+      fill: this.options.fill,
+      cornerRadius: this.options.cornerRadius,
+      opacity: this.options.opacity,
     })
 
-    this.points.push(point)
-    this.rect = rect
+    return rect
   }
 
-  onMove = (evt: PointerEvent) => {
-    const { app } = this.editor || {}
-    const { rect, isDrawing, points, calculateRectBounds } = this
-    if (!rect) return
+  protected updateElement(element: IUI, endPoint: IPointData) {
+    this.points[1] = endPoint
 
-    if (app && !isDrawing) {
-      app.tree.add(rect)
-      this.isDrawing = true
+    const startPoint = this.points[0]
+    const rect = element as Rect
+    const bounds = this.calculateRectBounds(startPoint, endPoint)
+    const { x, y, width, height } = bounds
+    rect.x = x
+    rect.y = y
+    rect.width = width
+    rect.height = height
+  }
+
+  protected getResult(): IDrawResult {
+    return {
+      action: 'rect',
+      element: this.element
     }
-
-    const endPoint = evt.getPagePoint()
-    const bounds = calculateRectBounds(points[0], endPoint)
-    rect.x = bounds.x
-    rect.y = bounds.y
-    rect.width = bounds.width
-    rect.height = bounds.height
   }
 
-  onUp = () => {
-    const params: IDrawRect = { action: 'rect', rect: this.rect }
-    this.callback?.(params)
-
-    // 结束绘制
-    this.isDrawing = false
-    this.rect = null
-    this.points = []
-
-    this.unBindEvents()
+  execute(callback: TCallback) {
+    super.execute(callback)
   }
+
   private calculateRectBounds(startPoint: IPointData, endPoint: IPointData) {
-    const deltaX = endPoint.x - startPoint.x
-    const deltaY = endPoint.y - startPoint.y
+    const { x: startX, y: startY } = startPoint
+    const { x: endX, y: endY } = endPoint
+    const deltaX = endX - startX
+    const deltaY = endY - startY
 
-    const bounds = {
-      x: 0,
-      y: 0,
-      width: Math.abs(deltaX),
-      height: Math.abs(deltaY),
-    }
+    const width = Math.abs(deltaX)
+    const height = Math.abs(deltaY)
+
+    let x = 0
+    let y = 0
 
     if (deltaX >= 0 && deltaY >= 0) {
       // 右下方向
-      bounds.x = startPoint.x
-      bounds.y = startPoint.y
+      x = startX
+      y = startY
     } else if (deltaX < 0 && deltaY >= 0) {
       // 左下方向
-      bounds.x = startPoint.x + deltaX
-      bounds.y = startPoint.y
+      x = startX + deltaX
+      y = startY
     } else if (deltaX >= 0 && deltaY < 0) {
       // 右上方向
-      bounds.x = startPoint.x
-      bounds.y = startPoint.y + deltaY
+      x = startX
+      y = startY + deltaY
     } else {
       // 左上方向
-      bounds.x = startPoint.x + deltaX
-      bounds.y = startPoint.y + deltaY
+      x = startX + deltaX
+      y = startY + deltaY
     }
 
-    return bounds
+    return {
+      x,
+      y,
+      width,
+      height,
+    }
   }
 }
