@@ -5,6 +5,8 @@ import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
 import StatusBar from './components/StatusBar.vue'
+import type { IExcuteArg, IExcuteCommand } from './editor/types'
+import { WatchEvent } from 'leafer'
 
 const editorRef = useTemplateRef('editorRef')
 const toolbarRef = useTemplateRef('toolbarRef')
@@ -22,51 +24,58 @@ const initializeApp = () => {
   editor = initEditor(editorRef.value)
 
   // 监听元素变化以更新计数
-  editor.app.tree.on('add', () => {
+  editor.app.tree.on(WatchEvent.DATA, () => {
     elementCount.value = editor.app.tree.children.length
   })
 
-  editor.app.tree.on('remove', () => {
-    elementCount.value = editor.app.tree.children.length
-  })
-
-  logRef.value?.addSuccessLog('应用初始化完成')
+  logRef.value?.addLog({ message: '应用初始化完成', level: 'success' })
 }
 
 onMounted(() => {
   initializeApp()
 })
 
-function handleTool(tool: string) {
-  editor.execute(tool, () => {
-    toolbarRef.value?.changeTool('select')
-    logRef.value?.addInfoLog(`执行 ${tool} 完成`)
-  })
+function excuteCallback<T>(arg: T) {
+  const { action, tool, next } = arg as IExcuteArg
+  logRef.value?.addLog({ message: `${tool} ${action}`, command: tool, level: next ? 'error' : 'success' })
+  toolbarRef.value?.changeTool(next ?? 'select')
+}
+
+function handleTool(evt: IExcuteCommand) {
+  editor.execute(evt, excuteCallback)
+  logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: 'info' })
 }
 
 function handleAction(action: string) {
-  console.log(action)
-  logRef.value?.addInfoLog(`执行操作: ${action}`)
+  logRef.value?.addLog({ message: `执行操作: ${action}` })
   // editor.execute(action)
 }
-
 </script>
 
 <template>
-  <section class="w-full h-full relative" ref="editorRef">
-    <div
-      class="absolute  z-10 !top-8 !left-1/2 -translate-x-1/2 w-max ring-2 ring-blue-500/50 rounded-box p-2 flex gap-2">
-      <EditorToolbar @tool="handleTool" ref="toolbarRef" />
-      <div class="divider divider-horizontal mx-1"></div>
-      <EditorButton @action="handleAction" />
-    </div>
+  <section class="w-full h-full" ref="editorRef">
 
-    <!-- 状态栏 -->
-    <div class="absolute bottom-2 left-8 z-10 w-fit">
-      <StatusBar :selected-tool="toolbarRef?.selectedTool" :element-count="elementCount" />
-    </div>
-
-    <!-- 事件日志 -->
-    <EditorLog ref="logRef" class="absolute bottom-2 right-4 z-10" />
   </section>
+
+  <div class="toolbar-wrap rounded-box !top-8 !left-1/2 -translate-x-1/2">
+    <EditorToolbar @tool="handleTool" ref="toolbarRef" />
+    <span class="divider divider-horizontal mx-1"></span>
+    <EditorButton @action="handleAction" />
+  </div>
+
+  <!-- 状态栏 -->
+  <div class="absolute bottom-2 left-8 w-fit">
+    <StatusBar :selected-tool="toolbarRef?.selectedTool" :element-count="elementCount" />
+  </div>
+
+  <!-- 事件日志 -->
+  <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
 </template>
+
+<style scoped>
+@reference "tailwindcss";
+
+.toolbar-wrap {
+  @apply absolute z-10 p-2 w-max ring-2 ring-blue-500/50 flex gap-2;
+}
+</style>

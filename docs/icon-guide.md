@@ -23,6 +23,7 @@ Leafer-Flow 使用统一的图标管理系统，所有图标都通过 [Icon.vue]
 所有图标定义都存储在 `src/assets/icons/` 目录中。主要文件包括：
 
 - [toolbar.ts](file:///d:/work/test/leafer-flow/src/assets/icons/toolbar.ts): 工具栏相关图标
+- [system.ts](file:///d:/work/test/leafer-flow/src/assets/icons/system.ts): 系统相关图标
 - [index.ts](file:///d:/work/test/leafer-flow/src/assets/icons/index.ts): 图标入口文件，整合所有图标
 
 每个图标包含以下属性：
@@ -32,19 +33,32 @@ Leafer-Flow 使用统一的图标管理系统，所有图标都通过 [Icon.vue]
 
 ## 可用图标
 
-以下是项目中当前可用的所有图标：
+项目中的图标分为两类：工具栏图标和系统图标。
+
+### 工具栏图标
 
 | 图标名称 | 预览 | 描述 |
 |---------|------|------|
 | select | ![select](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTUgMTVsLTIgNUw5IDlsMTEgNC01IDJ6bTAgMGw1IDVNNS4xODggMi4yMzlsLjc3NyAyLjg5N003LjEzNiA3Ljk2NWwtMi44OTgtLjc3N00xMy45NSA0LjA1bC0yLjEyMiAyLjEyMm0tNS42NTcgNS42NTZsLTIuMTIyIDIuMTIyIi8+PC9zdmc+) | 选择工具 |
-| rectangle | ![rectangle](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNNCA2aDE2djEySDR6Ii8+PC9zdmc+) | 矩形工具 |
-| circle | ![circle](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTIgMTJtLTEwIDBhMTAgMTAgMCAxIDAgMjAgMGE1IDAgMSAwIC0yMCAwIi8+PC9zdmc+) | 圆形工具 |
-| diamond | ![diamond](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTIgM2w5IDktOSA5LTktOSA5LTl6Ii8+PC9zdmc+) | 菱形工具 |
-| arrow | ![arrow](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTMgN2w1IDVtMCAwbC01IDVtNS01SDYiLz48L3N2Zz4=) | 箭头工具 |
-| text | ![text](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNNSA0aDN2MTZINXYtMTZ6bTExIDBoLTJ2MTZoMlY0eiIvPjwvc3ZnPg==) | 文本工具 |
+| draw_rect | ![draw_rect](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNNCA2aDE2djEySDR6Ii8+PC9zdmc+) | 矩形工具 |
+| draw_circle | ![draw_circle](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTIgMTJtLTEwIDBhMTAgMTAgMCAxIDAgMjAgMGE1IDAgMSAwIC0yMCAwIi8+PC9zdmc+) | 圆形工具 |
+| draw_diamond | ![draw_diamond](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTIgM2w5IDktOSA5LTktOSA5LTl6Ii8+PC9zdmc+) | 菱形工具 |
+| draw_arrow | ![draw_arrow](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTMgN2w1IDVtMCAwbC01IDVtNS01SDYiLz48L3N2Zz4=) | 箭头工具 |
+| draw_text | ![draw_text](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNNSA0aDN2MTZINXYtMTZ6bTExIDBoLTJ2MTZoMlY0eiIvPjwvc3ZnPg==) | 文本工具 |
 | undo | ![undo](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMyAxMGgxMGE4IDggMCAwMSA4IDh2Mk0zIDEwbDYgNm0tNi02bDYtNiIvPjwvc3ZnPg==) | 撤销操作 |
 | redo | ![redo](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMjEgMTBoLTEwYTggOCAwIDAwLTggOHYybTE4LTEwbC02IDZtNi02bC02LTYiLz48L3N2Zz4=) | 重做操作 |
 | clear | ![clear](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTkgN2wtLjg2NyAxMi4xNDJBMiAyIDAgMDExNi4xMzggMjFINS44NjJhMiAyIDAgMDEtMS45OTUtMS44NThMNSA3bTUgNHY2bTQtNnY2bTEtMTBWNGExIDEgMCAwMC0xLTFoLTRhMSAxIDAgMDBfMSAxIDF2M000IDdoMTYiLz48L3N2Zz4=) | 清空画布 |
+
+### 系统图标
+
+| 图标名称 | 预览 | 描述 |
+|---------|------|------|
+| arrow-down | ![arrow-down](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTkgOWwtNyA3LTctNyIvPjwvc3ZnPg==) | 向下箭头 |
+| arrow-up | ![arrow-up](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNNSAxNWw3LTcgNyA3Ii8+PC9zdmc+) | 向上箭头 |
+| warning | ![warning](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTIgOXYybTAgNGguMDFtLTYuOTM4IDRoMTMuODU2YzEuNTQgMCAyLjUwMi0xLjY2NyAxLjczMi0zTDEzLjczMiA0Yy0uNzctMS4zMzMtMi42OTQtMS4zMzMtMy40NjQgMEwzLjM0IDE2Yy0uNzcgMS4zMzMuMTkyIDMgMS43MzIgM3oiLz48L3N2Zz4=) | 警告 |
+| success | ![success](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNOSAxMmwyIDIgNC00bTYgMmE5IDkgMCAxMS0xOCAwIDkgOSAwIDAxMTggMHoiLz48L3N2Zz4=) | 成功 |
+| error | ![error](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTAgMTRsMi0ybTAgMGwyLTJtLTIgMmwtMi0ybTIgMmwyIDJtNy0yYTkgOSAwIDExLTE4IDAgOSA5IDAgMDE1IDB6Ii8+PC9zdmc+) | 错误 |
+| info | ![info](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMTMgMTZoLTF2LTRoLTFtMS00aC4wMU0yMSAxMmE5IDkgMCAxMS0xOCAwIDkgOSAwIDAxMTggMHoiLz48L3N2Zz4=) | 信息 |
 
 ## 使用方法
 
@@ -68,7 +82,7 @@ import Icon from './Icon.vue'
 
 ```vue
 <Icon name="select" class="h-4 w-4 text-blue-500" />
-<Icon name="circle" class="h-6 w-6 stroke-red-500" />
+<Icon name="draw_circle" class="h-6 w-6 stroke-red-500" />
 ```
 
 ### 在组件中使用示例
@@ -79,6 +93,11 @@ import Icon from './Icon.vue'
     <Icon name="select" class="h-4 w-4 mr-2" />
     选择工具
   </button>
+  
+  <div class="log-item">
+    <Icon name="info" class="h-4 w-4 mr-2" />
+    这是一条信息日志
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -90,9 +109,12 @@ import Icon from './Icon.vue'
 
 要添加新图标，请按照以下步骤操作：
 
-1. 在 [src/assets/icons/toolbar.ts](file:///d:/work/test/leafer-flow/src/assets/icons/toolbar.ts) 中添加新图标定义：
+1. 根据图标用途选择合适的文件：
+   - 工具栏相关图标添加到 [src/assets/icons/toolbar.ts](file:///d:/work/test/leafer-flow/src/assets/icons/toolbar.ts)
+   - 系统相关图标添加到 [src/assets/icons/system.ts](file:///d:/work/test/leafer-flow/src/assets/icons/system.ts)
 
 ```typescript
+// 示例：在 toolbar.ts 中添加新图标
 export const toolbarIcons = {
   // ...现有图标
   new_icon: {
@@ -101,12 +123,23 @@ export const toolbarIcons = {
     title: '新图标' // 图标标题
   }
 }
+
+// 示例：在 system.ts 中添加新图标
+export const systemIcons = {
+  // ...现有图标
+  'new-system-icon': {
+    path: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0',
+    viewBox: '0 0 24 24',
+    title: '新系统图标'
+  }
+}
 ```
 
 2. 如果图标用于特定功能，确保在组件中正确使用：
 
 ```vue
 <Icon name="new_icon" class="h-4 w-4" />
+<Icon name="new-system-icon" class="h-4 w-4" />
 ```
 
 ## 最佳实践
@@ -116,6 +149,7 @@ export const toolbarIcons = {
 3. **合适的尺寸**：根据使用场景选择合适的图标尺寸，通常使用 `h-4 w-4` 或 `h-5 w-5`
 4. **颜色控制**：利用 `currentColor` 特性让图标继承文本颜色，或使用特定颜色类
 5. **可访问性**：为图标提供有意义的标题，增强可访问性
+6. **分类管理**：根据图标用途将其添加到相应的文件中（toolbar 或 system）
 
 ## 常见问题
 

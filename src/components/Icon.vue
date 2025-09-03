@@ -1,18 +1,7 @@
 <template>
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    :viewBox="icon.viewBox"
-    fill="none"
-    stroke="currentColor"
-    :class="className"
-    :title="icon.title"
-  >
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      :d="icon.path"
-    />
+  <svg xmlns="http://www.w3.org/2000/svg" :viewBox="icon.viewBox || '0 0 24 24'" fill="none" stroke="currentColor"
+    :class="className" :title="icon.title">
+    <path v-if="icon.path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="icon.path" />
   </svg>
 </template>
 
@@ -29,5 +18,18 @@ const props = defineProps<{
   className?: string
 }>()
 
-const icon = computed(() => icons[props.name])
+interface IconData {
+  path?: string
+  viewBox?: string
+  title?: string
+}
+
+const icon = computed<IconData>(() => {
+  const iconData = icons[props.name]
+  return iconData || {
+    path: '',
+    viewBox: '0 0 24 24',
+    title: ''
+  }
+})
 </script>
