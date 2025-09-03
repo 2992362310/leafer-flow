@@ -4,27 +4,27 @@ export const toolbarIcons = {
     viewBox: '0 0 24 24',
     title: '选择工具'
   },
-  rectangle: {
+  draw_rect: {
     path: 'M4 6h16v12H4z',
     viewBox: '0 0 24 24',
     title: '矩形工具'
   },
-  circle: {
+  draw_circle: {
     path: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0',
     viewBox: '0 0 24 24',
     title: '圆形工具'
   },
-  diamond: {
+  draw_diamond: {
     path: 'M12 3l9 9-9 9-9-9 9-9z',
     viewBox: '0 0 24 24',
     title: '菱形工具'
   },
-  arrow: {
+  draw_arrow: {
     path: 'M13 7l5 5m0 0l-5 5m5-5H6',
     viewBox: '0 0 24 24',
     title: '箭头工具'
   },
-  text: {
+  draw_text: {
     path: 'M5 4h3v16H5V4zm11 0h-2v16h2V4z',
     viewBox: '0 0 24 24',
     title: '文本工具'
@@ -43,5 +43,5 @@ export const toolbarIcons = {
     path: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
     viewBox: '0 0 24 24',
     title: '清空画布'
-  }
+  },
 }

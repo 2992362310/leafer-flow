@@ -7,10 +7,15 @@ export interface IEditorPlugin {
   init: <T>(app: App) => T
 }
 
+export interface IExcuteCommand {
+  command: string
+  pre: string
+}
+
 export interface IEditorTool {
   init: (app: Editor) => void
   execute: (callback: TCallback) => void
-  cancel: () => void
+  cancel: (callback: TCallback) => void
 }
 
 export type TCallback = <T>(arg: T) => void
@@ -26,4 +31,11 @@ export interface IDrawOptions {
 export interface IDrawResult {
   action: string
   element: IUI | null
+}
+
+export interface IExcuteArg {
+  next: string | null
+  action: string
+  tool: string
+  data?: IDrawResult
 }

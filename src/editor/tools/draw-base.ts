@@ -17,9 +17,10 @@ export abstract class DrawBase {
     this.bindEvents()
   }
 
-  cancel() {
-    this.callback = undefined
+  cancel(callback: TCallback) {
+    callback({})
     this.unBindEvents()
+    this.callback = undefined
   }
 
   protected bindEvents() {
