@@ -1,4 +1,4 @@
-import { Rect, type IPointData, type IUI } from 'leafer'
+import { Group, Rect, Text, type IPointData, type IUI } from 'leafer'
 import type { TCallback, IDrawOptions, IDrawResult } from '../types'
 import { DrawBase } from './draw-base'
 
@@ -9,6 +9,7 @@ export class DrawRect extends DrawBase {
     super()
     this.options = {
       fill: '#FEB027',
+      stroke: '#13ad8cff',
       cornerRadius: 10,
       opacity: 0.7,
       ...options
@@ -17,28 +18,51 @@ export class DrawRect extends DrawBase {
 
   protected createElement(startPoint: IPointData): IUI {
     const rect = new Rect({
-      x: startPoint.x,
-      y: startPoint.y,
-      editable: true,
+      editable: false,
       fill: this.options.fill,
       cornerRadius: this.options.cornerRadius,
       opacity: this.options.opacity,
     })
 
-    return rect
+    const text = new Text({
+      draggable: false,
+      editable: false,
+      text: '矩形',
+      fill: '#333',
+      fontSize: 12,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      x: 10,
+      y: 10,
+    })
+
+    const group = new Group({
+      editable: true,
+      x: startPoint.x,
+      y: startPoint.y,
+      children: [rect, text],
+    })
+
+    return group
   }
 
   protected updateElement(element: IUI, endPoint: IPointData) {
     this.points[1] = endPoint
 
     const startPoint = this.points[0]
-    const rect = element as Rect
+    const group = element as Group
     const bounds = this.calculateRectBounds(startPoint, endPoint)
     const { x, y, width, height } = bounds
-    rect.x = x
-    rect.y = y
+    group.x = x
+    group.y = y
+
+    const [rect, text] = group.children
     rect.width = width
     rect.height = height
+
+    text.width = Math.abs(width - 20)
+    text.height = Math.abs(height - 20)
   }
 
   protected getResult(): IDrawResult {
