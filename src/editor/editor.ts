@@ -1,6 +1,5 @@
 import { App, type IAppConfig } from 'leafer'
 import type { IEditorPlugin, IEditorTool, IExcuteCommand, TCallback } from './types'
-import { camelToSnake } from './utils'
 
 const INIT_CONFIG = {
   view: window,
@@ -13,7 +12,8 @@ export default class Editor {
   plugins: IEditorPlugin[] = []
   tools = new Map()
   constructor(config: IAppConfig = INIT_CONFIG) {
-    this.app = new App(config)
+    const app = new App(config)
+    this.app = app
   }
   use<T>(plugin: IEditorPlugin): T {
     const app = this.app
@@ -36,7 +36,7 @@ export default class Editor {
         callback({
           next: next,
           action: 'cancel execute',
-          tool: camelToSnake(tool.constructor.name),
+          tool: pre,
         })
 
         this.executeTool(next, callback)
@@ -48,6 +48,7 @@ export default class Editor {
 
   private executeTool(command: string, callback: TCallback) {
     const { app, tools } = this
+    app.editor.config.boxSelect = true
     const tool = tools.get(command)
     if (!tool) return
 
@@ -58,7 +59,7 @@ export default class Editor {
       callback({
         next: null,
         action: 'success execute',
-        tool: camelToSnake(tool.constructor.name),
+        tool: command,
       })
     })
   }
