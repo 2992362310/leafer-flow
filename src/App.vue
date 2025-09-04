@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef, ref } from 'vue'
-import { initEditor, type Editor } from './editor'
+import { initEditor, type Editor, doClear, doUndo, doRedo } from './editor'
 import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
@@ -48,7 +48,33 @@ function handleTool(evt: IExcuteCommand) {
 
 function handleAction(action: string) {
   logRef.value?.addLog({ message: `执行操作: ${action}` })
-  // editor.execute(action)
+  
+  // 处理清空画布操作
+  if (action === 'clearCanvas') {
+    const result = doClear(editor)
+    logRef.value?.addLog({ 
+      message: result.message, 
+      level: result.success ? 'success' : 'error' 
+    })
+  }
+  
+  // 处理撤销操作
+  if (action === 'undo') {
+    const result = doUndo(editor)
+    logRef.value?.addLog({ 
+      message: result.message, 
+      level: result.success ? 'success' : 'warning' 
+    })
+  }
+  
+  // 处理重做操作
+  if (action === 'redo') {
+    const result = doRedo(editor)
+    logRef.value?.addLog({ 
+      message: result.message, 
+      level: result.success ? 'success' : 'warning' 
+    })
+  }
 }
 </script>
 

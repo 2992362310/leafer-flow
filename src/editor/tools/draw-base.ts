@@ -47,6 +47,13 @@ export abstract class DrawBase {
   }
 
   protected onDown = (evt: PointerEvent) => {
+    // 在开始绘制前清空当前选择
+    const { app } = this.editor || {}
+    if (app) {
+      // 清空选择
+      app.editor.target = undefined
+    }
+    
     const startPoint = evt.getPagePoint()
     this.element = this.createElement(startPoint)
     this.points.push(startPoint)

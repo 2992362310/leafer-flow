@@ -12,6 +12,11 @@ import { DrawCircle } from './tools/draw-circle'
 import { DrawDiamond } from './tools/draw-diamond'
 import { DrawText } from './tools/draw-text'
 
+// actions
+import { doClear } from './action/do-clear'
+import { doUndo } from './action/do-undo'
+import { doRedo } from './action/do-redo'
+
 export function initEditor(view: HTMLElement) {
   const editor = new Editor({
     view: view,
@@ -32,4 +37,4 @@ export function initEditor(view: HTMLElement) {
   return editor
 }
 
-export { Editor }
+export { Editor, doClear, doUndo, doRedo }
