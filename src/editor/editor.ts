@@ -48,13 +48,15 @@ export default class Editor {
 
   private executeTool(command: string, callback: TCallback) {
     const { app, tools } = this
-    app.editor.config.boxSelect = true
     const tool = tools.get(command)
-    if (!tool) return
+    if (!tool) {
+      app.editor.config.selector = true
+      return
+    }
 
-    app.editor.config.boxSelect = false
+    app.editor.config.selector = false
     tool.execute(() => {
-      app.editor.config.boxSelect = true
+      app.editor.config.selector = true
 
       callback({
         next: null,
