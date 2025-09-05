@@ -48,40 +48,38 @@ function handleTool(evt: IExcuteCommand) {
 
 function handleAction(action: string) {
   logRef.value?.addLog({ message: `执行操作: ${action}` })
-  
+
   // 处理清空画布操作
   if (action === 'clearCanvas') {
     const result = doClear(editor)
-    logRef.value?.addLog({ 
-      message: result.message, 
-      level: result.success ? 'success' : 'error' 
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'error'
     })
   }
-  
+
   // 处理撤销操作
   if (action === 'undo') {
     const result = doUndo(editor)
-    logRef.value?.addLog({ 
-      message: result.message, 
-      level: result.success ? 'success' : 'warning' 
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'warning'
     })
   }
-  
+
   // 处理重做操作
   if (action === 'redo') {
     const result = doRedo(editor)
-    logRef.value?.addLog({ 
-      message: result.message, 
-      level: result.success ? 'success' : 'warning' 
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'warning'
     })
   }
 }
 </script>
 
 <template>
-  <section class="w-full h-full" ref="editorRef">
-
-  </section>
+  <section class="w-full h-full" ref="editorRef"></section>
 
   <div class="toolbar-wrap rounded-box !top-8 !left-1/2 -translate-x-1/2">
     <EditorToolbar @tool="handleTool" ref="toolbarRef" />
