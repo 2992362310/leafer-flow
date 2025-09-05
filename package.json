@@ -24,7 +24,6 @@
     "@leafer-in/viewport": "^1.9.4",
     "leafer": "^1.9.4",
     "leafer-editor": "^1.9.4",
-    "leafer-x-connector": "^0.1.3",
     "leafer-x-dot-matrix": "^1.0.2",
     "leafer-x-easy-snap": "^1.10.0",
     "leafer-x-ruler": "^2.0.0",

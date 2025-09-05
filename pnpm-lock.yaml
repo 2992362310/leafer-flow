@@ -26,9 +26,6 @@ importers:
       leafer-editor:
         specifier: ^1.9.4
         version: 1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5)
-      leafer-x-connector:
-        specifier: ^0.1.3
-        version: 0.1.3(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-in/resize@1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5)
       leafer-x-dot-matrix:
         specifier: ^1.0.2
         version: 1.0.2(@leafer-ui/core@1.9.5)(@leafer-ui/interface@1.9.5)
@@ -1662,9 +1659,6 @@ packages:
 
   leafer-ui@1.9.5:
     resolution: {integrity: sha512-u45nRyZGSPCwsiejzTz6/8jQBepaLpOEJj8Yrgzm0yn4dQjuWs5JrkKmmNeKqXiEFoxuJBMWQSFfhNXXXWrSLw==}
-
-  leafer-x-connector@0.1.3:
-    resolution: {integrity: sha512-nXBBX2TNOqXFtUvywrlfHXL849x7AcEnI/sFzb5EcEDlA7Lff+LE9wGyMhMvh8WzKIm8EXh+p3cMIxiSkWIb5A==}
 
   leafer-x-dot-matrix@1.0.2:
     resolution: {integrity: sha512-fWnuuoEzs9ZkaJL/gsIx7YjE7r6Hp9QT50lZTqMqPk6SctfWwH52671NkGsKCC1hM/+58OJPkmyHEZik1lWYMw==}
@@ -4024,19 +4018,6 @@ snapshots:
       '@leafer/core': 1.9.5
       '@leafer/interface': 1.9.5
       '@leafer/partner': 1.9.5
-
-  leafer-x-connector@0.1.3(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-in/resize@1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5):
-    dependencies:
-      '@leafer-in/arrow': 1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5)
-      '@leafer-in/editor': 1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-in/resize@1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5))(@leafer-ui/core@1.9.5)(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5)
-      '@leafer-in/html': 1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/draw@1.9.5)(@leafer-ui/interface@1.9.5)
-      '@leafer-in/state': 1.9.5(@leafer-in/interface@1.9.5(@leafer-ui/interface@1.9.5)(@leafer/interface@1.9.5))(@leafer-ui/core@1.9.5)(@leafer-ui/interface@1.9.5)
-      '@leafer-ui/core': 1.9.5
-    transitivePeerDependencies:
-      - '@leafer-in/interface'
-      - '@leafer-in/resize'
-      - '@leafer-ui/draw'
-      - '@leafer-ui/interface'
 
   leafer-x-dot-matrix@1.0.2(@leafer-ui/core@1.9.5)(@leafer-ui/interface@1.9.5):
     dependencies:
