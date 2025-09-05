@@ -1,5 +1,6 @@
 import { App, type IAppConfig } from 'leafer'
 import type { IEditorPlugin, IEditorTool, IExcuteCommand, TCallback } from './types'
+import { UndoRedoService } from './service/undo-redo'
 
 const INIT_CONFIG = {
   view: window,
@@ -11,8 +12,10 @@ export default class Editor {
   app: App
   plugins: IEditorPlugin[] = []
   tools = new Map()
+  undoRedo: UndoRedoService
   constructor(config: IAppConfig = INIT_CONFIG) {
     const app = new App(config)
+    this.undoRedo = new UndoRedoService(app)
     this.app = app
   }
   use<T>(plugin: IEditorPlugin): T {
@@ -63,7 +66,9 @@ export default class Editor {
         action: 'success execute',
         tool: command,
       })
+
+      // 执行工具后保存
+      this.undoRedo.save()
     })
   }
 }
-

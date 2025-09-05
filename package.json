@@ -27,7 +27,9 @@
     "leafer-x-dot-matrix": "^1.0.2",
     "leafer-x-easy-snap": "^1.10.0",
     "leafer-x-ruler": "^2.0.0",
+    "lodash-es": "^4.17.21",
     "pinia": "^3.0.3",
+    "state-snapshot": "^1.1.0",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
@@ -35,6 +37,7 @@
     "@prettier/plugin-oxc": "^0.0.4",
     "@tailwindcss/vite": "^4.1.12",
     "@tsconfig/node22": "^22.0.2",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.16.5",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitejs/plugin-vue-jsx": "^5.0.1",
