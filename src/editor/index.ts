@@ -33,7 +33,7 @@ export function initEditor(view: HTMLElement) {
   editor.register('draw_circle', new DrawCircle())
   editor.register('draw_diamond', new DrawDiamond())
   editor.register('draw_text', new DrawText())
-
+  editor.undoRedo.save()
   return editor
 }
 
