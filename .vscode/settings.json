@@ -14,4 +14,8 @@
   "css.customData": [
     ".vscode/tailwindcss.json"
   ],
+  "cSpell.words": [
+    "oxlint",
+    "leafer"
+  ]
 }
