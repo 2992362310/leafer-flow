@@ -54,7 +54,7 @@ logRef.value?.addLog({ message: '这是一条错误信息日志', level: 'error'
 
 ```typescript
 // 示例：在 Editor 类的方法中添加日志
-execute<T>(command: IExcuteCommand, callback: TCallback) {
+execute<T>(command: IExecuteCommand, callback: TCallback) {
   // ... 执行逻辑 ...
 
   // 如果需要记录日志，应该通过某种方式传递日志引用
