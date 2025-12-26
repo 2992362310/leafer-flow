@@ -33,7 +33,7 @@ export class DrawArrow extends DrawBase {
   protected updateElement(element: IUI, endPoint: IPointData): void {
     this.points[1] = endPoint
 
-    const startPoint = this.points[0]
+    const startPoint = this.points[0]!
     const arrow = element as Arrow
     arrow.points = [startPoint, endPoint]
   }
