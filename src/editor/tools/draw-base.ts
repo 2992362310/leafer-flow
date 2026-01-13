@@ -27,9 +27,9 @@ export abstract class DrawBase {
     const { app } = this.editor || {}
     if (!app) return
 
-    app.on(PointerEvent.DOWN, this.onDown)
-    app.on(PointerEvent.MOVE, this.onMove)
-    app.on(PointerEvent.UP, this.onUp)
+    app.on(PointerEvent.DOWN, this.onDownBound)
+    app.on(PointerEvent.MOVE, this.onMoveBound)
+    app.on(PointerEvent.UP, this.onUpBound)
   }
 
   protected unBindEvents() {
@@ -41,12 +41,17 @@ export abstract class DrawBase {
     this.element = null
     this.points = []
 
-    app.off(PointerEvent.DOWN, this.onDown)
-    app.off(PointerEvent.MOVE, this.onMove)
-    app.off(PointerEvent.UP, this.onUp)
+    app.off(PointerEvent.DOWN, this.onDownBound)
+    app.off(PointerEvent.MOVE, this.onMoveBound)
+    app.off(PointerEvent.UP, this.onUpBound)
   }
 
-  protected onDown = (evt: PointerEvent) => {
+  // Bind handlers once to preserve 'this' and allow super calls
+  protected onDownBound = (evt: PointerEvent) => this.onDown(evt)
+  protected onMoveBound = (evt: PointerEvent) => this.onMove(evt)
+  protected onUpBound = (evt: PointerEvent) => this.onUp(evt)
+
+  protected onDown(evt: PointerEvent) {
     // 在开始绘制前清空当前选择
     const { app } = this.editor || {}
     if (app) {
@@ -59,7 +64,7 @@ export abstract class DrawBase {
     this.points.push(startPoint)
   }
 
-  protected onMove = (evt: PointerEvent) => {
+  protected onMove(evt: PointerEvent) {
     const { app } = this.editor || {}
     if (!this.element) return
 
@@ -72,7 +77,7 @@ export abstract class DrawBase {
     this.updateElement(this.element, endPoint)
   }
 
-  protected onUp = () => {
+  protected onUp(evt: PointerEvent | null) {
     const params = this.getResult()
     this.callback?.(params)
 
