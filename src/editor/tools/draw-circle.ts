@@ -53,11 +53,13 @@ export class DrawCircle extends DrawBase {
   }
 
   protected updateElement(element: IUI, endPoint: IPointData): void {
-    const startPoint = this.points[0]
+    const startPoint = this.points[0]!
     const group = element as Group
     const bounds = this.calculateEllipseBounds(startPoint, endPoint)
-
-    const [circle, text] = group.children
+    const children = group.children
+    if (!children || children.length < 2) return
+    const circle = children[0] as Ellipse
+    const text = children[1] as Text
     const { x, y, width, height } = bounds
 
     circle.x = x

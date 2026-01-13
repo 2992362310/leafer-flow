@@ -7,7 +7,7 @@ export interface IEditorPlugin {
   init: <T>(app: App) => T
 }
 
-export interface IExcuteCommand {
+export interface IExecuteCommand {
   command: string
   pre: string
 }

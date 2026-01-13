@@ -51,12 +51,14 @@ export class DrawDiamond extends DrawBase {
 
   protected updateElement(element: IUI, endPoint: IPointData): void {
     this.points[1] = endPoint
-
     const startPoint = this.points[0]
+    if (!startPoint) return
     const group = element as Group
     const bounds = this.calculateDiamondBounds(startPoint, endPoint)
-
-    const [diamond, text] = group.children
+    const children = group.children
+    if (!children || children.length < 2) return
+    const diamond = children[0] as Path
+    const text = children[1] as Text
 
     // 创建菱形路径数据
     const { centerX, centerY, x, y, width, height } = bounds
