@@ -1,5 +1,5 @@
 import { App, type IAppConfig } from 'leafer'
-import type { IEditorPlugin, IEditorTool, IExcuteCommand, TCallback } from './types'
+import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from './types'
 
 const INIT_CONFIG = {
   view: window,
@@ -27,7 +27,7 @@ export default class Editor {
     this.tools.set(name, tool)
     return tool
   }
-  execute(command: IExcuteCommand, callback: TCallback) {
+  execute(command: IExecuteCommand, callback: TCallback) {
     const { tools } = this
     const { pre, command: next } = command
     const tool = tools.get(pre)

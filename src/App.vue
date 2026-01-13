@@ -5,7 +5,7 @@ import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
 import StatusBar from './components/StatusBar.vue'
-import type { IExcuteArg, IExcuteCommand } from './editor/types'
+import type { IExcuteArg, IExecuteCommand } from './editor/types'
 import { WatchEvent } from 'leafer'
 
 const editorRef = useTemplateRef('editorRef')
@@ -41,7 +41,7 @@ function excuteCallback<T>(arg: T) {
   toolbarRef.value?.changeTool(next ?? 'select')
 }
 
-function handleTool(evt: IExcuteCommand) {
+function handleTool(evt: IExecuteCommand) {
   editor.execute(evt, excuteCallback)
   logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: 'info' })
 }

@@ -51,13 +51,17 @@ export class DrawRect extends DrawBase {
     this.points[1] = endPoint
 
     const startPoint = this.points[0]
+    if (!startPoint) return
     const group = element as Group
     const bounds = this.calculateRectBounds(startPoint, endPoint)
     const { x, y, width, height } = bounds
     group.x = x
     group.y = y
 
-    const [rect, text] = group.children
+    const children = group.children
+    if (!children || children.length < 2) return
+    const rect = children[0] as Rect
+    const text = children[1] as Text
     rect.width = width
     rect.height = height
 

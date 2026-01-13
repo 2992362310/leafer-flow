@@ -1,3 +1,6 @@
 hoist-pattern:
   - leafer-ui
   - '@leafer-in/*'
+
+ignoredBuiltDependencies:
+  - less
