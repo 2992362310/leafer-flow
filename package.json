@@ -27,6 +27,7 @@
     "@leafer-ui/draw": "^1.12.1",
     "@leafer-ui/interface": "^1.12.1",
     "leafer": "^1.12.1",
+    "leafer-connector": "^1.5.1",
     "leafer-editor": "^1.12.1",
     "leafer-x-dot-matrix": "^1.0.2",
     "leafer-x-easy-snap": "^1.11.0",
