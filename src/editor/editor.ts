@@ -1,5 +1,7 @@
 import { App, type IAppConfig } from 'leafer'
+import { EditorEvent } from 'leafer-editor'
 import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from './types'
+import { HistoryManager } from './core/history'
 
 const INIT_CONFIG = {
   view: window,
@@ -12,10 +14,28 @@ export default class Editor {
   plugins: IEditorPlugin[] = []
   tools = new Map<string, IEditorTool>()
   private currentCursorClass: string = ''
+  
+  public history: HistoryManager
 
   constructor(config: IAppConfig = INIT_CONFIG) {
     const app = new App(config)
     this.app = app
+    this.history = new HistoryManager(app)
+    
+    // 延后初始化监听，确保 editor 属性已就绪
+    setTimeout(() => {
+        this.initHistoryListeners()
+    }, 0)
+  }
+  
+  private initHistoryListeners() {
+      // 使用字符串字面量避免 import 问题
+      // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
+      if (!this.app.editor) return
+
+      this.app.editor.on('move.end', () => this.history.save())
+      this.app.editor.on('resize.end', () => this.history.save())
+      this.app.editor.on('rotate.end', () => this.history.save())
   }
 
   use<T>(plugin: IEditorPlugin): T {
@@ -77,6 +97,9 @@ export default class Editor {
     // 3. 执行工具逻辑
     tool.execute(() => {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
+      
+      // 保存历史记录
+      this.history.save()
       
       // 恢复选择器
       app.editor.config.selector = true
