@@ -16,6 +16,7 @@ import { DrawText } from './tools/draw-text'
 import { doClear } from './action/do-clear'
 import { doUndo } from './action/do-undo'
 import { doRedo } from './action/do-redo'
+import { doDelete } from './action/do-delete'
 
 export function initEditor(view: HTMLElement) {
   const editor = new Editor({
@@ -37,4 +38,4 @@ export function initEditor(view: HTMLElement) {
   return editor
 }
 
-export { Editor, doClear, doUndo, doRedo }
+export { Editor, doClear, doUndo, doRedo, doDelete }

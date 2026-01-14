@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef, ref, shallowRef } from 'vue'
-import { initEditor, type Editor, doClear, doUndo, doRedo } from './editor'
+import { initEditor, type Editor, doClear, doUndo, doRedo, doDelete } from './editor'
+import { useEditorShortcuts } from './editor/shortcuts'
 import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
@@ -15,8 +16,15 @@ const logRef = useTemplateRef('logRef')
 
 const editor = shallowRef<Editor>()
 
+// 快捷键 hook
+const { syncCurrentTool } = useEditorShortcuts({
+  onTool: handleTool,
+  onAction: handleAction
+})
+
 // 元素计数
 const elementCount = ref(0)
+
 
 // 初始化 Leafer 应用
 const initializeApp = () => {
@@ -39,11 +47,20 @@ onMounted(() => {
 function executeCallback<T>(arg: T) {
   const { action, tool, next } = arg as IExecuteArg
   logRef.value?.addLog({ message: `${tool} ${action}`, command: tool, level: next ? 'error' : 'success' })
-  toolbarRef.value?.changeTool(next ?? 'select')
+  
+  const nextTool = next ?? 'select'
+  toolbarRef.value?.changeTool(nextTool)
+  
+  // 同步快捷键内部状态
+  syncCurrentTool(nextTool)
 }
 
 function handleTool(evt: IExecuteCommand) {
   if (!editor.value) return
+  
+  // 同步工具条状态（支持快捷键触发时的 UI 联动）
+  toolbarRef.value?.changeTool(evt.command)
+  
   editor.value.execute(evt, executeCallback)
   logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: 'info' })
 }
@@ -73,6 +90,15 @@ function handleAction(action: string) {
   // 处理重做操作
   if (action === 'redo') {
     const result = doRedo(editor.value)
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'warning'
+    })
+  }
+
+  // 处理删除操作
+  if (action === 'delete') {
+    const result = doDelete(editor.value)
     logRef.value?.addLog({
       message: result.message,
       level: result.success ? 'success' : 'warning'
