@@ -132,7 +132,7 @@ function handleAction(action: string) {
 <template>
   <section class="w-full h-full" ref="editorRef"></section>
 
-  <div class="toolbar-wrap rounded-xl !top-12 !left-1/2 -translate-x-1/2">
+  <div class="absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200 rounded-xl !top-12 !left-1/2 -translate-x-1/2">
     <EditorToolbar @tool="handleTool" ref="toolbarRef" />
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <EditorButton @action="handleAction" />
@@ -152,11 +152,3 @@ function handleAction(action: string) {
   <!-- 事件日志 -->
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-
-.toolbar-wrap {
-  @apply absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200;
-}
-</style>
