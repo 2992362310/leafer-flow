@@ -58,8 +58,11 @@ function executeCallback<T>(arg: T) {
 function handleTool(evt: IExecuteCommand) {
   if (!editor.value) return
   
-  // 同步工具条状态（支持快捷键触发时的 UI 联动）
+  // 同步工具条状态
   toolbarRef.value?.changeTool(evt.command)
+  
+  // 同步 shortcuts 模块内部状态
+  syncCurrentTool(evt.command)
   
   editor.value.execute(evt, executeCallback)
   logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: 'info' })
