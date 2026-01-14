@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef, ref } from 'vue'
+import { onMounted, useTemplateRef, ref, shallowRef } from 'vue'
 import { initEditor, type Editor, doClear, doUndo, doRedo } from './editor'
 import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
+import EditorPanel from './components/EditorPanel.vue'
 import StatusBar from './components/StatusBar.vue'
 import type { IExecuteArg, IExecuteCommand } from './editor/types'
 import { WatchEvent } from 'leafer'
@@ -12,7 +13,7 @@ const editorRef = useTemplateRef('editorRef')
 const toolbarRef = useTemplateRef('toolbarRef')
 const logRef = useTemplateRef('logRef')
 
-let editor: Editor
+const editor = shallowRef<Editor>()
 
 // 元素计数
 const elementCount = ref(0)
@@ -21,11 +22,11 @@ const elementCount = ref(0)
 const initializeApp = () => {
   if (!editorRef.value) return false
 
-  editor = initEditor(editorRef.value)
+  editor.value = initEditor(editorRef.value)
 
   // 监听元素变化以更新计数
-  editor.app.tree.on(WatchEvent.DATA, () => {
-    elementCount.value = editor.app.tree.children.length
+  editor.value.app.tree.on(WatchEvent.DATA, () => {
+    elementCount.value = editor.value!.app.tree.children.length
   })
 
   logRef.value?.addLog({ message: '应用初始化完成', level: 'success' })
@@ -42,16 +43,18 @@ function executeCallback<T>(arg: T) {
 }
 
 function handleTool(evt: IExecuteCommand) {
-  editor.execute(evt, executeCallback)
+  if (!editor.value) return
+  editor.value.execute(evt, executeCallback)
   logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: 'info' })
 }
 
 function handleAction(action: string) {
+  if (!editor.value) return
   logRef.value?.addLog({ message: `执行操作: ${action}` })
 
   // 处理清空画布操作
   if (action === 'clearCanvas') {
-    const result = doClear(editor)
+    const result = doClear(editor.value)
     logRef.value?.addLog({
       message: result.message,
       level: result.success ? 'success' : 'error'
@@ -60,7 +63,7 @@ function handleAction(action: string) {
 
   // 处理撤销操作
   if (action === 'undo') {
-    const result = doUndo(editor)
+    const result = doUndo(editor.value)
     logRef.value?.addLog({
       message: result.message,
       level: result.success ? 'success' : 'warning'
@@ -69,7 +72,7 @@ function handleAction(action: string) {
 
   // 处理重做操作
   if (action === 'redo') {
-    const result = doRedo(editor)
+    const result = doRedo(editor.value)
     logRef.value?.addLog({
       message: result.message,
       level: result.success ? 'success' : 'warning'
@@ -86,6 +89,9 @@ function handleAction(action: string) {
     <span class="divider divider-horizontal mx-1"></span>
     <EditorButton @action="handleAction" />
   </div>
+
+  <!-- 属性面板 -->
+  <EditorPanel :editor="editor" class="z-10" />
 
   <!-- 状态栏 -->
   <div class="absolute bottom-2 left-8 w-fit">
