@@ -19,27 +19,27 @@ export function doUnGroup(editor: Editor): { success: boolean; message: string }
         const parent = group.parent
         if (!parent) return
 
-        const groupX = group.x || 0
-        const groupY = group.y || 0
+        // 确定 Group 所在位置，以便将 children 插回原位
+        let insertIndex = parent.children?.indexOf(group) ?? -1
         
-        // 复制一份 children，因为在遍历过程中 modify 会影响 array
+        // 复制一份 children，因为 dropTo 会修改 parent.children
         const children = [...group.children] as IUI[]
 
         children.forEach(child => {
-            const childOldX = child.x || 0
-            const childOldY = child.y || 0
-
-            // 移回原父级
-            parent.add(child)
-            
-            // 恢复坐标 (父级坐标系)
-            child.x = childOldX + groupX
-            child.y = childOldY + groupY
+            // 使用 dropTo 自动处理坐标变换（保持世界坐标视觉不变）
+            // 如果能确定插入位置更好，否则会 append 到最后
+            if (insertIndex > -1) {
+                 child.dropTo(parent, insertIndex)
+                 // 插入后，后续元素应该在 index + 1
+                 insertIndex++
+            } else {
+                 child.dropTo(parent)
+            }
             
             newSelection.push(child)
         })
 
-        // 删除空 Group
+        // 删除空 Group ( children 已被 dropTo 移走)
         group.remove()
     })
 
