@@ -31,12 +31,22 @@ const updateState = () => {
   y.value = Math.round(el.y || 0)
   width.value = Math.round(el.width || 0)
   height.value = Math.round(el.height || 0)
+
+  // Helper to ensure valid hex color for input type=color
+  const toHex = (c: any) => {
+      if (typeof c !== 'string') return '#000000'
+      if (c.startsWith('#')) {
+          return c.length > 7 ? c.slice(0, 7) : c
+      }
+      // Simple fallback for named colors or rgba (not handling full conversion yet)
+      return '#000000'
+  }
   
   if (selectedChildShape.value) {
     const shape = selectedChildShape.value
     // Handle fill which can be a color string or object. Simple case: string
-    if (typeof shape.fill === 'string') fill.value = shape.fill
-    if (typeof shape.stroke === 'string') stroke.value = shape.stroke
+    if (typeof shape.fill === 'string') fill.value = toHex(shape.fill)
+    if (typeof shape.stroke === 'string') stroke.value = toHex(shape.stroke)
     
     // safe handle strokeWidth
     const sw = shape.strokeWidth
@@ -94,13 +104,21 @@ const onSelect = (e: EditorEvent) => {
 }
 
 watch(() => props.editor, (newEditor) => {
-  if (newEditor && newEditor.app) {
+  if (!newEditor || !newEditor.app) return
+
+  if (newEditor.app.editor) {
     newEditor.app.editor.on(EditorEvent.SELECT, onSelect)
+  } else {
+      setTimeout(() => {
+          if (newEditor.app.editor) {
+             newEditor.app.editor.on(EditorEvent.SELECT, onSelect)
+          }
+      }, 0)
   }
 }, { immediate: true })
 
 onUnmounted(() => {
-  if (props.editor && props.editor.app) {
+  if (props.editor && props.editor.app && props.editor.app.editor) {
     props.editor.app.editor.off(EditorEvent.SELECT, onSelect)
   }
 })

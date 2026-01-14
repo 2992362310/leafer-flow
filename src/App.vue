@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef, ref, shallowRef } from 'vue'
-import { initEditor, type Editor, doClear, doUndo, doRedo, doDelete } from './editor'
+import { initEditor, type Editor, doClear, doUndo, doRedo, doDelete, doGroup, doUnGroup } from './editor'
 import { useEditorShortcuts } from './editor/shortcuts'
 import EditorToolbar from './components/EditorToolbar.vue'
 import EditorButton from './components/EditorButton.vue'
 import EditorLog from './components/EditorLog.vue'
 import EditorPanel from './components/EditorPanel.vue'
+import LayerPanel from './components/LayerTree/LayerPanel.vue'
 import StatusBar from './components/StatusBar.vue'
 import type { IExecuteArg, IExecuteCommand } from './editor/types'
 import { WatchEvent } from 'leafer'
@@ -107,19 +108,40 @@ function handleAction(action: string) {
       level: result.success ? 'success' : 'warning'
     })
   }
+  
+  // 处理组合操作
+  if (action === 'group') {
+    const result = doGroup(editor.value)
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'warning'
+    })
+  }
+
+  // 处理取消组合操作
+  if (action === 'ungroup') {
+    const result = doUnGroup(editor.value)
+    logRef.value?.addLog({
+      message: result.message,
+      level: result.success ? 'success' : 'warning'
+    })
+  }
 }
 </script>
 
 <template>
   <section class="w-full h-full" ref="editorRef"></section>
 
-  <div class="toolbar-wrap rounded-box !top-8 !left-1/2 -translate-x-1/2">
+  <div class="toolbar-wrap rounded-xl !top-12 !left-1/2 -translate-x-1/2">
     <EditorToolbar @tool="handleTool" ref="toolbarRef" />
-    <span class="divider divider-horizontal mx-1"></span>
+    <span class="divider divider-horizontal mx-0 my-1"></span>
     <EditorButton @action="handleAction" />
   </div>
 
-  <!-- 属性面板 -->
+  <!-- 图层面板 (浮动) -->
+  <LayerPanel :editor="editor" />
+
+  <!-- 属性面板 (浮动) -->
   <EditorPanel :editor="editor" class="z-10" />
 
   <!-- 状态栏 -->
@@ -135,6 +157,6 @@ function handleAction(action: string) {
 @reference "tailwindcss";
 
 .toolbar-wrap {
-  @apply absolute z-10 p-2 w-max ring-2 ring-blue-500/50 flex gap-2;
+  @apply absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200;
 }
 </style>

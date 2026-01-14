@@ -46,6 +46,20 @@ export function useEditorShortcuts(options: ShortcutOptions) {
         return
       }
       
+      // Group
+      if (key === 'g' && !shiftKey) {
+        e.preventDefault()
+        onAction('group')
+        return
+      }
+      
+      // Ungroup
+      if (key === 'g' && shiftKey) {
+        e.preventDefault()
+        onAction('ungroup')
+        return
+      }
+      
       return // 其他组合键直接返回，避免触发单键工具
     }
 
