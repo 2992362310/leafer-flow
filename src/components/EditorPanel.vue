@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
-import { type IUI, Group, Text, Ellipse, Rect } from 'leafer'
+import { type IUI, Text } from 'leafer'
 import { EditorEvent } from 'leafer-editor'
 import type { Editor } from '../editor'
 
@@ -37,13 +37,20 @@ const updateState = () => {
     // Handle fill which can be a color string or object. Simple case: string
     if (typeof shape.fill === 'string') fill.value = shape.fill
     if (typeof shape.stroke === 'string') stroke.value = shape.stroke
-    strokeWidth.value = shape.strokeWidth || 0
+    
+    // safe handle strokeWidth
+    const sw = shape.strokeWidth
+    strokeWidth.value = typeof sw === 'number' ? sw : 1
+
     opacity.value = shape.opacity || 1
   }
 
   if (selectedChildText.value) {
     const t = selectedChildText.value
-    textContent.value = t.text
+    // safe handle text
+    const txt = t.text
+    textContent.value = (typeof txt === 'string' || typeof txt === 'number') ? String(txt) : ''
+    
     fontSize.value = t.fontSize || 12
   }
 }
@@ -51,18 +58,19 @@ const updateState = () => {
 const onSelect = (e: EditorEvent) => {
   const list = e.editor.list
   if (list && list.length > 0) {
-    const el = list[0]
+    const el = list[0] as IUI
     selectedElement.value = el
     
     // Check for our composite components (Group -> [Shape, Text])
     // Using tag property for safer identification
     if (el.tag === 'Group' && el.children && el.children.length >= 1) {
         // Assume first child is the main shape
-        selectedChildShape.value = el.children[0]
+        selectedChildShape.value = el.children[0] as IUI
         
         // Check if second child is Text
-        if (el.children.length > 1 && el.children[1].tag === 'Text') {
-            selectedChildText.value = el.children[1] as Text
+        const secondChild = el.children[1]
+        if (el.children.length > 1 && secondChild && secondChild.tag === 'Text') {
+            selectedChildText.value = secondChild as Text
         } else {
             selectedChildText.value = null
         }
