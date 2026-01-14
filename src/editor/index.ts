@@ -4,7 +4,6 @@ import Editor from './editor'
 import { editorRuler } from './plugins/ruler'
 import { editorSnap } from './plugins/snap'
 import { editorDotMatrix } from './plugins/dot-matrix'
-import { editorConnector } from './plugins/connector'
 
 // tools
 import { DrawRect } from './tools/draw-rect'
@@ -28,7 +27,6 @@ export function initEditor(view: HTMLElement) {
   editor.use(editorRuler)
   editor.use(editorSnap)
   editor.use(editorDotMatrix)
-  editor.use(editorConnector)
 
   editor.register('draw_rect', new DrawRect())
   editor.register('draw_arrow', new DrawArrow())

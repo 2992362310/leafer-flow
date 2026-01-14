@@ -60,9 +60,14 @@ export class DrawDiamond extends DrawBase {
     const diamond = children[0] as Path
     const text = children[1] as Text
 
-    // 创建菱形路径数据
-    const { centerX, centerY, x, y, width, height } = bounds
-    const pathData = `M ${centerX} ${y} L ${x + width} ${centerY} L ${centerX} ${y + height} L ${x} ${centerY} Z`
+    // 更新组位置
+    group.x = bounds.x
+    group.y = bounds.y
+
+    // 创建菱形路径数据 (相对于组内 0,0)
+    const { width, height, centerX, centerY } = bounds
+    // M centerX 0 L width centerY L centerX height L 0 centerY Z
+    const pathData = `M ${centerX} 0 L ${width} ${centerY} L ${centerX} ${height} L 0 ${centerY} Z`
     diamond.path = pathData
 
     text.width = Math.abs(width - 20)
@@ -83,17 +88,19 @@ export class DrawDiamond extends DrawBase {
   private calculateDiamondBounds(startPoint: IPointData, endPoint: IPointData) {
     const { x: startX, y: startY } = startPoint
     const { x: endX, y: endY } = endPoint
-    const deltaX = endX - startX
-    const deltaY = endY - startY
-
-    const width = Math.abs(deltaX)
-    const height = Math.abs(deltaY)
+    
+    // 计算左上角和宽高
+    const x = Math.min(startX, endX)
+    const y = Math.min(startY, endY)
+    const width = Math.abs(endX - startX)
+    const height = Math.abs(endY - startY)
+    
     const centerX = width / 2
     const centerY = height / 2
 
     return {
-      x: 0,
-      y: 0,
+      x,
+      y,
       width,
       height,
       centerX,
