@@ -51,12 +51,16 @@ export default class Editor {
     const tool = tools.get(command)
     if (!tool) {
       app.editor.config.selector = true
+      this.setCursorType('')
       return
     }
 
     app.editor.config.selector = false
+    this.setCursorType(command === 'draw_text' ? 'text' : 'crosshair')
+
     tool.execute(() => {
       app.editor.config.selector = true
+      this.setCursorType('')
 
       callback({
         next: null,
@@ -64,6 +68,13 @@ export default class Editor {
         tool: command,
       })
     })
+  }
+
+  private setCursorType(type: string) {
+    const view = this.app.view as HTMLElement
+    if (view) {
+      view.style.cursor = type
+    }
   }
 }
 
