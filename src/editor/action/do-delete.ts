@@ -25,6 +25,9 @@ export function doDelete(editor: Editor): { success: boolean; message: string } 
 
     // 清空选择状态
     editor.app.editor.cancel()
+    
+    // 保存历史记录
+    editor.history.save()
 
     return {
       success: true,

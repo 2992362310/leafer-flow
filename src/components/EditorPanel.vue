@@ -106,34 +106,71 @@ onUnmounted(() => {
 })
 
 // Updaters
+// Helper for saving history
+const saveHistory = () => {
+    if (props.editor) {
+        props.editor.history.save()
+    }
+}
+
 const updateFill = (v: string) => {
     fill.value = v
-    if (selectedChildShape.value) selectedChildShape.value.fill = v
+    if (selectedChildShape.value) {
+        selectedChildShape.value.fill = v
+        saveHistory()
+    }
 }
 const updateStroke = (v: string) => {
     stroke.value = v
-    if (selectedChildShape.value) selectedChildShape.value.stroke = v
+    if (selectedChildShape.value) {
+        selectedChildShape.value.stroke = v
+        saveHistory()
+    }
 }
 const updateStrokeWidth = (v: number) => {
     strokeWidth.value = v
-    if (selectedChildShape.value) selectedChildShape.value.strokeWidth = v
+    if (selectedChildShape.value) {
+        selectedChildShape.value.strokeWidth = v
+        saveHistory()
+    }
 }
 const updateOpacity = (v: number) => {
     opacity.value = v
-    if (selectedChildShape.value) selectedChildShape.value.opacity = v
+    if (selectedChildShape.value) {
+        selectedChildShape.value.opacity = v
+        saveHistory()
+    }
 }
 const updateText = (v: string) => {
     textContent.value = v
-    if (selectedChildText.value) selectedChildText.value.text = v
+    if (selectedChildText.value) {
+        selectedChildText.value.text = v
+        saveHistory()
+    }
 }
 const updateFontSize = (v: number) => {
     fontSize.value = v
-    if (selectedChildText.value) selectedChildText.value.fontSize = v
+    if (selectedChildText.value) {
+        selectedChildText.value.fontSize = v
+        saveHistory()
+    }
 }
 // Coordinate updates need to move the group, usually via method to handle children?
 // But changing x/y of the group directly is fine for leafer.
-const updateX = (v: number) => { x.value = v; if (selectedElement.value) selectedElement.value.x = v }
-const updateY = (v: number) => { y.value = v; if (selectedElement.value) selectedElement.value.y = v }
+const updateX = (v: number) => { 
+    x.value = v; 
+    if (selectedElement.value) {
+        selectedElement.value.x = v 
+        saveHistory()
+    }
+}
+const updateY = (v: number) => { 
+    y.value = v; 
+    if (selectedElement.value) { 
+        selectedElement.value.y = v 
+        saveHistory()
+    }
+}
 // Width/Height might be complex for Group if we want to resize. 
 // For now, simpler to just start with basic props.
 
