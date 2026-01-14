@@ -44,4 +44,14 @@ export const toolbarIcons = {
     viewBox: '0 0 24 24',
     title: '清空画布'
   },
+  group: {
+    path: 'M2 9h13v13H2V9zm7-7h13v13h-4v-4H9V2z',
+    viewBox: '0 0 24 24',
+    title: '组合'
+  },
+  ungroup: {
+    path: 'M2 9h9v9H2V9zm11-7h9v9h-9V2z',
+    viewBox: '0 0 24 24',
+    title: '取消组合'
+  },
 }

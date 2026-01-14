@@ -17,6 +17,8 @@ import { doClear } from './action/do-clear'
 import { doUndo } from './action/do-undo'
 import { doRedo } from './action/do-redo'
 import { doDelete } from './action/do-delete'
+import { doGroup } from './action/do-group'
+import { doUnGroup } from './action/do-ungroup'
 
 export function initEditor(view: HTMLElement) {
   const editor = new Editor({
@@ -38,4 +40,4 @@ export function initEditor(view: HTMLElement) {
   return editor
 }
 
-export { Editor, doClear, doUndo, doRedo, doDelete }
+export { Editor, doClear, doUndo, doRedo, doDelete, doGroup, doUnGroup }

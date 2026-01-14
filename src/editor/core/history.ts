@@ -38,8 +38,6 @@ export class HistoryManager {
 
     // 清空重做栈
     this.redoStack = []
-    
-    console.log('History saved. Undo stack:', this.undoStack.length)
   }
 
   public undo() {
