@@ -33,7 +33,7 @@ export interface IDrawResult {
   element: IUI | null
 }
 
-export interface IExcuteArg {
+export interface IExecuteArg {
   next: string | null
   action: string
   tool: string
