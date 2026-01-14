@@ -45,45 +45,47 @@ export function doGroup(editor: Editor): { success: boolean; message: string } {
     const group = new Group({
         x: groupX,
         y: groupY,
-        // Group 通常不需要定宽高，通过 children 撑开，但为了后续操作方便可以根据内容推导
-        // Leafer Group 默认是自适应的
     })
 
-    // 4. 将 Group 插入到父节点中（插入位置：最上层选中元素的位置，或者直接最上层）
-    // 为了防止遮挡其他未选中元素，理想是插入到 selection 中最顶层元素的那个 z-index
-    // 简单起见，add 到末尾（最顶层）
-    parent.add(group)
+    // 4. 将 Group 插入到父节点中（插入位置：最上层选中元素的位置）
+    // 获取选中元素在 parent 中的最大索引，插入到那里
+    let insertIndex = parent.children ? parent.children.length : 0
+    if (parent.children) {
+        // 过滤出同一父级的元素索引
+        const indexes = list
+            .filter(item => item.parent === parent)
+            .map(item => parent.children!.indexOf(item))
+        if (indexes.length > 0) {
+            insertIndex = Math.max(...indexes)
+        }
+    }
+    
+    // 如果插入位置有效，使用 addAt；否则 add
+    // 注意：如果是 parent 的末尾，addAt(length) 等同于 add
+    // 但是这里要在 add group 之前计算索引，一旦 node 被移走，索引会变
+    // 所以先加 group，再移 node？
+    // 不，addAt 会改变后续元素的索引，但不影响前面的。
+    // 我们先插入 Group，再 dropTo。
+    
+    // 只要 parent 存在，就可以添加
+    if (parent.children && insertIndex < parent.children.length) {
+         parent.addAt(group, insertIndex)
+    } else {
+         parent.add(group)
+    }
 
     // 5. 移动元素
-    // 需要因为 Group 有个偏移 (groupX, groupY)，所以子元素的坐标要减去这个偏移
-    // 此外要考虑层级：为了保持原来的相对覆盖关系，应该按原来的 z-index 顺序添加到 group
+    // 使用 dropTo 自动处理坐标变换（保持世界坐标视觉不变）
     
-    // 按在 parent 中的 index 排序，保证在 group 里也是这个顺序
+    // 按在 parent 中的 index 排序，保证在 group 里也是这个顺序 (虽然 dropTo 会 append，如果源顺序乱了，group 里也乱)
     const sortedList = [...list].sort((a, b) => {
-        return parent.children.indexOf(a) - parent.children.indexOf(b)
+        const idxA = a.parent?.children?.indexOf(a) ?? -1
+        const idxB = b.parent?.children?.indexOf(b) ?? -1
+        return idxA - idxB
     })
 
     sortedList.forEach(node => {
-        // 这一步很重要：在 add 到新父节点之前，node 的 worldTransform 是有用的
-        // 但是 node.x / node.y 是相对于 parent 的
-        
-        // 由于 group 也在 parent 下，且无旋转缩放，坐标变换就是简单的减法
-        
-        // 记录一下原始的世界坐标（或者相对于 parent 的坐标，因为 group 也放 parent 里）
-        // 修正：我们必须用手动计算，因为一旦 add 到 group，parent 就变了
-        // node 的 x/y 是相对 parent 的。
-        // group 的 x/y 也是相对 parent 的。
-        // 所以新坐标应该是 (node.x - group.x, node.y - group.y)
-        // 前提是 node 和 group 在同一个 parent 下。
-        
-        const oldX = node.x || 0
-        const oldY = node.y || 0
-        
-        // 这一步会自动从旧 parent 移除并添加到 group
-        group.add(node)
-        
-        node.x = oldX - groupX
-        node.y = oldY - groupY
+        node.dropTo(group)
     })
 
     // 6. 选中新的 Group
