@@ -62,8 +62,11 @@ export class DrawCircle extends DrawBase {
     const text = children[1] as Text
     const { x, y, width, height } = bounds
 
-    circle.x = x
-    circle.y = y
+    group.x = x
+    group.y = y
+    
+    circle.x = 0
+    circle.y = 0
     circle.width = width
     circle.height = height
 
@@ -86,17 +89,17 @@ export class DrawCircle extends DrawBase {
     // 计算外接矩形的边界
     const { x: startX, y: startY } = startPoint
     const { x: endX, y: endY } = endPoint
-    const minX = Math.min(startX, endX)
-    const minY = Math.min(startY, endY)
-    const maxX = Math.max(startX, endX)
-    const maxY = Math.max(startY, endY)
-
-    const width = maxX - minX
-    const height = maxY - minY
+    
+    // 计算左上角坐标
+    const x = Math.min(startX, endX)
+    const y = Math.min(startY, endY)
+    
+    const width = Math.abs(endX - startX)
+    const height = Math.abs(endY - startY)
 
     return {
-      x: 0,
-      y: 0,
+      x,
+      y,
       width,
       height
     }
