@@ -207,8 +207,8 @@ const stopDrag = () => {
 
 <template>
   <div 
-    class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden transition-[height,width] z-30"
-    :style="{ left: position.x + 'px', top: position.y + 'px', width: '15rem', height: isCollapsed ? 'auto' : '60vh' }"
+    class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm fixed overflow-hidden transition-[height,width] z-30"
+    :style="{ left: position.x + 'px', top: position.y + 'px', width: '15rem', height: isCollapsed ? 'auto' : '60vh', backgroundColor: 'rgb(var(--color-base-100) / 0.9)' }"
   >
     <!-- Header / Drag Handle -->
     <div 
