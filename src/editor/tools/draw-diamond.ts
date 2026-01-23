@@ -12,7 +12,7 @@ export class DrawDiamond extends DrawBase {
       stroke: '#13ad8cff',
       strokeWidth: 1,
       opacity: 0.7,
-      ...options
+      ...options,
     }
   }
 
@@ -77,7 +77,7 @@ export class DrawDiamond extends DrawBase {
   protected getResult(): IDrawResult {
     return {
       action: 'diamond',
-      element: this.element
+      element: this.element,
     }
   }
 
@@ -88,13 +88,13 @@ export class DrawDiamond extends DrawBase {
   private calculateDiamondBounds(startPoint: IPointData, endPoint: IPointData) {
     const { x: startX, y: startY } = startPoint
     const { x: endX, y: endY } = endPoint
-    
+
     // 计算左上角和宽高
     const x = Math.min(startX, endX)
     const y = Math.min(startY, endY)
     const width = Math.abs(endX - startX)
     const height = Math.abs(endY - startY)
-    
+
     const centerX = width / 2
     const centerY = height / 2
 
@@ -104,7 +104,7 @@ export class DrawDiamond extends DrawBase {
       width,
       height,
       centerX,
-      centerY
+      centerY,
     }
   }
 }

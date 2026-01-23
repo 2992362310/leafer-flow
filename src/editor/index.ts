@@ -11,6 +11,7 @@ import { DrawArrow } from './tools/draw-arrow'
 import { DrawCircle } from './tools/draw-circle'
 import { DrawDiamond } from './tools/draw-diamond'
 import { DrawText } from './tools/draw-text'
+import { DrawFreehand } from './tools/draw-freehand'
 
 // actions
 import { doClear } from './action/do-clear'
@@ -36,6 +37,7 @@ export function initEditor(view: HTMLElement) {
   editor.register('draw_circle', new DrawCircle())
   editor.register('draw_diamond', new DrawDiamond())
   editor.register('draw_text', new DrawText())
+  editor.register('draw_freehand', new DrawFreehand())
 
   return editor
 }

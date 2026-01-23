@@ -10,12 +10,12 @@ export function doRedo(editor: Editor): { success: boolean; message: string } {
     if (editor.history.redo()) {
       return {
         success: true,
-        message: '已重做操作'
+        message: '已重做操作',
       }
     } else {
       return {
         success: false,
-        message: '没有可重做的操作'
+        message: '没有可重做的操作',
       }
     }
   } catch (error) {
@@ -23,7 +23,7 @@ export function doRedo(editor: Editor): { success: boolean; message: string } {
 
     return {
       success: false,
-      message: '重做操作失败: ' + (error instanceof Error ? error.message : '未知错误')
+      message: '重做操作失败: ' + (error instanceof Error ? error.message : '未知错误'),
     }
   }
 }

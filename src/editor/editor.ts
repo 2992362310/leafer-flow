@@ -1,5 +1,4 @@
 import { App, type IAppConfig } from 'leafer'
-import { EditorEvent } from 'leafer-editor'
 import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from './types'
 import { HistoryManager } from './core/history'
 
@@ -14,28 +13,28 @@ export default class Editor {
   plugins: IEditorPlugin[] = []
   tools = new Map<string, IEditorTool>()
   private currentCursorClass: string = ''
-  
+
   public history: HistoryManager
 
   constructor(config: IAppConfig = INIT_CONFIG) {
     const app = new App(config)
     this.app = app
     this.history = new HistoryManager(app)
-    
+
     // 延后初始化监听，确保 editor 属性已就绪
     setTimeout(() => {
-        this.initHistoryListeners()
+      this.initHistoryListeners()
     }, 0)
   }
-  
-  private initHistoryListeners() {
-      // 使用字符串字面量避免 import 问题
-      // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
-      if (!this.app.editor) return
 
-      this.app.editor.on('move.end', () => this.history.save())
-      this.app.editor.on('resize.end', () => this.history.save())
-      this.app.editor.on('rotate.end', () => this.history.save())
+  private initHistoryListeners() {
+    // 使用字符串字面量避免 import 问题
+    // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
+    if (!this.app.editor) return
+
+    this.app.editor.on('move.end', () => this.history.save())
+    this.app.editor.on('resize.end', () => this.history.save())
+    this.app.editor.on('rotate.end', () => this.history.save())
   }
 
   use<T>(plugin: IEditorPlugin): T {
@@ -89,7 +88,7 @@ export default class Editor {
     // 情况 B: 激活绘图工具
     // 1. 禁用原生的选择器，防止干扰
     app.editor.config.selector = false
-    
+
     // 2. 设置对应的强制光标
     const cursorType = name === 'draw_text' ? 'cursor-text-force' : 'cursor-crosshair-force'
     this.setCursor(cursorType)
@@ -97,10 +96,10 @@ export default class Editor {
     // 3. 执行工具逻辑
     tool.execute(() => {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
-      
+
       // 保存历史记录
       this.history.save()
-      
+
       // 恢复选择器
       app.editor.config.selector = true
       // 清除强制光标
@@ -130,8 +129,7 @@ export default class Editor {
     this.currentCursorClass = ''
     // 强制移除所有可能的光标类，确保干净
     if (container) {
-        container.classList.remove('cursor-crosshair-force', 'cursor-text-force', 'cursor-grab-force')
+      container.classList.remove('cursor-crosshair-force', 'cursor-text-force', 'cursor-grab-force')
     }
   }
 }
-

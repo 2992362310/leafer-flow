@@ -10,12 +10,12 @@ export function doUndo(editor: Editor): { success: boolean; message: string } {
     if (editor.history.undo()) {
       return {
         success: true,
-        message: '已撤销操作'
+        message: '已撤销操作',
       }
     } else {
       return {
         success: false,
-        message: '没有可撤销的操作'
+        message: '没有可撤销的操作',
       }
     }
   } catch (error) {
@@ -23,7 +23,7 @@ export function doUndo(editor: Editor): { success: boolean; message: string } {
 
     return {
       success: false,
-      message: '撤销操作失败: ' + (error instanceof Error ? error.message : '未知错误')
+      message: '撤销操作失败: ' + (error instanceof Error ? error.message : '未知错误'),
     }
   }
 }

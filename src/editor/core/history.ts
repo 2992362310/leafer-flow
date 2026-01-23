@@ -1,9 +1,9 @@
-import { App, UI } from 'leafer'
+import { App } from 'leafer'
 
 export class HistoryManager {
   private app: App
-  private undoStack: any[] = []
-  private redoStack: any[] = []
+  private undoStack: unknown[] = []
+  private redoStack: unknown[] = []
   private limit = 20
   private isExecuting = false
 
@@ -26,11 +26,11 @@ export class HistoryManager {
     // 这里做简略判断，比较 json 字符串长度或者简单的深度比较
     const last = this.undoStack[this.undoStack.length - 1]
     if (last && JSON.stringify(last) === JSON.stringify(data)) {
-        return
+      return
     }
-    
+
     this.undoStack.push(data)
-    
+
     // 限制栈大小
     if (this.undoStack.length > this.limit) {
       this.undoStack.shift()
@@ -45,7 +45,7 @@ export class HistoryManager {
     if (this.undoStack.length < 2) return false
 
     this.isExecuting = true
-    
+
     // 1. 将当前状态移入 redo 栈
     const current = this.undoStack.pop()
     this.redoStack.push(current)
@@ -54,7 +54,7 @@ export class HistoryManager {
     const prev = this.undoStack[this.undoStack.length - 1]
 
     // 3. 应用状态
-    this.applyState(prev)
+    this.applyState(prev as unknown[])
 
     this.isExecuting = false
     return true
@@ -67,32 +67,32 @@ export class HistoryManager {
 
     // 1. 取出 redo 栈顶状态
     const next = this.redoStack.pop()
-    
+
     // 2. 移入 undo 栈
     this.undoStack.push(next)
 
     // 3. 应用状态
-    this.applyState(next)
+    this.applyState(next as unknown[])
 
     this.isExecuting = false
     return true
   }
 
-  private applyState(children: any[]) {
+  private applyState(children: unknown[]) {
     // 清空画布并重新加载数据
     this.app.tree.clear()
-    
+
     // 重新添加子元素
     if (children && Array.isArray(children)) {
-        children.forEach(child => this.app.tree.add(child))
+      children.forEach((child) => this.app.tree.add(child as object))
     }
   }
-  
+
   public get canUndo() {
-      return this.undoStack.length > 1
+    return this.undoStack.length > 1
   }
-  
+
   public get canRedo() {
-      return this.redoStack.length > 0
+    return this.redoStack.length > 0
   }
 }
