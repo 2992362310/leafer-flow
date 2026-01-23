@@ -58,7 +58,7 @@ export abstract class DrawBase {
       // 清空选择
       app.editor.target = undefined
     }
-    
+
     const startPoint = evt.getPagePoint()
     this.element = this.createElement(startPoint)
     this.points.push(startPoint)
@@ -77,7 +77,7 @@ export abstract class DrawBase {
     this.updateElement(this.element, endPoint)
   }
 
-  protected onUp(evt: PointerEvent | null) {
+  protected onUp(_evt: PointerEvent | null) {
     const params = this.getResult()
     this.callback?.(params)
 

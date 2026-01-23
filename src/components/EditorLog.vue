@@ -23,12 +23,13 @@ const addLog = (options: LogOptions) => {
   const newLog: LogEntry = {
     id: crypto.randomUUID(),
     timestamp: new Date(),
-    ...options
+    ...options,
   }
 
   eventLog.value.unshift(newLog)
-  if (eventLog.value.length > 50) {  // 增加日志容量到50条
-    eventLog.value.splice(0, eventLog.value.length - 50);  // 更平滑的清理旧日志
+  if (eventLog.value.length > 50) {
+    // 增加日志容量到50条
+    eventLog.value.splice(0, eventLog.value.length - 50) // 更平滑的清理旧日志
   }
 
   // 自动滚动到顶部
@@ -42,7 +43,7 @@ const addLog = (options: LogOptions) => {
 
 function handleClick() {
   eventLog.value = []
-  addLog({ message: '日志已清空' })  // 添加清空操作的提示信息
+  addLog({ message: '日志已清空' }) // 添加清空操作的提示信息
 }
 
 // 切换折叠状态
@@ -72,7 +73,7 @@ const getLogIcon = (log: LogEntry) => {
 }
 
 defineExpose({
-  addLog
+  addLog,
 })
 </script>
 
@@ -85,22 +86,38 @@ defineExpose({
           事件日志
         </h3>
         <div class="flex space-x-1">
-          <button @click="toggleCollapse" class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
-            :title="isCollapsed ? '展开日志' : '折叠日志'">
+          <button
+            @click="toggleCollapse"
+            class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
+            :title="isCollapsed ? '展开日志' : '折叠日志'"
+          >
             <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
           </button>
-          <button @click="handleClick" class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
-            title="清空日志">
+          <button
+            @click="handleClick"
+            class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
+            title="清空日志"
+          >
             <Icon name="clear" class="h-3 w-3" />
             <span class="ml-1">清空</span>
           </button>
         </div>
       </div>
-      <div v-show="!isCollapsed" class="text-xs space-y-1 max-h-60 overflow-y-auto event-log-container">
-        <div v-for="log in eventLog" :key="log.id"
+      <div
+        v-show="!isCollapsed"
+        class="text-xs space-y-1 max-h-60 overflow-y-auto event-log-container"
+      >
+        <div
+          v-for="log in eventLog"
+          :key="log.id"
           class="flex items-start p-2 rounded transition-all duration-150 ease-in-out transform hover:-translate-y-0.5"
-          :class="getLogClass(log)">
-          <Icon :name="getLogIcon(log)" class="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" :class="getLogClass(log)" />
+          :class="getLogClass(log)"
+        >
+          <Icon
+            :name="getLogIcon(log)"
+            class="h-4 w-4 mr-2 mt-0.5 flex-shrink-0"
+            :class="getLogClass(log)"
+          />
           <span class="mr-2 whitespace-nowrap font-mono">{{ formatTime(log.timestamp) }}</span>
           <span class="flex-1 break-words">{{ log.message }}</span>
         </div>

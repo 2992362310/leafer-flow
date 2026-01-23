@@ -18,14 +18,14 @@ export class DrawText extends DrawBase {
     return text
   }
 
-  protected updateElement(element: IUI, endPoint: IPointData) {
+  protected updateElement(_element: IUI, _endPoint: IPointData) {
     // 文本工具不需要更新元素
   }
 
   protected getResult(): IDrawResult {
     return {
       action: 'text',
-      element: this.element
+      element: this.element,
     }
   }
 

@@ -8,17 +8,17 @@
 }
 
 /* 强制光标样式覆盖 */
-.cursor-crosshair-force, 
+.cursor-crosshair-force,
 .cursor-crosshair-force canvas {
   cursor: crosshair !important;
 }
 
-.cursor-text-force, 
+.cursor-text-force,
 .cursor-text-force canvas {
   cursor: text !important;
 }
 
-.cursor-grab-force, 
+.cursor-grab-force,
 .cursor-grab-force canvas {
   cursor: grab !important;
 }
