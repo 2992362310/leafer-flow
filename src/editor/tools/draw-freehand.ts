@@ -45,7 +45,7 @@ export class DrawFreehand extends DrawBase {
         d += i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`
       }
     }
-    ; (element as Path).path = d
+    ;(element as Path).path = d
   }
 
   protected getResult(): IDrawResult {
@@ -59,7 +59,7 @@ export class DrawFreehand extends DrawBase {
           d += i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`
         }
       }
-      ; (this.element as Path).path = d
+      ;(this.element as Path).path = d
     }
     return {
       action: 'freehand',

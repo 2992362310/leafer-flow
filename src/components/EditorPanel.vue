@@ -238,13 +238,27 @@ const stopDrag = () => {
   <Transition name="slide-fade">
     <div
       class="card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden transition-[height]"
-      :style="{ left: position.x + 'px', top: position.y + 'px', width: '15rem' }" v-if="selectedElement">
+      :style="{ left: position.x + 'px', top: position.y + 'px', width: '15rem' }"
+      v-if="selectedElement"
+    >
       <!-- Header / Drag Handle -->
-      <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
+      <div
+        class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none"
+        @mousedown="startDrag"
+      >
         <div class="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            class="w-4 h-4 opacity-70">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="w-4 h-4 opacity-70"
+          >
             <circle cx="12" cy="12" r="1" />
             <circle cx="12" cy="5" r="1" />
             <circle cx="12" cy="19" r="1" />
@@ -259,13 +273,37 @@ const stopDrag = () => {
         </div>
 
         <!-- Collapse Button -->
-        <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse" @mousedown.stop>
-          <svg v-if="!isCollapsed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          class="btn btn-ghost btn-xs btn-square"
+          @click.stop="toggleCollapse"
+          @mousedown.stop
+        >
+          <svg
+            v-if="!isCollapsed"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="18 15 12 9 6 15"></polyline>
           </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
@@ -276,13 +314,21 @@ const stopDrag = () => {
         <div class="grid grid-cols-2 gap-2 mb-2">
           <label class="form-control w-full">
             <div class="label p-1"><span class="label-text text-xs">X</span></div>
-            <input type="number" :value="x" @input="(e) => updateX(Number((e.target as HTMLInputElement).value))"
-              class="input input-bordered input-xs w-full" />
+            <input
+              type="number"
+              :value="x"
+              @input="(e) => updateX(Number((e.target as HTMLInputElement).value))"
+              class="input input-bordered input-xs w-full"
+            />
           </label>
           <label class="form-control w-full">
             <div class="label p-1"><span class="label-text text-xs">Y</span></div>
-            <input type="number" :value="y" @input="(e) => updateY(Number((e.target as HTMLInputElement).value))"
-              class="input input-bordered input-xs w-full" />
+            <input
+              type="number"
+              :value="y"
+              @input="(e) => updateY(Number((e.target as HTMLInputElement).value))"
+              class="input input-bordered input-xs w-full"
+            />
           </label>
         </div>
 
@@ -290,8 +336,12 @@ const stopDrag = () => {
         <div class="form-control w-full" v-if="selectedChildShape">
           <div class="label p-1"><span class="label-text text-xs">填充颜色</span></div>
           <div class="flex gap-2">
-            <input type="color" :value="fill" @input="(e) => updateFill((e.target as HTMLInputElement).value)"
-              class="h-6 w-8 cursor-pointer" />
+            <input
+              type="color"
+              :value="fill"
+              @input="(e) => updateFill((e.target as HTMLInputElement).value)"
+              class="h-6 w-8 cursor-pointer"
+            />
             <span class="text-xs self-center">{{ fill }}</span>
           </div>
         </div>
@@ -299,8 +349,12 @@ const stopDrag = () => {
         <div class="form-control w-full" v-if="selectedChildShape">
           <div class="label p-1"><span class="label-text text-xs">描边颜色</span></div>
           <div class="flex gap-2">
-            <input type="color" :value="stroke" @input="(e) => updateStroke((e.target as HTMLInputElement).value)"
-              class="h-6 w-8 cursor-pointer" />
+            <input
+              type="color"
+              :value="stroke"
+              @input="(e) => updateStroke((e.target as HTMLInputElement).value)"
+              class="h-6 w-8 cursor-pointer"
+            />
             <span class="text-xs self-center">{{ stroke }}</span>
           </div>
         </div>
@@ -311,8 +365,15 @@ const stopDrag = () => {
             <span class="label-text text-xs">描边宽度</span>
             <span class="label-text-alt text-xs">{{ strokeWidth }}</span>
           </div>
-          <input type="range" min="0" max="20" step="1" :value="strokeWidth"
-            @input="(e) => updateStrokeWidth(Number((e.target as HTMLInputElement).value))" class="range range-xs" />
+          <input
+            type="range"
+            min="0"
+            max="20"
+            step="1"
+            :value="strokeWidth"
+            @input="(e) => updateStrokeWidth(Number((e.target as HTMLInputElement).value))"
+            class="range range-xs"
+          />
         </div>
 
         <div class="form-control w-full" v-if="selectedChildShape">
@@ -320,8 +381,15 @@ const stopDrag = () => {
             <span class="label-text text-xs">不透明度</span>
             <span class="label-text-alt text-xs">{{ opacity }}</span>
           </div>
-          <input type="range" min="0" max="1" step="0.1" :value="opacity"
-            @input="(e) => updateOpacity(Number((e.target as HTMLInputElement).value))" class="range range-xs" />
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            :value="opacity"
+            @input="(e) => updateOpacity(Number((e.target as HTMLInputElement).value))"
+            class="range range-xs"
+          />
         </div>
 
         <!-- Text Props -->
@@ -329,8 +397,12 @@ const stopDrag = () => {
 
         <div class="form-control w-full" v-if="selectedChildText">
           <div class="label p-1"><span class="label-text text-xs">内容</span></div>
-          <input type="text" :value="textContent" @input="(e) => updateText((e.target as HTMLInputElement).value)"
-            class="input input-bordered input-xs w-full" />
+          <input
+            type="text"
+            :value="textContent"
+            @input="(e) => updateText((e.target as HTMLInputElement).value)"
+            class="input input-bordered input-xs w-full"
+          />
         </div>
 
         <div class="form-control w-full" v-if="selectedChildText">
@@ -338,8 +410,15 @@ const stopDrag = () => {
             <span class="label-text text-xs">字号</span>
             <span class="label-text-alt text-xs">{{ fontSize }}</span>
           </div>
-          <input type="range" min="8" max="72" step="1" :value="fontSize"
-            @input="(e) => updateFontSize(Number((e.target as HTMLInputElement).value))" class="range range-xs" />
+          <input
+            type="range"
+            min="8"
+            max="72"
+            step="1"
+            :value="fontSize"
+            @input="(e) => updateFontSize(Number((e.target as HTMLInputElement).value))"
+            class="range range-xs"
+          />
         </div>
       </div>
     </div>

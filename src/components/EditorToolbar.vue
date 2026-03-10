@@ -80,7 +80,10 @@ defineExpose({
 
     <!-- 自由绘制工具 -->
     <div class="tooltip tooltip-bottom" data-tip="自由绘制 (P)">
-      <button @click.prevent="handleClick('draw_freehand')" :class="getButtonClass('draw_freehand')">
+      <button
+        @click.prevent="handleClick('draw_freehand')"
+        :class="getButtonClass('draw_freehand')"
+      >
         <Icon name="draw_freehand" class="h-5 w-5" />
         <span class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono">P</span>
       </button>
