@@ -82,7 +82,10 @@ export class DrawArrow extends DrawBase {
     // 3. 判断并切换模式
     if (this.startNode && endNode && this.startNode !== endNode) {
       // 双端连接：切换到 Node 模式
-      connector.switchToNodeMode(this.startNode, endNode)
+      // 显式设置 updateMode 为 "event"，确保节点移动时连线跟随更新
+      connector.switchToNodeMode(this.startNode, endNode, {
+        updateMode: 'event',
+      })
     } else {
       // 其他情况（半连接或无连接）：保持 Point 模式
       // 为了更好的视觉体验，我们可以将端点自动吸附到节点的中心，并将箭头样式改为圆形
