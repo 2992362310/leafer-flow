@@ -10,7 +10,6 @@ const props = defineProps<{
 
 const isCollapsed = ref(false)
 
-
 // 获取当前工具的显示名称
 const currentToolName = computed(() => {
   if (!props.selectedTool) return '无'
@@ -52,16 +51,12 @@ function toggleCollapse() {
     <div v-show="!isCollapsed">
       <!-- 元素统计 -->
       <div v-if="elementCount !== undefined" class="mb-2">
-        <div class="badge badge-ghost text-xs">
-          元素总数: {{ elementCount }}
-        </div>
+        <div class="badge badge-ghost text-xs">元素总数: {{ elementCount }}</div>
       </div>
 
       <!-- 当前工具显示 -->
       <div class="mb-2">
-        <div class="badge badge-neutral text-xs">
-          当前工具: {{ currentToolName }}
-        </div>
+        <div class="badge badge-neutral text-xs">当前工具: {{ currentToolName }}</div>
       </div>
 
       <!-- 绘制状态提示 -->
@@ -75,8 +70,11 @@ function toggleCollapse() {
       <!-- 工具状态提示 -->
       <div class="mb-2">
         <div class="alert py-2 px-3 text-xs" :class="statusClass">
-          <Icon v-if="!selectedTool || selectedTool === 'select'" name="select"
-            class="stroke-current shrink-0 h-4 w-4" />
+          <Icon
+            v-if="!selectedTool || selectedTool === 'select'"
+            name="select"
+            class="stroke-current shrink-0 h-4 w-4"
+          />
           <Icon v-else name="draw_circle" class="stroke-current shrink-0 h-4 w-4" />
           <span>{{ toolStatus }}</span>
         </div>

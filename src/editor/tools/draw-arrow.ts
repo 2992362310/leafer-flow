@@ -14,7 +14,7 @@ export class DrawArrow extends DrawBase {
       strokeWidth: 2,
       cornerRadius: 10,
       opacity: 0.7,
-      ...options
+      ...options,
     }
   }
 
@@ -32,7 +32,7 @@ export class DrawArrow extends DrawBase {
       // Point 模式初始化
       fromPoint: startPoint,
       toPoint: startPoint,
-      
+
       // 样式配置
       stroke: this.options.stroke,
       strokeWidth: this.options.strokeWidth,
@@ -48,7 +48,7 @@ export class DrawArrow extends DrawBase {
   protected updateElement(element: IUI, endPoint: IPointData): void {
     // 更新坐标
     this.points[1] = endPoint
-    
+
     const startPoint = this.points[0]
     if (startPoint) {
       const connector = element as Connector
@@ -63,14 +63,14 @@ export class DrawArrow extends DrawBase {
     }
 
     const connector = this.element as Connector
-    
+
     // 获取终点
     let endPoint: IPointData
     if (evt && evt.getPagePoint) {
       endPoint = evt.getPagePoint()
     } else {
       const points = connector.getPoints()
-      endPoint = points ? points.to : (this.points[1] || { x: 0, y: 0 })
+      endPoint = points ? points.to : this.points[1] || { x: 0, y: 0 }
     }
 
     // 2. 尝试拾取终点节点
@@ -79,22 +79,25 @@ export class DrawArrow extends DrawBase {
     // 强制转换为 IUI
     const endNode = pickResult ? (pickResult.target as IUI) : null
 
-      // 3. 判断并切换模式
+    // 3. 判断并切换模式
     if (this.startNode && endNode && this.startNode !== endNode) {
       // 双端连接：切换到 Node 模式
-      connector.switchToNodeMode(this.startNode, endNode)
+      // 显式设置 updateMode 为 "event"，确保节点移动时连线跟随更新
+      connector.switchToNodeMode(this.startNode, endNode, {
+        updateMode: 'event',
+      })
     } else {
       // 其他情况（半连接或无连接）：保持 Point 模式
       // 为了更好的视觉体验，我们可以将端点自动吸附到节点的中心，并将箭头样式改为圆形
-      
+
       let fromPoint = connector.getPoints()?.from || this.points[0]
       let toPoint = endPoint
-      
+
       // 确保 fromPoint 有值，如果 this.points[0] 为空（极少情况），给一个默认值
       if (!fromPoint) {
-          fromPoint = { x: 0, y: 0 }
+        fromPoint = { x: 0, y: 0 }
       }
-      
+
       let hasConnection = false
 
       // 1. 起点吸附：如果此时处于 Point 模式，且存在起始节点，将起点吸附到节点中心
@@ -114,14 +117,14 @@ export class DrawArrow extends DrawBase {
       // 3. 如果只是半连接（一端连了节点，一端悬空），将悬空端的箭头改为圆形
       // 注意：Connector 的 startArrow/endArrow 更新后可能需要刷新
       if (hasConnection) {
-          if (!this.startNode) {
-              // 起点悬空，起点设为圆形
-              connector.startArrow = 'circle'
-          }
-          if (!endNode) {
-              // 终点悬空，终点设为圆形
-              connector.endArrow = 'circle'
-          }
+        if (!this.startNode) {
+          // 起点悬空，起点设为圆形
+          connector.startArrow = 'circle'
+        }
+        if (!endNode) {
+          // 终点悬空，终点设为圆形
+          connector.endArrow = 'circle'
+        }
       }
 
       // 应用吸附后的坐标
@@ -139,7 +142,7 @@ export class DrawArrow extends DrawBase {
   protected getResult(): IDrawResult {
     return {
       action: 'arrow',
-      element: this.element
+      element: this.element,
     }
   }
 }

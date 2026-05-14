@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxlint/main/schemas/oxlintrc.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "style": "off",
+    "restriction": "off",
+    "pedantic": "off"
+  },
+  "plugins": ["typescript", "vue"],
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "settings": {
+    "typescript": {
+      "tsconfigPath": "./tsconfig.app.json"
+    }
+  },
+  "rules": {
+    "no-console": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-debugger": "warn",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    // 关闭一些过于严格的样式规则
+    "eslint/no-magic-numbers": "off",
+    "eslint/sort-imports": "off",
+    "eslint/sort-keys": "off",
+    "eslint/no-plusplus": "off",
+    "eslint/func-style": "off",
+    "eslint/quotes": ["warn", "single"],
+    "typescript-eslint/explicit-function-return-type": "off"
+  }
+}

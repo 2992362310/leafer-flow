@@ -12,7 +12,7 @@ export class DrawRect extends DrawBase {
       stroke: '#13ad8cff',
       cornerRadius: 10,
       opacity: 0.7,
-      ...options
+      ...options,
     }
   }
 
@@ -72,7 +72,7 @@ export class DrawRect extends DrawBase {
   protected getResult(): IDrawResult {
     return {
       action: 'rect',
-      element: this.element
+      element: this.element,
     }
   }
 
