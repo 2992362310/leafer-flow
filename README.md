@@ -1,45 +1,67 @@
-# crm-flow-frontend
+# Leafer Flow
 
-This template should help get you started developing with Vue 3 in Vite.
+基于 Vue 3、Vite、TypeScript 和 LeaferJS 的流程图编辑器。当前目标是提供一个可直接使用的轻量绘图工作台，覆盖常见流程图绘制、编辑、编组、导入导出和画布操作。
 
-## Recommended IDE Setup
+## 功能概览
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- 画布编辑：选择、拖拽、缩放、视图复位、撤销、重做。
+- 基础图形：矩形、圆形、菱形、文本、自由绘制、箭头连接线。
+- 流程图节点：开始/结束、流程、判断、输入/输出、文档、数据库、子流程、连接点、泳道。
+- 连接线增强：直线、折线、贝塞尔路径，支持连接线标签。
+- 选择能力：单选、多选、框选、全选、删除、键盘微移。
+- 排版能力：对齐、分布、层级前移/后移/置顶/置底。
+- 元素管理：复制、粘贴、编组、取消编组、锁定、显示/隐藏。
+- 文件能力：保存、加载、自动恢复、导出 PNG/SVG。
+- 绘制体验：网格吸附开关、自由绘制平滑、事件日志、右键菜单和状态栏。
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
+## 快速开始
 
 ```sh
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+生产构建：
 
 ```sh
-npm run build
+pnpm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## 常用快捷键
 
-```sh
-npm run lint
-```
+- `V`：选择工具
+- `A`：箭头工具
+- `T`：文本工具
+- `R`：矩形
+- `C`：圆形
+- `D`：菱形
+- `P`：自由绘制
+- `1` 到 `9`：常用流程图节点
+- `Ctrl+Z`：撤销
+- `Ctrl+Shift+Z`：重做
+- `Ctrl+C` / `Ctrl+V`：复制 / 粘贴
+- `Ctrl+G` / `Ctrl+Shift+G`：编组 / 取消编组
+- `Delete`：删除选中元素
+- `Arrow`：微移选中元素
+- `Shift+Arrow`：快速微移选中元素
 
-# 参考
+## 使用建议
 
-- [Vue3 + TypeScript + Vite](https://v3.cn.vuejs.org/guide/typescript-support.html)
-- [leafjs](https://www.leaferjs.com/ui/guide/)
-- [excalidraw](https://excalidraw.com/)
+1. 先用流程图节点搭出主流程，再用箭头连接节点。
+2. 对多元素进行框选后，可使用对齐、分布和编组整理结构。
+3. 复杂图建议定期保存，也可以依赖本地自动恢复作为补充。
+4. 交付或分享时优先导出 SVG；用于截图或文档粘贴时使用 PNG。
+
+## 技术栈
+
+- Vue 3
+- Vite
+- TypeScript
+- LeaferJS
+- Tailwind CSS / DaisyUI
+
+## 后续重点
+
+- 提升连接线自动避障和端点吸附的稳定性。
+- 增加流程图模板和节点属性编辑能力。
+- 补充自动化测试，覆盖文件保存、选择、编组和导出链路。

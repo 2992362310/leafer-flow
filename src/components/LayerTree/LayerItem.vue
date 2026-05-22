@@ -100,6 +100,10 @@ const emit = defineEmits<{
   (e: 'select', node: IUI): void
   (e: 'toggleLock', node: IUI): void
   (e: 'toggleVisible', node: IUI): void
+  (e: 'moveUp', node: IUI): void
+  (e: 'moveDown', node: IUI): void
+  (e: 'moveTop', node: IUI): void
+  (e: 'moveBottom', node: IUI): void
 }>()
 
 // 判断节点类型
@@ -140,6 +144,26 @@ function handleToggleLock(e: Event) {
 function handleToggleVisible(e: Event) {
   e.stopPropagation()
   emit('toggleVisible', props.node)
+}
+
+function handleMoveUp(e: Event) {
+  e.stopPropagation()
+  emit('moveUp', props.node)
+}
+
+function handleMoveDown(e: Event) {
+  e.stopPropagation()
+  emit('moveDown', props.node)
+}
+
+function handleMoveTop(e: Event) {
+  e.stopPropagation()
+  emit('moveTop', props.node)
+}
+
+function handleMoveBottom(e: Event) {
+  e.stopPropagation()
+  emit('moveBottom', props.node)
 }
 
 // 递归事件冒泡
@@ -202,6 +226,12 @@ function onChildToggleVisible(node: IUI) {
         class="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity"
         :class="{ '!opacity-100': node.locked || !node.visible }"
       >
+        <button @click="handleMoveTop" class="p-0.5 hover:bg-base-300 rounded">
+          <Icon name="arrow-up" class="w-3 h-3" />
+        </button>
+        <button @click="handleMoveUp" class="p-0.5 hover:bg-base-300 rounded">
+          <Icon name="arrow-up" class="w-3 h-3 rotate-180" />
+        </button>
         <button @click="handleToggleLock" class="p-0.5 hover:bg-base-300 rounded">
           <Icon :name="lockIcon" class="w-3 h-3" :class="{ 'text-warning': node.locked }" />
         </button>
@@ -212,6 +242,12 @@ function onChildToggleVisible(node: IUI) {
             class="w-3 h-3"
             :class="{ 'text-base-content/30': !node.visible }"
           />
+        </button>
+        <button @click="handleMoveDown" class="p-0.5 hover:bg-base-300 rounded">
+          <Icon name="arrow-down" class="w-3 h-3" />
+        </button>
+        <button @click="handleMoveBottom" class="p-0.5 hover:bg-base-300 rounded">
+          <Icon name="arrow-down" class="w-3 h-3 rotate-180" />
         </button>
       </div>
     </div>
@@ -228,6 +264,10 @@ function onChildToggleVisible(node: IUI) {
         @select="onChildSelect"
         @toggleLock="onChildToggleLock"
         @toggleVisible="onChildToggleVisible"
+        @moveUp="handleMoveUp"
+        @moveDown="handleMoveDown"
+        @moveTop="handleMoveTop"
+        @moveBottom="handleMoveBottom"
       />
     </div>
   </div>

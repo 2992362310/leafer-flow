@@ -1,24 +1,26 @@
 <script setup lang="ts">
-import { ref, onUnmounted, shallowRef, watch, provide } from 'vue'
-import type { IUI } from '@leafer-ui/interface'
-import type { Editor } from '../../editor'
-import LayerItem from './LayerItem.vue'
+import { ref, onUnmounted, shallowRef, watch, provide } from "vue";
+import type { IUI } from "@leafer-ui/interface";
+import type { Editor } from "../../editor";
+import { doLayer, doToggleLock, doToggleVisible } from "../../editor";
+import LayerItem from "./LayerItem.vue";
+import { useDraggable, useCollapsible } from "../../composables/useDraggable";
 
 const props = defineProps<{
-  editor?: Editor
-}>()
+  editor?: Editor;
+}>();
 
-const treeData = shallowRef<IUI[]>([])
-const selectedIds = ref<number[]>([])
-const treeVersion = ref(0)
+const treeData = shallowRef<IUI[]>([]);
+const selectedIds = ref<number[]>([]);
+const treeVersion = ref(0);
 
 // 提供给子组件的移动方法
-provide('layerContext', {
+provide("layerContext", {
   moveLayer,
-})
+});
 
-function moveLayer(dragId: number, dropId: number, dropPosition: 'top' | 'bottom' | 'inside') {
-  if (!props.editor?.app) return
+function moveLayer(dragId: number, dropId: number, dropPosition: "top" | "bottom" | "inside") {
+  if (!props.editor?.app) return;
 
   // 1. 获取所有节点 (leafer API findOne 是异步的吗？通常是同步的，但如果是大树要注意)
   // 我们可以直接用 id map 加速，但这里用 find 够了
@@ -30,124 +32,156 @@ function moveLayer(dragId: number, dropId: number, dropPosition: 'top' | 'bottom
 
   // 递归查找 helper
   const findNode = (root: IUI, id: number): IUI | null => {
-    if (root.innerId === id) return root
+    if (root.innerId === id) return root;
     if (root.children) {
       for (const child of root.children) {
-        const res = findNode(child as IUI, id)
-        if (res) return res
+        const res = findNode(child as IUI, id);
+        if (res) return res;
       }
     }
-    return null
-  }
+    return null;
+  };
 
-  const dragNode = findNode(props.editor.app.tree as IUI, dragId)
-  const dropNode = findNode(props.editor.app.tree as IUI, dropId)
+  const dragNode = findNode(props.editor.app.tree as IUI, dragId);
+  const dropNode = findNode(props.editor.app.tree as IUI, dropId);
 
   if (dragNode && dropNode && dragNode !== dropNode) {
     // Check cyclic
-    let p = dropNode.parent
+    let p = dropNode.parent;
     while (p) {
       if (p === dragNode) {
-        return
+        return;
       }
-      p = p.parent
+      p = p.parent;
     }
 
-    if (dropPosition === 'top') {
-      if (dropNode.parent) dropNode.parent.addAfter(dragNode, dropNode)
-    } else if (dropPosition === 'bottom') {
-      if (dropNode.parent) dropNode.parent.addBefore(dragNode, dropNode)
-    } else if (dropPosition === 'inside') {
-      dropNode.add(dragNode)
+    if (dropPosition === "top") {
+      if (dropNode.parent) dropNode.parent.addAfter(dragNode, dropNode);
+    } else if (dropPosition === "bottom") {
+      if (dropNode.parent) dropNode.parent.addBefore(dragNode, dropNode);
+    } else if (dropPosition === "inside") {
+      dropNode.add(dragNode);
     }
 
-    props.editor.history.save()
-    updateTree()
+    props.editor.history.save();
+    updateTree();
   } else {
-    console.warn('Nodes not found:', dragId, dropId)
+    console.warn("Nodes not found:", dragId, dropId);
   }
 }
 
 // 监听器清理函数
-let cleanups: (() => void)[] = []
+let cleanups: (() => void)[] = [];
 
 function updateTree() {
-  if (!props.editor?.app?.tree) return
+  if (!props.editor?.app?.tree) return;
   // 浅拷贝触发更新
-  const children = props.editor.app.tree.children || []
+  const children = props.editor.app.tree.children || [];
   // 我们需要在 template 里 reverse，这里只存原始引用
-  treeData.value = [...children]
+  treeData.value = [...children];
   // 更新版本号，触发子组件刷新
-  treeVersion.value++
+  treeVersion.value++;
 }
 
 function updateSelection() {
-  if (!props.editor?.app?.editor) return
-  const list = props.editor.app.editor.list || []
-  selectedIds.value = list.map((item) => item.innerId)
+  if (!props.editor?.app?.editor) return;
+  const list = props.editor.app.editor.list || [];
+  selectedIds.value = list.map((item) => item.innerId);
 }
 
 function initListeners() {
-  const { app } = props.editor!
-  if (!app) return
+  const { app } = props.editor!;
+  if (!app) return;
 
   const onTreeChange = () => {
-    updateTree()
-  }
+    updateTree();
+  };
 
   const onSelectionChange = () => {
-    updateSelection()
-  }
+    updateSelection();
+  };
 
   // 监听画布内容的增删
   if (app.tree) {
-    app.tree.on('child.add', onTreeChange)
-    app.tree.on('child.remove', onTreeChange)
-    app.tree.on('clear', onTreeChange)
+    app.tree.on("child.add", onTreeChange);
+    app.tree.on("child.remove", onTreeChange);
+    app.tree.on("clear", onTreeChange);
 
     cleanups.push(() => {
-      app.tree.off('child.add', onTreeChange)
-      app.tree.off('child.remove', onTreeChange)
-      app.tree.off('clear', onTreeChange)
-    })
+      app.tree.off("child.add", onTreeChange);
+      app.tree.off("child.remove", onTreeChange);
+      app.tree.off("clear", onTreeChange);
+    });
   }
 
   // 监听选择变化
   if (app.editor) {
-    app.editor.on('select', onSelectionChange)
+    app.editor.on("select", onSelectionChange);
     cleanups.push(() => {
-      app.editor.off('select', onSelectionChange)
-    })
+      app.editor.off("select", onSelectionChange);
+    });
   } else {
     // 延迟重试，等待 editor 就绪
     setTimeout(() => {
       if (app.editor) {
-        app.editor.on('select', onSelectionChange)
+        app.editor.on("select", onSelectionChange);
         cleanups.push(() => {
-          app.editor.off('select', onSelectionChange)
-        })
-        updateSelection()
+          app.editor.off("select", onSelectionChange);
+        });
+        updateSelection();
       }
-    }, 0)
+    }, 0);
   }
 }
 
 // 事件处理
 function handleSelect(node: IUI) {
-  if (!props.editor || !props.editor.app.editor) return
-  props.editor.app.editor.select(node)
+  if (!props.editor || !props.editor.app.editor) return;
+  props.editor.app.editor.select(node);
 }
 
 function handleToggleLock(node: IUI) {
-  node.locked = !node.locked
-  treeData.value = [...treeData.value]
-  props.editor?.history.save()
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  const result = doToggleLock(props.editor, !node.locked);
+  props.editor?.app.editor.select(node);
+  if (result.success) treeData.value = [...treeData.value];
 }
 
 function handleToggleVisible(node: IUI) {
-  node.visible = !node.visible
-  treeData.value = [...treeData.value]
-  props.editor?.history.save()
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  const result = doToggleVisible(props.editor, !node.visible);
+  props.editor?.app.editor.select(node);
+  if (result.success) treeData.value = [...treeData.value];
+}
+
+function handleMoveUp(node: IUI) {
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  doLayer(props.editor, "bringForward");
+  updateTree();
+}
+
+function handleMoveDown(node: IUI) {
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  doLayer(props.editor, "sendBackward");
+  updateTree();
+}
+
+function handleMoveTop(node: IUI) {
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  doLayer(props.editor, "bringToFront");
+  updateTree();
+}
+
+function handleMoveBottom(node: IUI) {
+  if (!props.editor) return;
+  props.editor.app.editor.select(node);
+  doLayer(props.editor, "sendToBack");
+  updateTree();
 }
 
 // 监听 editor prop 变化
@@ -155,57 +189,27 @@ watch(
   () => props.editor,
   (newVal) => {
     if (newVal) {
-      cleanups.forEach((fn) => fn())
-      cleanups = []
+      cleanups.forEach((fn) => fn());
+      cleanups = [];
 
-      initListeners()
-      updateTree()
-      updateSelection()
+      initListeners();
+      updateTree();
+      updateSelection();
     }
   },
   { immediate: true },
-)
+);
 
 onUnmounted(() => {
-  cleanups.forEach((fn) => fn())
-})
+  cleanups.forEach((fn) => fn());
+});
 
 // Draggable & Collapsible Logic
-const isCollapsed = ref(true)
-const position = ref({ x: window.innerWidth - 260, y: 70 })
-const isDragging = ref(false)
-const dragOffset = ref({ x: 0, y: 0 })
-
-const toggleCollapse = () => {
-  if (isDragging.value) return
-  isCollapsed.value = !isCollapsed.value
-}
-
-const startDrag = (event: MouseEvent) => {
-  isDragging.value = true
-  dragOffset.value = {
-    x: event.clientX - position.value.x,
-    y: event.clientY - position.value.y,
-  }
-
-  document.addEventListener('mousemove', onDrag)
-  document.addEventListener('mouseup', stopDrag)
-  event.preventDefault()
-}
-
-const onDrag = (event: MouseEvent) => {
-  if (!isDragging.value) return
-  position.value = {
-    x: event.clientX - dragOffset.value.x,
-    y: event.clientY - dragOffset.value.y,
-  }
-}
-
-const stopDrag = () => {
-  isDragging.value = false
-  document.removeEventListener('mousemove', onDrag)
-  document.removeEventListener('mouseup', stopDrag)
-}
+const { position, isDragging, startDrag } = useDraggable({
+  initialX: window.innerWidth - 260,
+  initialY: 70,
+});
+const { isCollapsed, toggleCollapse } = useCollapsible(true);
 </script>
 
 <template>
@@ -247,7 +251,11 @@ const stopDrag = () => {
       </div>
 
       <!-- Collapse Button -->
-      <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse" @mousedown.stop>
+      <button
+        class="btn btn-ghost btn-xs btn-square"
+        @click.stop="toggleCollapse(isDragging)"
+        @mousedown.stop
+      >
         <svg
           v-if="!isCollapsed"
           xmlns="http://www.w3.org/2000/svg"
@@ -293,6 +301,10 @@ const stopDrag = () => {
         @select="handleSelect"
         @toggleLock="handleToggleLock"
         @toggleVisible="handleToggleVisible"
+        @moveUp="handleMoveUp"
+        @moveDown="handleMoveDown"
+        @moveTop="handleMoveTop"
+        @moveBottom="handleMoveBottom"
       />
     </div>
   </div>

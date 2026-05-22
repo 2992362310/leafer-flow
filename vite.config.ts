@@ -15,6 +15,19 @@ export default defineConfig({
 
     tailwindcss(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('vue')) return 'vendor-vue'
+          if (id.includes('leafer-x-')) return 'vendor-leafer-plugins'
+          if (id.includes('leafer') || id.includes('@leafer')) return 'vendor-leafer'
+          return 'vendor'
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

@@ -1,4 +1,4 @@
-import type Editor from '../editor'
+import type Editor from "../editor";
 
 /**
  * 清空画布操作
@@ -8,21 +8,24 @@ import type Editor from '../editor'
 export function doClear(editor: Editor): { success: boolean; message: string } {
   try {
     // 清空画布中的所有元素
-    editor.app.tree.clear()
+    editor.app.tree.clear();
 
     // 清空选择
-    editor.app.editor.target = undefined
+    editor.app.editor.target = undefined;
+
+    // 保存历史记录，使清空操作可撤销
+    editor.history.save();
 
     return {
       success: true,
-      message: '画布已清空',
-    }
+      message: "画布已清空",
+    };
   } catch (error) {
-    console.error('清空画布时发生错误:', error)
+    console.error("清空画布时发生错误:", error);
 
     return {
       success: false,
-      message: '清空画布失败: ' + (error instanceof Error ? error.message : '未知错误'),
-    }
+      message: "清空画布失败: " + (error instanceof Error ? error.message : "未知错误"),
+    };
   }
 }

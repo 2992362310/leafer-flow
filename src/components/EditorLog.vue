@@ -1,80 +1,79 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
-import Icon from './Icon.vue'
-import { formatTime } from '@/editor/utils'
-import type { IconName } from '@/assets/icons'
+import { nextTick, ref } from "vue";
+import Icon from "./Icon.vue";
+import { formatTime } from "@/editor/utils";
+import type { IconName } from "@/assets/icons";
 
 interface LogOptions {
-  message: string
-  level?: 'info' | 'success' | 'warning' | 'error'
-  command?: string
+  message: string;
+  level?: "info" | "success" | "warning" | "error";
+  command?: string;
 }
 
 interface LogEntry extends LogOptions {
-  id: string
-  timestamp: Date
+  id: string;
+  timestamp: Date;
 }
 
-const eventLog = ref<LogEntry[]>([])
-const isCollapsed = ref(false)
+const eventLog = ref<LogEntry[]>([]);
+const isCollapsed = ref(false);
 
-// 添加事件日志函数
+const levelIcon: Record<NonNullable<LogOptions["level"]>, IconName> = {
+  info: "info",
+  success: "select",
+  warning: "clear",
+  error: "clear",
+};
+
 const addLog = (options: LogOptions) => {
   const newLog: LogEntry = {
     id: crypto.randomUUID(),
     timestamp: new Date(),
     ...options,
-  }
+  };
 
-  eventLog.value.unshift(newLog)
+  eventLog.value.unshift(newLog);
   if (eventLog.value.length > 50) {
-    // 增加日志容量到50条
-    eventLog.value.splice(0, eventLog.value.length - 50) // 更平滑的清理旧日志
+    eventLog.value.splice(50);
   }
 
-  // 自动滚动到顶部
   nextTick(() => {
-    const container = document.querySelector('.event-log-container')
+    const container = document.querySelector(".event-log-container");
     if (container) {
-      container.scrollTop = 0
+      container.scrollTop = 0;
     }
-  })
+  });
+};
+
+function handleClear() {
+  eventLog.value = [];
+  addLog({ message: "日志已清空", level: "info" });
 }
 
-function handleClick() {
-  eventLog.value = []
-  addLog({ message: '日志已清空' }) // 添加清空操作的提示信息
-}
-
-// 切换折叠状态
 function toggleCollapse() {
-  isCollapsed.value = !isCollapsed.value
+  isCollapsed.value = !isCollapsed.value;
 }
 
-// 获取日志级别的显示类
 const getLogClass = (log: LogEntry) => {
-  const { level } = log
-  switch (level) {
-    case 'success':
-      return 'text-green-600 bg-green-50 hover:bg-green-100'
-    case 'warning':
-      return 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100'
-    case 'error':
-      return 'text-red-600 bg-red-50 hover:bg-red-100'
+  switch (log.level) {
+    case "success":
+      return "text-green-600 bg-green-50 hover:bg-green-100";
+    case "warning":
+      return "text-yellow-600 bg-yellow-50 hover:bg-yellow-100";
+    case "error":
+      return "text-red-600 bg-red-50 hover:bg-red-100";
     default:
-      return 'text-gray-600 hover:bg-gray-50'
+      return "text-gray-600 hover:bg-gray-50";
   }
-}
+};
 
-// 获取日志图标
 const getLogIcon = (log: LogEntry) => {
-  const { command, level } = log
-  return (command ?? level ?? 'info') as IconName
-}
+  return levelIcon[log.level ?? "info"];
+};
 
 defineExpose({
   addLog,
-})
+});
 </script>
 
 <template>
@@ -94,7 +93,7 @@ defineExpose({
             <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
           </button>
           <button
-            @click="handleClick"
+            @click="handleClear"
             class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
             title="清空日志"
           >

@@ -16,6 +16,7 @@ export interface IEditorTool {
   init: (app: Editor) => void
   execute: (callback: TCallback) => void
   cancel: (callback: TCallback) => void
+  createFixedElement?: (startPoint: import('leafer').IPointData, endPoint: import('leafer').IPointData) => IUI
 }
 
 export type TCallback = <T>(arg: T) => void

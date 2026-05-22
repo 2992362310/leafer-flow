@@ -4,7 +4,6 @@
     :viewBox="icon.viewBox || '0 0 24 24'"
     fill="none"
     stroke="currentColor"
-    :class="className"
     :title="icon.title"
   >
     <path
@@ -18,32 +17,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { icons, type IconName } from '@/assets/icons'
+import { computed } from "vue";
+import { icons, type IconName } from "@/assets/icons";
 
 defineOptions({
-  name: 'FlowIcon',
-})
+  name: "FlowIcon",
+});
 
 const props = defineProps<{
-  name: IconName
-  className?: string
-}>()
+  name: IconName;
+}>();
 
 interface IconData {
-  path?: string
-  viewBox?: string
-  title?: string
+  path?: string;
+  viewBox?: string;
+  title?: string;
 }
 
 const icon = computed<IconData>(() => {
-  const iconData = icons[props.name]
+  const iconData = icons[props.name];
   return (
     iconData || {
-      path: '',
-      viewBox: '0 0 24 24',
-      title: '',
+      path: "",
+      viewBox: "0 0 24 24",
+      title: "",
     }
-  )
-})
+  );
+});
 </script>

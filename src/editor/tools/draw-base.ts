@@ -7,6 +7,7 @@ export abstract class DrawBase {
   protected points: IPointData[] = []
   protected isDrawing = false
   protected callback?: TCallback
+  protected shiftKey = false
 
   init(editor: Editor) {
     this.editor = editor
@@ -15,6 +16,14 @@ export abstract class DrawBase {
   execute(callback: TCallback) {
     this.callback = callback
     this.bindEvents()
+  }
+
+  createFixedElement(startPoint: IPointData, endPoint: IPointData): IUI {
+    const element = this.createElement(startPoint)
+    this.points = [startPoint, endPoint]
+    this.updateElement(element, endPoint)
+    this.points = []
+    return element
   }
 
   cancel(callback: TCallback) {
@@ -62,6 +71,7 @@ export abstract class DrawBase {
     const startPoint = evt.getPagePoint()
     this.element = this.createElement(startPoint)
     this.points.push(startPoint)
+    this.shiftKey = evt.shiftKey
   }
 
   protected onMove(evt: PointerEvent) {
@@ -73,7 +83,7 @@ export abstract class DrawBase {
       this.isDrawing = true
     }
 
-    const endPoint = evt.getPagePoint()
+    const endPoint = this.normalizePoint(this.points[0], evt.getPagePoint(), evt.shiftKey)
     this.updateElement(this.element, endPoint)
   }
 
@@ -82,6 +92,34 @@ export abstract class DrawBase {
     this.callback?.(params)
 
     this.unBindEvents()
+  }
+
+  protected normalizePoint(
+    start: IPointData | undefined,
+    end: IPointData,
+    shiftKey = false,
+  ): IPointData {
+    if (!start || !shiftKey) return end
+
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const absX = Math.abs(dx)
+    const absY = Math.abs(dy)
+    const max = Math.max(absX, absY)
+
+    if (max === 0) return end
+
+    if (absX > absY * 1.5) {
+      return { x: start.x + Math.sign(dx) * max, y: start.y }
+    }
+
+    if (absY > absX * 1.5) {
+      return { x: start.x, y: start.y + Math.sign(dy) * max }
+    }
+
+    const signX = Math.sign(dx) || 1
+    const signY = Math.sign(dy) || 1
+    return { x: start.x + signX * max, y: start.y + signY * max }
   }
 
   protected abstract createElement(startPoint?: IPointData): IUI

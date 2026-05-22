@@ -1,148 +1,196 @@
-import { PointerEvent, type IPointData, type IUI } from 'leafer'
-import { Connector } from 'leafer-connector'
-import type { IDrawOptions, IDrawResult } from '../types'
-import { DrawBase } from './draw-base'
+import { PointerEvent, type IPointData, type IUI } from "leafer";
+import { Connector } from "leafer-connector";
+import type { ConnectorSide } from "leafer-connector";
+import type { IDrawOptions, IDrawResult } from "../types";
+import { DrawBase } from "./draw-base";
+import { getConnectorRouteType } from "../core/drawing-settings";
+
+const CONNECT_SNAP_DISTANCE = 18;
 
 export class DrawArrow extends DrawBase {
-  private options: IDrawOptions
-  private startNode: IUI | null = null
+  private options: IDrawOptions;
+  private startNode: IUI | null = null;
 
   constructor(options?: IDrawOptions) {
-    super()
+    super();
     this.options = {
-      stroke: '#278bfe',
+      stroke: "#278bfe",
       strokeWidth: 2,
       cornerRadius: 10,
       opacity: 0.7,
       ...options,
-    }
+    };
   }
 
   protected createElement(startPoint: IPointData): IUI {
-    // 1. 尝试拾取起始节点
-    const pickResult = this.editor?.app.pick(startPoint)
-    // 强制转换为 IUI，确保类型匹配
-    this.startNode = pickResult ? (pickResult.target as IUI) : null
-
     if (!this.editor) {
-      throw new Error('Editor is not initialized')
+      throw new Error("Editor is not initialized");
     }
 
-    const connector = new Connector(this.editor.app, {
-      // Point 模式初始化
-      fromPoint: startPoint,
-      toPoint: startPoint,
+    const startTarget = this.pickConnectableNode(startPoint);
+    this.startNode = startTarget.node;
+    const fromPoint = startTarget.point;
 
-      // 样式配置
+    const connector = new Connector(this.editor.app, {
+      fromPoint,
+      toPoint: fromPoint,
       stroke: this.options.stroke,
       strokeWidth: this.options.strokeWidth,
       cornerRadius: this.options.cornerRadius,
-      endArrow: 'arrow', // 显式声明箭头
-    })
+      endArrow: "arrow",
+      routeType: getConnectorRouteType(),
+      getNodeId: (node: IUI) => node.innerId,
+    });
 
-    connector.opacity = this.options.opacity
-
-    return connector
+    connector.opacity = this.options.opacity;
+    return connector;
   }
 
   protected updateElement(element: IUI, endPoint: IPointData): void {
-    // 更新坐标
-    this.points[1] = endPoint
+    this.points[1] = endPoint;
 
-    const startPoint = this.points[0]
+    const startPoint = this.points[0];
     if (startPoint) {
-      const connector = element as Connector
-      connector.setPoints(startPoint, endPoint)
+      const connector = element as Connector;
+      const endTarget = this.pickConnectableNode(endPoint, startPoint);
+      connector.setPoints(startPoint, endTarget.point);
     }
   }
 
   protected onUp(evt: PointerEvent | null) {
     if (!this.element) {
-      super.onUp(evt)
-      return
+      super.onUp(evt);
+      return;
     }
 
-    const connector = this.element as Connector
+    const connector = this.element as Connector;
+    const rawEndPoint =
+      evt && evt.getPagePoint
+        ? evt.getPagePoint()
+        : connector.getPoints()?.to || this.points[1] || { x: 0, y: 0 };
+    const startPoint = this.points[0] || connector.getPoints()?.from || rawEndPoint;
+    const endTarget = this.pickConnectableNode(rawEndPoint, startPoint);
+    const endNode = endTarget.node;
 
-    // 获取终点
-    let endPoint: IPointData
-    if (evt && evt.getPagePoint) {
-      endPoint = evt.getPagePoint()
-    } else {
-      const points = connector.getPoints()
-      endPoint = points ? points.to : this.points[1] || { x: 0, y: 0 }
-    }
+    connector.routeType = getConnectorRouteType();
 
-    // 2. 尝试拾取终点节点
-    // 此时 connector.hittable 为 false，不会拾取到自己
-    const pickResult = this.editor?.app.pick(endPoint)
-    // 强制转换为 IUI
-    const endNode = pickResult ? (pickResult.target as IUI) : null
-
-    // 3. 判断并切换模式
     if (this.startNode && endNode && this.startNode !== endNode) {
-      // 双端连接：切换到 Node 模式
-      // 显式设置 updateMode 为 "event"，确保节点移动时连线跟随更新
       connector.switchToNodeMode(this.startNode, endNode, {
-        updateMode: 'event',
-      })
+        updateMode: "event",
+      });
+      const state = connector.getState();
+      connector.setState(
+        {
+          ...state,
+          opt1: this.getTargetOption(this.startNode, rawEndPoint),
+          opt2: this.getTargetOption(endNode, startPoint),
+        } as never,
+        (id: string | number) => {
+          if (this.startNode?.innerId === id) return this.startNode;
+          if (endNode.innerId === id) return endNode;
+          return undefined;
+        },
+      );
     } else {
-      // 其他情况（半连接或无连接）：保持 Point 模式
-      // 为了更好的视觉体验，我们可以将端点自动吸附到节点的中心，并将箭头样式改为圆形
+      const fromPoint = this.startNode
+        ? getNearestSideAnchor(this.startNode, rawEndPoint).point
+        : this.points[0] || { x: 0, y: 0 };
+      const toPoint = endNode ? getNodeCenter(endNode) : endTarget.point;
 
-      let fromPoint = connector.getPoints()?.from || this.points[0]
-      let toPoint = endPoint
-
-      // 确保 fromPoint 有值，如果 this.points[0] 为空（极少情况），给一个默认值
-      if (!fromPoint) {
-        fromPoint = { x: 0, y: 0 }
+      if (this.startNode || endNode) {
+        if (!this.startNode) connector.startArrow = "circle";
+        if (!endNode) connector.endArrow = "circle";
       }
 
-      let hasConnection = false
-
-      // 1. 起点吸附：如果此时处于 Point 模式，且存在起始节点，将起点吸附到节点中心
-      if (this.startNode) {
-        const bounds = this.startNode.getBounds('box', 'page')
-        fromPoint = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
-        hasConnection = true
-      }
-
-      // 2. 终点吸附：如果存在终点节点，将终点吸附到节点中心
-      if (endNode) {
-        const bounds = endNode.getBounds('box', 'page')
-        toPoint = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
-        hasConnection = true
-      }
-
-      // 3. 如果只是半连接（一端连了节点，一端悬空），将悬空端的箭头改为圆形
-      // 注意：Connector 的 startArrow/endArrow 更新后可能需要刷新
-      if (hasConnection) {
-        if (!this.startNode) {
-          // 起点悬空，起点设为圆形
-          connector.startArrow = 'circle'
-        }
-        if (!endNode) {
-          // 终点悬空，终点设为圆形
-          connector.endArrow = 'circle'
-        }
-      }
-
-      // 应用吸附后的坐标
-      // 注意：这只是改变了线的坐标，并没有建立真正的 Node 绑定关系
-      // 当移动节点时，线不会跟随移动。
-      connector.setPoints(fromPoint, toPoint)
+      connector.setPoints(fromPoint, toPoint);
     }
 
-    // 恢复交互能力
-    connector.hittable = true
-
-    super.onUp(evt)
+    connector.hittable = true;
+    super.onUp(evt);
   }
 
   protected getResult(): IDrawResult {
     return {
-      action: 'arrow',
+      action: "arrow",
       element: this.element,
+    };
+  }
+
+  private pickConnectableNode(
+    point: IPointData,
+    toward?: IPointData,
+  ): { node: IUI | null; point: IPointData; side?: ConnectorSide } {
+    if (!this.editor) return { node: null, point };
+
+    const picked = this.editor.app.pick(point)?.target as IUI | undefined;
+    if (picked && !(picked instanceof Connector)) {
+      const anchor = getNearestSideAnchor(picked, toward || point);
+      return { node: picked, point: anchor.point, side: anchor.side };
+    }
+
+    const nearby = findNearestNode(this.editor.app.tree.children || [], point);
+    if (nearby && nearby.distance <= CONNECT_SNAP_DISTANCE) {
+      const anchor = getNearestSideAnchor(nearby.node, toward || point);
+      return { node: nearby.node, point: anchor.point, side: anchor.side };
+    }
+
+    return { node: null, point };
+  }
+
+  private getTargetOption(node: IUI, toward: IPointData) {
+    return {
+      side: getNearestSideAnchor(node, toward).side,
+      percent: 0.5,
+    };
+  }
+}
+
+function findNearestNode(nodes: IUI[], point: IPointData): { node: IUI; distance: number } | null {
+  let nearest: { node: IUI; distance: number } | null = null;
+
+  for (const node of nodes) {
+    if (node instanceof Connector) continue;
+
+    const bounds = node.getBounds("box", "page");
+    const distance = distanceToBounds(point, bounds);
+    if (!nearest || distance < nearest.distance) {
+      nearest = { node, distance };
     }
   }
+
+  return nearest;
+}
+
+function getNodeCenter(node: IUI): IPointData {
+  const bounds = node.getBounds("box", "page");
+  return {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
+  };
+}
+
+function getNearestSideAnchor(node: IUI, toward: IPointData): { point: IPointData; side: ConnectorSide } {
+  const bounds = node.getBounds("box", "page");
+  const center = {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
+  };
+  const dx = toward.x - center.x;
+  const dy = toward.y - center.y;
+  const side: ConnectorSide =
+    Math.abs(dx) > Math.abs(dy) ? (dx >= 0 ? "right" : "left") : dy >= 0 ? "bottom" : "top";
+
+  if (side === "left") return { side, point: { x: bounds.x, y: center.y } };
+  if (side === "right") return { side, point: { x: bounds.x + bounds.width, y: center.y } };
+  if (side === "top") return { side, point: { x: center.x, y: bounds.y } };
+  return { side, point: { x: center.x, y: bounds.y + bounds.height } };
+}
+
+function distanceToBounds(
+  point: IPointData,
+  bounds: { x: number; y: number; width: number; height: number },
+) {
+  const dx = Math.max(bounds.x - point.x, 0, point.x - (bounds.x + bounds.width));
+  const dy = Math.max(bounds.y - point.y, 0, point.y - (bounds.y + bounds.height));
+  return Math.hypot(dx, dy);
 }

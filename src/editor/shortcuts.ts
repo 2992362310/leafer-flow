@@ -1,123 +1,224 @@
-import { onMounted, onUnmounted } from 'vue'
-import type { IExecuteCommand } from './types'
+import { onMounted, onUnmounted } from "vue";
+import type { IExecuteCommand } from "./types";
+import { TOOL_NAME, ACTION_NAME } from "./constants";
 
-type ToolHandler = (cmd: IExecuteCommand) => void
-type ActionHandler = (action: string) => void
+type ToolHandler = (cmd: IExecuteCommand) => void;
+type ActionHandler = (action: string) => void;
 
 interface ShortcutOptions {
-  onTool: ToolHandler
-  onAction: ActionHandler
+  onTool: ToolHandler;
+  onAction: ActionHandler;
 }
 
 export function useEditorShortcuts(options: ShortcutOptions) {
-  const { onTool, onAction } = options
-
-  // 当前激活的工具（简单记录，用于判断）
-  let currentTool = 'select'
+  const { onTool, onAction } = options;
+  let currentTool = TOOL_NAME.SELECT;
 
   const handleKeydown = (e: KeyboardEvent) => {
-    // 1. 忽略输入框内的按键
-    const target = e.target as HTMLElement
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      return
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      return;
     }
 
-    const key = e.key.toLowerCase()
-    const { ctrlKey, metaKey, shiftKey } = e
-    // Mac use Meta (Command), Windows use Ctrl
-    const isCmd = ctrlKey || metaKey
+    const key = e.key.toLowerCase();
+    const { ctrlKey, metaKey, shiftKey } = e;
+    const isCmd = ctrlKey || metaKey;
 
-    // 2. 组合键操作 (Ctrl/Cmd + Key)
     if (isCmd) {
-      // Undo
-      if (key === 'z' && !shiftKey) {
-        e.preventDefault()
-        onAction('undo')
-        return
-      }
-      // Redo
-      if (key === 'z' && shiftKey) {
-        e.preventDefault()
-        onAction('redo')
-        return
+      if (key === "z" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.UNDO);
+        return;
       }
 
-      // Group
-      if (key === 'g' && !shiftKey) {
-        e.preventDefault()
-        onAction('group')
-        return
+      if (key === "z" && shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.REDO);
+        return;
       }
 
-      // Ungroup
-      if (key === 'g' && shiftKey) {
-        e.preventDefault()
-        onAction('ungroup')
-        return
+      if (key === "g" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.GROUP);
+        return;
       }
 
-      return // 其他组合键直接返回，避免触发单键工具
+      if (key === "g" && shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.UNGROUP);
+        return;
+      }
+
+      if (key === "s") {
+        e.preventDefault();
+        onAction(ACTION_NAME.SAVE);
+        return;
+      }
+
+      if (key === "a" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.SELECT_ALL);
+        return;
+      }
+
+      if (key === "]") {
+        e.preventDefault();
+        onAction(ACTION_NAME.BRING_FORWARD);
+        return;
+      }
+
+      if (key === "[") {
+        e.preventDefault();
+        onAction(ACTION_NAME.SEND_BACKWARD);
+        return;
+      }
+
+      if (key === "}" && shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.BRING_TO_FRONT);
+        return;
+      }
+
+      if (key === "{" && shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.SEND_TO_BACK);
+        return;
+      }
+
+      if (key === "l" && shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.LOCK_SELECTED);
+        return;
+      }
+
+      if (key === "l" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.UNLOCK_SELECTED);
+        return;
+      }
+
+      if (key === "h" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.TOGGLE_VISIBLE);
+        return;
+      }
+
+      if (key === "c" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.COPY);
+        return;
+      }
+
+      if (key === "v" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.PASTE);
+        return;
+      }
+
+      return;
     }
 
-    // 3. 单键操作 (无修饰键)
-    if (!isCmd && !shiftKey) {
+    if (key === "arrowleft" || key === "arrowright" || key === "arrowup" || key === "arrowdown") {
+      e.preventDefault();
+      const delta = shiftKey ? 10 : 1;
+      if (key === "arrowleft") onAction(`nudgeLeft:${delta}`);
+      if (key === "arrowright") onAction(`nudgeRight:${delta}`);
+      if (key === "arrowup") onAction(`nudgeUp:${delta}`);
+      if (key === "arrowdown") onAction(`nudgeDown:${delta}`);
+      return;
+    }
+
+    if (!shiftKey) {
       switch (key) {
-        case 'v':
-        case 'escape':
-          switchTool('select')
-          break
-        case 'r':
-          switchTool('draw_rect')
-          break
-        case 'd':
-          switchTool('draw_diamond')
-          break
-        case 'o':
-        case 'c':
-          switchTool('draw_circle')
-          break
-        case 'a':
-        case 'l':
-          switchTool('draw_arrow')
-          break
-        case 'p':
-          switchTool('draw_freehand')
-          break
-        case 't':
-          switchTool('draw_text')
-          break
-        case 'delete':
-        case 'backspace':
-          onAction('delete')
-          break
+        case "v":
+        case "escape":
+          switchTool(TOOL_NAME.SELECT);
+          break;
+        case "r":
+          switchTool(TOOL_NAME.DRAW_RECT);
+          break;
+        case "d":
+          switchTool(TOOL_NAME.DRAW_DIAMOND);
+          break;
+        case "u":
+          switchTool(TOOL_NAME.DRAW_TRIANGLE);
+          break;
+        case "x":
+          switchTool(TOOL_NAME.DRAW_HEXAGON);
+          break;
+        case "o":
+        case "c":
+          switchTool(TOOL_NAME.DRAW_CIRCLE);
+          break;
+        case "a":
+        case "l":
+          switchTool(TOOL_NAME.DRAW_ARROW);
+          break;
+        case "p":
+          switchTool(TOOL_NAME.DRAW_FREEHAND);
+          break;
+        case "t":
+          switchTool(TOOL_NAME.DRAW_TEXT);
+          break;
+        case "1":
+          switchTool(TOOL_NAME.FLOW_START_END);
+          break;
+        case "2":
+          switchTool(TOOL_NAME.FLOW_PROCESS);
+          break;
+        case "3":
+          switchTool(TOOL_NAME.FLOW_DECISION);
+          break;
+        case "4":
+          switchTool(TOOL_NAME.FLOW_IO);
+          break;
+        case "5":
+          switchTool(TOOL_NAME.FLOW_DOCUMENT);
+          break;
+        case "6":
+          switchTool(TOOL_NAME.FLOW_DATABASE);
+          break;
+        case "7":
+          switchTool(TOOL_NAME.FLOW_SUBPROCESS);
+          break;
+        case "8":
+          switchTool(TOOL_NAME.FLOW_CONNECTOR);
+          break;
+        case "9":
+          switchTool(TOOL_NAME.FLOW_SWIMLANE);
+          break;
+        case "delete":
+        case "backspace":
+          e.preventDefault();
+          onAction(ACTION_NAME.DELETE);
+          break;
       }
     }
-  }
+  };
 
   const switchTool = (nextTool: string) => {
-    if (currentTool === nextTool) return
+    if (currentTool === nextTool) return;
 
     onTool({
       command: nextTool,
       pre: currentTool,
-    })
-    currentTool = nextTool
-  }
+    });
+    currentTool = nextTool;
+  };
 
-  // 外部更新当前工具状态（用于同步 UI 点击）
   const syncCurrentTool = (tool: string) => {
-    currentTool = tool
-  }
+    currentTool = tool;
+  };
 
   onMounted(() => {
-    window.addEventListener('keydown', handleKeydown)
-  })
+    window.addEventListener("keydown", handleKeydown);
+  });
 
   onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown)
-  })
+    window.removeEventListener("keydown", handleKeydown);
+  });
 
   return {
     syncCurrentTool,
-  }
+  };
 }
