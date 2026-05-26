@@ -47,11 +47,15 @@ export function doLoad(editor: Editor): { success: boolean; message: string } {
         const json = JSON.parse(text) as Record<string, unknown>;
 
         editor.app.editor.cancel();
-        deserializeTreeWithConnectors(editor.app, json);
+        const result = deserializeTreeWithConnectors(editor.app, json);
         editor.history.save();
         editor.autoSave.save();
 
-        resolve({ success: true, message: "文件已加载" });
+        let message = "文件已加载";
+        if (result.failedConnectors > 0) {
+          message += `，${result.failedConnectors} 条连接线恢复节点绑定失败，已转为浮动线段`;
+        }
+        resolve({ success: true, message });
       } catch (error) {
         console.error("加载文件时发生错误", error);
         resolve({

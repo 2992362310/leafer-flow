@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import type { Editor } from "../editor";
-import { doCopy, doDelete, doGroup, doPaste, doUnGroup } from "../editor";
+import { doCopy, doDelete, doGroup, doPaste, doUnGroup, doConnectorToFront } from "../editor";
 
 const props = defineProps<{
   editor: Editor | undefined;
@@ -23,7 +23,9 @@ function handleContextMenu(e: MouseEvent) {
 
   const list = props.editor.app.editor.list;
   hasSelection.value = Boolean(list && list.length > 0);
-  hasGroup.value = Boolean(list && list.some((el) => "children" in el && (el as { children?: unknown }).children));
+  hasGroup.value = Boolean(
+    list && list.some((el) => "children" in el && (el as { children?: unknown }).children),
+  );
 }
 
 function handleClickOutside() {
@@ -49,6 +51,9 @@ function handleAction(action: string) {
   } else if (action === "ungroup") {
     const result = doUnGroup(props.editor);
     emit("action", { action: "ungroup", result });
+  } else if (action === "connectorsToFront") {
+    const result = doConnectorToFront(props.editor);
+    emit("action", { action: "connectorsToFront", result });
   } else {
     emit("action", { action });
   }
@@ -111,6 +116,14 @@ onUnmounted(() => {
       </button>
 
       <div class="divider my-0.5"></div>
+
+      <button
+        class="w-full text-left px-3 py-1.5 text-sm hover:bg-base-200 flex items-center gap-2"
+        @click="handleAction('connectorsToFront')"
+      >
+        <span class="opacity-60 text-xs w-16"></span>
+        <span>连接线置顶</span>
+      </button>
 
       <button
         class="w-full text-left px-3 py-1.5 text-sm hover:bg-base-200 text-error flex items-center gap-2"

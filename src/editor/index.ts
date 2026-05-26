@@ -17,6 +17,7 @@ import { doAlign } from "./action/do-align";
 import { doClear } from "./action/do-clear";
 import { doCopy, doPaste } from "./action/do-clipboard";
 import { doAddConnectorLabel } from "./action/do-connector-label";
+import { doConnectorToFront } from "./action/do-connector-layer";
 import { doDelete } from "./action/do-delete";
 import { doExportPNG, doExportSVG, doLoad, doSave } from "./action/do-file";
 import { doGroup } from "./action/do-group";
@@ -125,11 +126,21 @@ function registerFlowTools(editor: Editor) {
   );
   editor.register(
     TOOL_NAME.FLOW_MANUAL_INPUT,
-    new DrawFlowNode({ kind: "manualInput", label: "手动输入", fill: "#fdf2f8", stroke: "#db2777" }),
+    new DrawFlowNode({
+      kind: "manualInput",
+      label: "手动输入",
+      fill: "#fdf2f8",
+      stroke: "#db2777",
+    }),
   );
   editor.register(
     TOOL_NAME.FLOW_MANUAL_OPERATION,
-    new DrawFlowNode({ kind: "manualOperation", label: "手动操作", fill: "#f5f3ff", stroke: "#7c3aed" }),
+    new DrawFlowNode({
+      kind: "manualOperation",
+      label: "手动操作",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    }),
   );
   editor.register(
     TOOL_NAME.FLOW_STORED_DATA,
@@ -156,39 +167,87 @@ function registerFlowTools(editor: Editor) {
 function registerBpmnTools(editor: Editor) {
   editor.register(
     TOOL_NAME.BPMN_START_EVENT,
-    new DrawFlowNode({ kind: "bpmnStartEvent", label: "开始事件", fill: "#ffffff", stroke: "#16a34a" }),
+    new DrawFlowNode({
+      kind: "bpmnStartEvent",
+      label: "开始事件",
+      fill: "#ffffff",
+      stroke: "#16a34a",
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_INTERMEDIATE_EVENT,
-    new DrawFlowNode({ kind: "bpmnIntermediateEvent", label: "中间事件", fill: "#ffffff", stroke: "#ca8a04", strokeWidth: 3 }),
+    new DrawFlowNode({
+      kind: "bpmnIntermediateEvent",
+      label: "中间事件",
+      fill: "#ffffff",
+      stroke: "#ca8a04",
+      strokeWidth: 3,
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_END_EVENT,
-    new DrawFlowNode({ kind: "bpmnEndEvent", label: "结束事件", fill: "#ffffff", stroke: "#dc2626", strokeWidth: 4 }),
+    new DrawFlowNode({
+      kind: "bpmnEndEvent",
+      label: "结束事件",
+      fill: "#ffffff",
+      stroke: "#dc2626",
+      strokeWidth: 4,
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_EXCLUSIVE_GATEWAY,
-    new DrawFlowNode({ kind: "bpmnExclusiveGateway", label: "排他网关", fill: "#fffbeb", stroke: "#d97706" }),
+    new DrawFlowNode({
+      kind: "bpmnExclusiveGateway",
+      label: "排他网关",
+      fill: "#fffbeb",
+      stroke: "#d97706",
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_PARALLEL_GATEWAY,
-    new DrawFlowNode({ kind: "bpmnParallelGateway", label: "并行网关", fill: "#eff6ff", stroke: "#2563eb" }),
+    new DrawFlowNode({
+      kind: "bpmnParallelGateway",
+      label: "并行网关",
+      fill: "#eff6ff",
+      stroke: "#2563eb",
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_INCLUSIVE_GATEWAY,
-    new DrawFlowNode({ kind: "bpmnInclusiveGateway", label: "包容网关", fill: "#f5f3ff", stroke: "#7c3aed" }),
+    new DrawFlowNode({
+      kind: "bpmnInclusiveGateway",
+      label: "包容网关",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_TASK,
-    new DrawFlowNode({ kind: "bpmnTask", label: "任务", fill: "#ffffff", stroke: "#475569", cornerRadius: 10 }),
+    new DrawFlowNode({
+      kind: "bpmnTask",
+      label: "任务",
+      fill: "#ffffff",
+      stroke: "#475569",
+      cornerRadius: 10,
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_DATA_OBJECT,
-    new DrawFlowNode({ kind: "bpmnDataObject", label: "数据对象", fill: "#f8fafc", stroke: "#475569" }),
+    new DrawFlowNode({
+      kind: "bpmnDataObject",
+      label: "数据对象",
+      fill: "#f8fafc",
+      stroke: "#475569",
+    }),
   );
   editor.register(
     TOOL_NAME.BPMN_DATA_STORE,
-    new DrawFlowNode({ kind: "bpmnDataStore", label: "数据存储", fill: "#ecfeff", stroke: "#0891b2" }),
+    new DrawFlowNode({
+      kind: "bpmnDataStore",
+      label: "数据存储",
+      fill: "#ecfeff",
+      stroke: "#0891b2",
+    }),
   );
 }
 
@@ -240,6 +299,7 @@ export {
   doAddConnectorLabel,
   doAlign,
   doClear,
+  doConnectorToFront,
   doCopy,
   doDelete,
   doExportPNG,

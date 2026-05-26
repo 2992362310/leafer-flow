@@ -5,11 +5,15 @@ import type { IDrawOptions, IDrawResult } from "../types";
 import { DrawBase } from "./draw-base";
 import { getConnectorRouteType } from "../core/drawing-settings";
 
-const CONNECT_SNAP_DISTANCE = 18;
-
 export class DrawArrow extends DrawBase {
   private options: IDrawOptions;
   private startNode: IUI | null = null;
+  private readonly BASE_SNAP_DISTANCE = 18;
+
+  private getSnapDistance(): number {
+    const zoom = this.editor?.app.tree.scaleX;
+    return zoom && zoom > 0 ? this.BASE_SNAP_DISTANCE / zoom : this.BASE_SNAP_DISTANCE;
+  }
 
   constructor(options?: IDrawOptions) {
     super();
@@ -129,7 +133,7 @@ export class DrawArrow extends DrawBase {
     }
 
     const nearby = findNearestNode(this.editor.app.tree.children || [], point);
-    if (nearby && nearby.distance <= CONNECT_SNAP_DISTANCE) {
+    if (nearby && nearby.distance <= this.getSnapDistance()) {
       const anchor = getNearestSideAnchor(nearby.node, toward || point);
       return { node: nearby.node, point: anchor.point, side: anchor.side };
     }
@@ -169,7 +173,10 @@ function getNodeCenter(node: IUI): IPointData {
   };
 }
 
-function getNearestSideAnchor(node: IUI, toward: IPointData): { point: IPointData; side: ConnectorSide } {
+function getNearestSideAnchor(
+  node: IUI,
+  toward: IPointData,
+): { point: IPointData; side: ConnectorSide } {
   const bounds = node.getBounds("box", "page");
   const center = {
     x: bounds.x + bounds.width / 2,

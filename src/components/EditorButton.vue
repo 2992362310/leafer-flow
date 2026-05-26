@@ -28,6 +28,7 @@ const layerActions = [
   { action: ACTION_NAME.SEND_BACKWARD, icon: "arrow-down", label: "下移一层" },
   { action: ACTION_NAME.BRING_TO_FRONT, icon: "arrow-up", label: "置于顶层" },
   { action: ACTION_NAME.SEND_TO_BACK, icon: "arrow-down", label: "置于底层" },
+  { action: ACTION_NAME.CONNECTORS_TO_FRONT, icon: "draw_arrow", label: "连接线置顶" },
   { action: ACTION_NAME.LOCK_SELECTED, icon: "lock", label: "锁定选中" },
   { action: ACTION_NAME.UNLOCK_SELECTED, icon: "unlock", label: "解锁选中" },
   { action: ACTION_NAME.TOGGLE_VISIBLE, icon: "visible", label: "切换显示" },
@@ -49,8 +50,16 @@ const templateGroups = [
     title: "专业图",
     items: [
       { action: ACTION_NAME.TEMPLATE_BPMN_ORDER, icon: "bpmn_start_event", label: "BPMN 订单" },
-      { action: ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE, icon: "arch_component", label: "系统架构" },
-      { action: ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION, icon: "flow_swimlane", label: "泳道协作" },
+      {
+        action: ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE,
+        icon: "arch_component",
+        label: "系统架构",
+      },
+      {
+        action: ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION,
+        icon: "flow_swimlane",
+        label: "泳道协作",
+      },
     ],
   },
 ] as const;
@@ -110,7 +119,10 @@ function handleClick(action: string) {
           <Icon name="align_center" class="h-5 w-5" />
         </button>
       </div>
-      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-40 p-2 shadow border border-base-200">
+      <ul
+        tabindex="0"
+        class="dropdown-content menu bg-base-100 rounded-box z-20 w-40 p-2 shadow border border-base-200"
+      >
         <li v-for="item in alignActions" :key="item.action">
           <button @click="handleClick(item.action)" class="text-xs">
             <Icon :name="item.icon" class="h-4 w-4" />
@@ -126,7 +138,10 @@ function handleClick(action: string) {
           <Icon name="layer" class="h-5 w-5" />
         </button>
       </div>
-      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-40 p-2 shadow border border-base-200">
+      <ul
+        tabindex="0"
+        class="dropdown-content menu bg-base-100 rounded-box z-20 w-40 p-2 shadow border border-base-200"
+      >
         <li v-for="item in layerActions" :key="item.action">
           <button @click="handleClick(item.action)" class="text-xs">
             <Icon :name="item.icon" class="h-4 w-4" />
@@ -142,7 +157,10 @@ function handleClick(action: string) {
           <Icon name="template" class="h-5 w-5" />
         </button>
       </div>
-      <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-20 w-56 p-3 shadow border border-base-200">
+      <div
+        tabindex="0"
+        class="dropdown-content bg-base-100 rounded-box z-20 w-56 p-3 shadow border border-base-200"
+      >
         <div class="mb-3">
           <div class="text-xs font-medium mb-2">连线样式</div>
           <div class="join w-full">
@@ -190,7 +208,10 @@ function handleClick(action: string) {
     </div>
 
     <div class="tooltip tooltip-bottom" data-tip="添加连线标签">
-      <button @click="handleClick(ACTION_NAME.ADD_CONNECTOR_LABEL)" class="btn btn-sm join-item h-9 w-9 px-0">
+      <button
+        @click="handleClick(ACTION_NAME.ADD_CONNECTOR_LABEL)"
+        class="btn btn-sm join-item h-9 w-9 px-0"
+      >
         <Icon name="connector_label" class="h-5 w-5" />
       </button>
     </div>
@@ -201,9 +222,14 @@ function handleClick(action: string) {
           <Icon name="template" class="h-5 w-5" />
         </button>
       </div>
-      <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-20 w-52 p-2 shadow border border-base-200">
+      <div
+        tabindex="0"
+        class="dropdown-content bg-base-100 rounded-box z-20 w-52 p-2 shadow border border-base-200"
+      >
         <div v-for="group in templateGroups" :key="group.title" class="mb-2 last:mb-0">
-          <div class="px-2 py-1 text-[11px] font-semibold text-base-content/60">{{ group.title }}</div>
+          <div class="px-2 py-1 text-[11px] font-semibold text-base-content/60">
+            {{ group.title }}
+          </div>
           <ul class="menu p-0">
             <li v-for="item in group.items" :key="item.action">
               <button @click="handleClick(item.action)" class="text-xs">
@@ -236,7 +262,10 @@ function handleClick(action: string) {
           <Icon name="export" class="h-5 w-5" />
         </button>
       </div>
-      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-36 p-2 shadow border border-base-200">
+      <ul
+        tabindex="0"
+        class="dropdown-content menu bg-base-100 rounded-box z-20 w-36 p-2 shadow border border-base-200"
+      >
         <li v-for="item in exportActions" :key="item.action">
           <button @click="handleClick(item.action)" class="text-xs">
             <Icon :name="item.icon" class="h-4 w-4" />

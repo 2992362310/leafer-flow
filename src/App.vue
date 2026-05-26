@@ -8,6 +8,7 @@ import {
   doClear,
   doUndo,
   doRedo,
+  doConnectorToFront,
   doDelete,
   doGroup,
   doUnGroup,
@@ -85,12 +86,18 @@ function initializeApp() {
     zoomPercent.value = getZoomPercent(editor.value);
   });
 
-  const loaded = editor.value.autoSave.load();
-  if (loaded) {
+  const loadResult = editor.value.autoSave.load();
+  if (loadResult.loaded) {
     elementCount.value = editor.value.app.tree.children.length;
     zoomPercent.value = getZoomPercent(editor.value);
     editor.value.history.save();
     logRef.value?.addLog({ message: "已恢复上次编辑的数据", level: "info" });
+    if (loadResult.failedConnectors > 0) {
+      logRef.value?.addLog({
+        message: `${loadResult.failedConnectors} 条连接线恢复节点绑定失败，已转为浮动线段`,
+        level: "warning",
+      });
+    }
   }
 
   logRef.value?.addLog({ message: "应用初始化完成", level: "success" });
@@ -317,14 +324,24 @@ function handleAction(action: string) {
     action === ACTION_NAME.BRING_TO_FRONT ||
     action === ACTION_NAME.SEND_TO_BACK
   ) {
-    logResult(doLayer(editor.value, action as "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"));
+    logResult(
+      doLayer(
+        editor.value,
+        action as "bringForward" | "sendBackward" | "bringToFront" | "sendToBack",
+      ),
+    );
   }
 
   if (action === ACTION_NAME.LOCK_SELECTED) logResult(doToggleLock(editor.value, true));
   if (action === ACTION_NAME.UNLOCK_SELECTED) logResult(doToggleLock(editor.value, false));
   if (action === ACTION_NAME.TOGGLE_VISIBLE) {
     const selected = editor.value.app.editor.list || [];
-    logResult(doToggleVisible(editor.value, selected.some((item) => !item.visible)));
+    logResult(
+      doToggleVisible(
+        editor.value,
+        selected.some((item) => !item.visible),
+      ),
+    );
   }
 
   if (action === ACTION_NAME.TOGGLE_SNAP) {
@@ -333,6 +350,8 @@ function handleAction(action: string) {
     editor.value.snap?.enable(next);
     logRef.value?.addLog({ message: next ? "已开启吸附" : "已关闭吸附", level: "info" });
   }
+
+  if (action === ACTION_NAME.CONNECTORS_TO_FRONT) logResult(doConnectorToFront(editor.value));
 
   if (
     action.startsWith("nudgeLeft") ||
@@ -363,7 +382,9 @@ function handleAction(action: string) {
   } as const;
 
   if (action in templateActionMap) {
-    logResult(doInsertTemplate(editor.value, templateActionMap[action as keyof typeof templateActionMap]));
+    logResult(
+      doInsertTemplate(editor.value, templateActionMap[action as keyof typeof templateActionMap]),
+    );
     zoomPercent.value = getZoomPercent(editor.value);
   }
 

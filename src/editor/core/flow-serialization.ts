@@ -26,6 +26,12 @@ export type ConnectorStateLike = {
   [key: string]: unknown;
 };
 
+export interface DeserializeResult {
+  failedConnectors: number;
+}
+
+export const CUSTOM_DATA_PROP = "__flowCustomData";
+
 export function serializeTreeWithConnectors(app: App): Record<string, unknown> {
   const json = app.tree.toJSON() as Record<string, unknown>;
   return { ...json, children: serializeChildrenWithConnectors(app) };
@@ -39,10 +45,12 @@ export function serializeChildrenWithConnectors(app: App): SerializedChild[] {
   for (let i = 0; i < treeChildren.length && i < children.length; i++) {
     const child = treeChildren[i];
     if (child instanceof Connector) {
+      const customData = (child as Record<string, unknown>)[CUSTOM_DATA_PROP];
       children[i] = {
         __isConnector: true,
         __flowConnectorId: child.innerId,
         __connectorState: child.getState() as Record<string, unknown>,
+        ...(customData ? { [CUSTOM_DATA_PROP]: customData } : {}),
       };
       continue;
     }
@@ -54,14 +62,18 @@ export function serializeChildrenWithConnectors(app: App): SerializedChild[] {
   return children;
 }
 
-export function deserializeTreeWithConnectors(app: App, json: Record<string, unknown>) {
+export function deserializeTreeWithConnectors(
+  app: App,
+  json: Record<string, unknown>,
+): DeserializeResult {
   const children = (json.children || []) as SerializedChild[];
-  applySerializedChildren(app, children);
+  return applySerializedChildren(app, children);
 }
 
-export function applySerializedChildren(app: App, children: SerializedChild[]) {
+export function applySerializedChildren(app: App, children: SerializedChild[]): DeserializeResult {
+  let failedConnectors = 0;
   app.tree.clear();
-  if (!Array.isArray(children)) return;
+  if (!Array.isArray(children)) return { failedConnectors: 0 };
 
   const connectors: SerializedChild[] = [];
   const idMap = new Map<string | number, IUI>();
@@ -84,7 +96,10 @@ export function applySerializedChildren(app: App, children: SerializedChild[]) {
   });
 
   connectors.forEach((child) => {
-    const state = remapConnectorState(child.__connectorState as ConnectorStateLike | undefined, idMap);
+    const state = remapConnectorState(
+      child.__connectorState as ConnectorStateLike | undefined,
+      idMap,
+    );
     if (!state) return;
 
     const connector = createConnector(app);
@@ -95,15 +110,21 @@ export function applySerializedChildren(app: App, children: SerializedChild[]) {
     } catch (e) {
       console.warn("恢复 Connector 状态失败:", e);
       restoreConnectorPoints(connector, state);
+      failedConnectors++;
     }
 
     if (child.__flowConnectorId !== undefined) {
       connectorMap.set(child.__flowConnectorId, connector);
     }
+
+    if (child[CUSTOM_DATA_PROP]) {
+      (connector as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
+    }
   });
 
   remapConnectorLabels(app, connectorMap);
   syncConnectorLabels(app);
+  return { failedConnectors };
 }
 
 export function createConnector(app: App) {

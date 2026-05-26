@@ -14,8 +14,6 @@ const isCollapsed = ref(false);
 const toolLabels: Record<string, string> = {
   [TOOL_NAME.SELECT]: "选择",
   [TOOL_NAME.DRAW_ARROW]: "连接线",
-  [TOOL_NAME.DRAW_ARROW_STRAIGHT]: "直线箭头",
-  [TOOL_NAME.DRAW_ARROW_BEZIER]: "贝塞尔箭头",
   [TOOL_NAME.DRAW_RECT]: "矩形",
   [TOOL_NAME.DRAW_CIRCLE]: "圆形",
   [TOOL_NAME.DRAW_DIAMOND]: "菱形",
@@ -83,7 +81,11 @@ function toggleCollapse() {
   <div class="bg-base-100 rounded-lg shadow-md p-2 min-w-[220px]">
     <div class="flex justify-between items-center mb-2">
       <span class="font-bold text-sm">状态信息</span>
-      <button @click="toggleCollapse" class="btn btn-xs btn-ghost" :title="isCollapsed ? '展开状态' : '折叠状态'">
+      <button
+        @click="toggleCollapse"
+        class="btn btn-xs btn-ghost"
+        :title="isCollapsed ? '展开状态' : '折叠状态'"
+      >
         <Icon :name="isCollapsed ? 'arrow-down' : 'arrow-up'" class="h-3 w-3" />
       </button>
     </div>

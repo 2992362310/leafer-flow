@@ -44,8 +44,6 @@ export const TOOL_NAME = {
   ARCH_SERVICE: "arch_service",
   ARCH_DEVICE: "arch_device",
   DRAW_ARROW: "draw_arrow",
-  DRAW_ARROW_STRAIGHT: "draw_arrow_straight",
-  DRAW_ARROW_BEZIER: "draw_arrow_bezier",
   DRAW_TEXT: "draw_text",
   DRAW_FREEHAND: "draw_freehand",
 } as const;
@@ -98,6 +96,7 @@ export const ACTION_NAME = {
   ZOOM_RESET: "zoomReset",
   FREEHAND_SMOOTH: "freehandSmooth",
   TOGGLE_SNAP: "toggleSnap",
+  CONNECTORS_TO_FRONT: "connectorsToFront",
 } as const;
 
 export type ActionName = (typeof ACTION_NAME)[keyof typeof ACTION_NAME];
