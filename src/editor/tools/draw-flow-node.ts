@@ -2,7 +2,7 @@ import { Ellipse, Group, Path, Rect, Text, type IPointData, type IUI } from "lea
 import type { IDrawOptions, IDrawResult } from "../types";
 import { DrawBase } from "./draw-base";
 
-type FlowNodeKind =
+export type FlowNodeKind =
   | "startEnd"
   | "process"
   | "decision"
