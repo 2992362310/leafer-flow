@@ -114,11 +114,11 @@ defineExpose({
         >
           <Icon
             :name="getLogIcon(log)"
-            class="h-4 w-4 mr-2 mt-0.5 flex-shrink-0"
+            class="h-4 w-4 mr-2 mt-0.5 shrink-0"
             :class="getLogClass(log)"
           />
           <span class="mr-2 whitespace-nowrap font-mono">{{ formatTime(log.timestamp) }}</span>
-          <span class="flex-1 break-words">{{ log.message }}</span>
+          <span class="flex-1 wrap-break-word">{{ log.message }}</span>
         </div>
         <div v-if="eventLog.length === 0" class="text-gray-400 text-center py-2">
           <Icon name="select" class="h-6 w-6 mx-auto mb-1 opacity-50" />

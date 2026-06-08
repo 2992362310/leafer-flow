@@ -1,10 +1,10 @@
 import type { IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
 import type Editor from "../editor";
 import { getConnectorLabelTarget } from "../core/connector-labels";
 
 type ConnectorStateLike = {
-  mode?: "node" | "point";
+  mode?: "node" | "point" | "mixed";
   fromId?: string | number;
   toId?: string | number;
 };
@@ -25,7 +25,7 @@ export function doDelete(editor: Editor): { success: boolean; message: string } 
     });
 
     editor.app.editor.cancel();
-    editor.history.save();
+    editor.commitMutation();
 
     return {
       success: true,
@@ -80,7 +80,7 @@ function isConnectorLinkedToAnyNode(connector: Connector, nodeIds: Set<string | 
     const state = connector.getState() as ConnectorStateLike;
     return Boolean(
       (state.fromId !== undefined && nodeIds.has(state.fromId)) ||
-        (state.toId !== undefined && nodeIds.has(state.toId)),
+      (state.toId !== undefined && nodeIds.has(state.toId)),
     );
   } catch {
     return false;

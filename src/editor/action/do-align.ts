@@ -12,7 +12,10 @@ type Bounds = {
   height: number;
 };
 
-export function doAlign(editor: Editor, action: AlignAction): { success: boolean; message: string } {
+export function doAlign(
+  editor: Editor,
+  action: AlignAction,
+): { success: boolean; message: string } {
   const list = [...(editor.app.editor.list as IUI[])];
   if (list.length < 2) {
     return { success: false, message: "请至少选择两个元素" };
@@ -53,7 +56,7 @@ export function doAlign(editor: Editor, action: AlignAction): { success: boolean
     });
   }
 
-  editor.history.save();
+  editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
   return { success: true, message: "已调整选中元素" };
 }
 

@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { ShapeLibraryGroup, ShapeLibraryItem } from "../editor/shape-library";
-import { TOOL_NAME, type ToolName } from "../editor/constants";
-import {
-  getShapeLibrarySearchText,
-  shapeLibraryGroups,
-  SHAPE_DROP_MIME,
-} from "../editor/shape-library";
-import Icon from "./Icon.vue";
+import type { ShapeLibraryGroup, ShapeLibraryItem } from "@/editor/shape-library";
+import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "@/editor/shape-library";
+import ShapeLibraryGroupView from "@/components/ShapeLibraryGroup.vue";
+import ShapeLibraryItemView from "@/components/ShapeLibraryItem.vue";
 
 const props = defineProps<{
   activeTool?: string;
+  groups?: ShapeLibraryGroup[];
 }>();
 
 const emit = defineEmits<{
@@ -23,13 +20,6 @@ const SHAPE_LIBRARY_COLLAPSED_KEY = "leafer-flow-shape-library-collapsed";
 const SHAPE_LIBRARY_POSITION_KEY = "leafer-flow-shape-library-position";
 const DEFAULT_PANEL_POSITION = { x: 12, y: 96 };
 const PANEL_MARGIN = 8;
-const DEFAULT_COLLAPSED_TOOLS: ToolName[] = [
-  TOOL_NAME.DRAW_RECT,
-  TOOL_NAME.DRAW_CIRCLE,
-  TOOL_NAME.DRAW_DIAMOND,
-  TOOL_NAME.DRAW_TEXT,
-  TOOL_NAME.FLOW_PROCESS,
-];
 
 interface PanelPosition {
   x: number;
@@ -46,13 +36,14 @@ interface DragState {
 
 const query = ref("");
 const collapsed = ref(false);
-const recentTools = ref<ToolName[]>([]);
+const recentTools = ref<string[]>([]);
 const panelRef = ref<HTMLElement | null>(null);
 const panelPosition = ref<PanelPosition>({ ...DEFAULT_PANEL_POSITION });
 const dragging = ref(false);
 let dragState: DragState | null = null;
 
-const allItems = computed(() => shapeLibraryGroups.flatMap((group) => group.items));
+const libraryGroups = computed(() => props.groups ?? []);
+const allItems = computed(() => libraryGroups.value.flatMap((group) => group.items));
 const itemMap = computed(() => new Map(allItems.value.map((item) => [item.tool, item])));
 const recentItems = computed(() =>
   recentTools.value
@@ -60,7 +51,8 @@ const recentItems = computed(() =>
     .filter((item): item is ShapeLibraryItem => Boolean(item)),
 );
 const collapsedShortcutItems = computed(() => {
-  const sourceTools = recentTools.value.length > 0 ? recentTools.value : DEFAULT_COLLAPSED_TOOLS;
+  const sourceTools =
+    recentTools.value.length > 0 ? recentTools.value : allItems.value.map((item) => item.tool);
   return sourceTools
     .map((tool) => itemMap.value.get(tool))
     .filter((item): item is ShapeLibraryItem => Boolean(item))
@@ -68,7 +60,7 @@ const collapsedShortcutItems = computed(() => {
 });
 
 const displayGroups = computed<ShapeLibraryGroup[]>(() => {
-  const groups = [...shapeLibraryGroups];
+  const groups = [...libraryGroups.value];
   if (recentItems.value.length > 0) {
     groups.unshift({ id: "recent", title: "最近使用", items: recentItems.value });
   }
@@ -79,7 +71,7 @@ const filteredGroups = computed(() => {
   const keyword = query.value.trim().toLowerCase();
   if (!keyword) return displayGroups.value;
 
-  return shapeLibraryGroups
+  return libraryGroups.value
     .map((group) => {
       const groupMatched = group.title.toLowerCase().includes(keyword);
       return {
@@ -115,14 +107,6 @@ onBeforeUnmount(() => {
   stopPanelDrag();
   window.removeEventListener("resize", clampPanelToViewport);
 });
-
-function getItemButtonClass(item: ShapeLibraryItem, compact = false) {
-  return [
-    "btn",
-    compact ? "btn-xs h-8 w-8 p-0" : "h-16 flex-col gap-1 px-1 text-xs",
-    props.activeTool === item.tool ? "btn-primary" : "btn-ghost",
-  ];
-}
 
 function handleSelect(item: ShapeLibraryItem) {
   rememberShape(item.tool);
@@ -255,19 +239,17 @@ function loadRecentTools() {
 
     const tools = JSON.parse(raw) as string[];
     if (!Array.isArray(tools)) return;
-    recentTools.value = tools
-      .filter((tool): tool is ToolName => isKnownTool(tool))
-      .slice(0, RECENT_SHAPES_LIMIT);
+    recentTools.value = tools.filter(isKnownTool).slice(0, RECENT_SHAPES_LIMIT);
   } catch (error) {
     console.warn("读取最近使用图形失败", error);
   }
 }
 
-function isKnownTool(tool: string): tool is ToolName {
-  return itemMap.value.has(tool as ToolName);
+function isKnownTool(tool: string) {
+  return itemMap.value.has(tool);
 }
 
-function rememberShape(tool: ToolName) {
+function rememberShape(tool: string) {
   recentTools.value = [tool, ...recentTools.value.filter((item) => item !== tool)].slice(
     0,
     RECENT_SHAPES_LIMIT,
@@ -315,17 +297,15 @@ function rememberShape(tool: ToolName) {
         v-if="collapsedShortcutItems.length > 0"
         class="mt-2 flex flex-col gap-1 border-t border-base-200 pt-2"
       >
-        <button
+        <ShapeLibraryItemView
           v-for="item in collapsedShortcutItems"
           :key="item.tool"
-          draggable="true"
-          :class="getItemButtonClass(item, true)"
-          :title="`${item.label}：拖拽到画布或点击选择工具`"
-          @click="handleSelect(item)"
-          @dragstart="handleDragStart($event, item)"
-        >
-          <Icon :name="item.icon" class="h-4 w-4" />
-        </button>
+          compact
+          :item="item"
+          :active="activeTool === item.tool"
+          @select="handleSelect"
+          @drag-start="handleDragStart"
+        />
       </div>
     </div>
 
@@ -344,27 +324,14 @@ function rememberShape(tool: ToolName) {
       </p>
 
       <div class="flex-1 overflow-y-auto px-2 pb-3">
-        <section v-for="group in filteredGroups" :key="group.id" class="mb-3">
-          <div
-            class="sticky top-0 z-10 bg-base-100/95 py-1 text-[11px] font-semibold text-base-content/60"
-          >
-            {{ group.title }}
-          </div>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button
-              v-for="item in group.items"
-              :key="`${group.id}-${item.tool}`"
-              draggable="true"
-              :class="getItemButtonClass(item)"
-              :title="`${item.label}：拖拽到画布或点击选择工具`"
-              @click="handleSelect(item)"
-              @dragstart="handleDragStart($event, item)"
-            >
-              <Icon :name="item.icon" class="h-5 w-5" />
-              <span class="max-w-full truncate">{{ item.label }}</span>
-            </button>
-          </div>
-        </section>
+        <ShapeLibraryGroupView
+          v-for="group in filteredGroups"
+          :key="group.id"
+          :group="group"
+          :active-tool="activeTool"
+          @select="handleSelect"
+          @drag-start="handleDragStart"
+        />
 
         <div
           v-if="filteredGroups.length === 0"

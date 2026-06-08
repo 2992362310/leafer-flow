@@ -1,13 +1,19 @@
 import { App, type IAppConfig, type IPointData, type IUI } from "leafer";
-import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from "./types";
+import type { IEditorPlugin, IExecuteCommand, TCallback } from "./types";
 import { TOOL_NAME } from "./constants";
 import { HistoryManager } from "./core/history";
 import { AutoSave } from "./core/auto-save";
+import { PluginManager } from "./core/plugin-manager";
+import { ToolRegistry } from "./core/tool-registry";
+import { CommandRegistry } from "./core/command-registry";
+import { MenuRegistry } from "./core/menu-registry";
+import { ActionButtonRegistry } from "./core/action-button-registry";
+import { ViewControlRegistry } from "./core/view-control-registry";
+import { PropertyPanelRegistry } from "./core/property-panel-registry";
+import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
-import {
-  captureSelectedConnectorLabelOffsets,
-  syncConnectorLabels,
-} from "./core/connector-labels";
+import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
+import { hasConnectors, syncConnectors } from "./core/connector";
 
 const INIT_CONFIG = {
   view: window,
@@ -15,11 +21,23 @@ const INIT_CONFIG = {
   tree: {},
 };
 
+function getDrawResultElement(result: unknown): IUI | null {
+  if (!result || typeof result !== "object" || !("element" in result)) return null;
+  return (result as { element?: IUI | null }).element ?? null;
+}
+
 export default class Editor {
   app: App;
   plugins: IEditorPlugin[] = [];
-  tools = new Map<string, IEditorTool>();
+  public pluginManager: PluginManager;
+  public toolRegistry: ToolRegistry;
+  public commands: CommandRegistry;
+  public menus: MenuRegistry;
+  public actionButtons: ActionButtonRegistry;
+  public viewControls: ViewControlRegistry;
+  public propertyPanels: PropertyPanelRegistry;
   private currentCursorClass: string = "";
+  private syncingConnectors = false;
   public snap?: Snap;
 
   public history: HistoryManager;
@@ -30,6 +48,13 @@ export default class Editor {
     this.app = app;
     this.history = new HistoryManager(app);
     this.autoSave = new AutoSave(app);
+    this.pluginManager = new PluginManager(this);
+    this.toolRegistry = new ToolRegistry(this);
+    this.commands = new CommandRegistry(this);
+    this.menus = new MenuRegistry(this);
+    this.actionButtons = new ActionButtonRegistry();
+    this.viewControls = new ViewControlRegistry();
+    this.propertyPanels = new PropertyPanelRegistry();
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {
@@ -43,15 +68,37 @@ export default class Editor {
     // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
     if (!this.app.editor) return;
 
+    this.app.on("render.end", () => this.syncConnectorsAfterRender());
+    this.app.tree.on("render.end", () => this.syncConnectorsAfterRender());
     this.app.editor.on("move.end", () => this.saveAfterTransform());
     this.app.editor.on("resize.end", () => this.saveAfterTransform());
     this.app.editor.on("rotate.end", () => this.saveAfterTransform());
   }
 
-  private saveAfterTransform() {
-    captureSelectedConnectorLabelOffsets(this.app);
+  private syncConnectorsAfterRender() {
+    if (this.syncingConnectors || !hasConnectors(this.app)) return;
+    this.syncingConnectors = true;
+    syncConnectors(this.app);
     syncConnectorLabels(this.app);
+    this.syncingConnectors = false;
+  }
+
+  private saveAfterTransform() {
+    this.commitMutation({ syncConnectorLabels: true, autoSave: false });
+  }
+
+  commitMutation(options: { syncConnectorLabels?: boolean; autoSave?: boolean } = {}) {
+    syncConnectors(this.app);
+
+    if (options.syncConnectorLabels) {
+      captureSelectedConnectorLabelOffsets(this.app);
+      syncConnectorLabels(this.app);
+    }
+
     this.history.save();
+    if (options.autoSave ?? true) {
+      this.autoSave.save();
+    }
   }
 
   use<T>(plugin: IEditorPlugin): T {
@@ -64,10 +111,16 @@ export default class Editor {
     return uPlugin as T;
   }
 
-  register(name: string, tool: IEditorTool) {
-    tool.init(this);
-    this.tools.set(name, tool);
-    return tool;
+  registerTool(contribution: ToolContribution) {
+    return this.toolRegistry.register(contribution);
+  }
+
+  unregisterTool(id: string) {
+    this.toolRegistry.unregister(id);
+  }
+
+  unregisterToolsByPlugin(pluginId: string) {
+    this.toolRegistry.unregisterByPlugin(pluginId);
   }
 
   createElementFromTool(
@@ -75,7 +128,7 @@ export default class Editor {
     startPoint: IPointData,
     size: { width: number; height: number },
   ): IUI | null {
-    const tool = this.tools.get(name);
+    const tool = this.toolRegistry.get(name);
     if (!tool?.createFixedElement) return null;
 
     const element = tool.createFixedElement(startPoint, {
@@ -85,15 +138,13 @@ export default class Editor {
 
     this.app.tree.add(element);
     this.app.editor.select(element);
-    this.history.save();
-    this.autoSave.save();
+    this.commitMutation();
     return element;
   }
 
   execute(command: IExecuteCommand, callback: TCallback) {
-    const { tools } = this;
     const { pre, command: next } = command;
-    const tool = tools.get(pre);
+    const tool = this.toolRegistry.get(pre);
 
     // 1. 如果有前置工具在运行，先取消它
     if (tool) {
@@ -113,8 +164,8 @@ export default class Editor {
   }
 
   private runTool(name: string, callback: TCallback) {
-    const { app, tools } = this;
-    const tool = tools.get(name);
+    const { app } = this;
+    const tool = this.toolRegistry.get(name);
 
     // 清除之前的强制光标样式
     this.clearCursor();
@@ -135,11 +186,17 @@ export default class Editor {
     this.setCursor(cursorType);
 
     // 3. 执行工具逻辑
-    tool.execute(() => {
+    tool.execute((result) => {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
+      const element = getDrawResultElement(result);
+      if (element && name !== TOOL_NAME.DRAW_ARROW) {
+        app.editor.select(element);
+      } else if (name === TOOL_NAME.DRAW_ARROW) {
+        app.editor.target = undefined;
+      }
 
       // 保存历史记录
-      this.history.save();
+      this.commitMutation({ syncConnectorLabels: true });
 
       // 恢复选择器
       app.editor.config.selector = true;

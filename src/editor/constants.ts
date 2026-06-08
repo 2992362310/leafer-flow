@@ -97,6 +97,7 @@ export const ACTION_NAME = {
   FREEHAND_SMOOTH: "freehandSmooth",
   TOGGLE_SNAP: "toggleSnap",
   CONNECTORS_TO_FRONT: "connectorsToFront",
+  MOVE_LAYER: "moveLayer",
 } as const;
 
 export type ActionName = (typeof ACTION_NAME)[keyof typeof ACTION_NAME];

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onUnmounted, shallowRef, watch, provide } from "vue";
 import type { IUI } from "@leafer-ui/interface";
-import type { Editor } from "../../editor";
-import { doLayer, doToggleLock, doToggleVisible } from "../../editor";
+import type { Editor } from "@/editor";
+import { ACTION_NAME } from "@/editor/constants";
 import LayerItem from "./LayerItem.vue";
-import { useDraggable, useCollapsible } from "../../composables/useDraggable";
+import { useDraggable, useCollapsible } from "@/composables/useDraggable";
 
 const props = defineProps<{
   editor?: Editor;
@@ -19,55 +19,20 @@ provide("layerContext", {
   moveLayer,
 });
 
-function moveLayer(dragId: number, dropId: number, dropPosition: "top" | "bottom" | "inside") {
-  if (!props.editor?.app) return;
+async function moveLayer(
+  dragId: number,
+  dropId: number,
+  dropPosition: "top" | "bottom" | "inside",
+) {
+  if (!props.editor) return;
 
-  // 1. 获取所有节点 (leafer API findOne 是异步的吗？通常是同步的，但如果是大树要注意)
-  // 我们可以直接用 id map 加速，但这里用 find 够了
-  // 注意：findOne 可能会返回自身或者子节点，这逻辑是对的。
+  const result = await props.editor.commands.execute(ACTION_NAME.MOVE_LAYER, {
+    dragId,
+    dropId,
+    dropPosition,
+  });
 
-  // 使用 innerId 查找
-  // 注意：Leafer 的 findOne 只能查找 group 的子元素，如果 target 本身就是顶层元素，可能需要特殊处理
-  // 或者我们直接遍历 app.tree (根节点)
-
-  // 递归查找 helper
-  const findNode = (root: IUI, id: number): IUI | null => {
-    if (root.innerId === id) return root;
-    if (root.children) {
-      for (const child of root.children) {
-        const res = findNode(child as IUI, id);
-        if (res) return res;
-      }
-    }
-    return null;
-  };
-
-  const dragNode = findNode(props.editor.app.tree as IUI, dragId);
-  const dropNode = findNode(props.editor.app.tree as IUI, dropId);
-
-  if (dragNode && dropNode && dragNode !== dropNode) {
-    // Check cyclic
-    let p = dropNode.parent;
-    while (p) {
-      if (p === dragNode) {
-        return;
-      }
-      p = p.parent;
-    }
-
-    if (dropPosition === "top") {
-      if (dropNode.parent) dropNode.parent.addAfter(dragNode, dropNode);
-    } else if (dropPosition === "bottom") {
-      if (dropNode.parent) dropNode.parent.addBefore(dragNode, dropNode);
-    } else if (dropPosition === "inside") {
-      dropNode.add(dragNode);
-    }
-
-    props.editor.history.save();
-    updateTree();
-  } else {
-    console.warn("Nodes not found:", dragId, dropId);
-  }
+  if (result.success) updateTree();
 }
 
 // 监听器清理函数
@@ -140,48 +105,36 @@ function handleSelect(node: IUI) {
   props.editor.app.editor.select(node);
 }
 
-function handleToggleLock(node: IUI) {
+async function runLayerCommand(node: IUI, action: string) {
   if (!props.editor) return;
   props.editor.app.editor.select(node);
-  const result = doToggleLock(props.editor, !node.locked);
-  props.editor?.app.editor.select(node);
-  if (result.success) treeData.value = [...treeData.value];
+  const result = await props.editor.commands.execute(action);
+  props.editor.app.editor.select(node);
+  if (result.success) updateTree();
+}
+
+function handleToggleLock(node: IUI) {
+  void runLayerCommand(node, node.locked ? ACTION_NAME.UNLOCK_SELECTED : ACTION_NAME.LOCK_SELECTED);
 }
 
 function handleToggleVisible(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  const result = doToggleVisible(props.editor, !node.visible);
-  props.editor?.app.editor.select(node);
-  if (result.success) treeData.value = [...treeData.value];
+  void runLayerCommand(node, ACTION_NAME.TOGGLE_VISIBLE);
 }
 
 function handleMoveUp(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "bringForward");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.BRING_FORWARD);
 }
 
 function handleMoveDown(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "sendBackward");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.SEND_BACKWARD);
 }
 
 function handleMoveTop(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "bringToFront");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.BRING_TO_FRONT);
 }
 
 function handleMoveBottom(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "sendToBack");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.SEND_TO_BACK);
 }
 
 // 监听 editor prop 变化

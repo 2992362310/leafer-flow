@@ -1,11 +1,12 @@
 import { App, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "./connector";
 import {
   CONNECTOR_LABEL_PROP,
   persistConnectorLabel,
   restoreConnectorLabelRuntimeProps,
   syncConnectorLabels,
 } from "./connector-labels";
+import { normalizeAtomicGroups } from "./group-selection";
 
 export interface SerializedChild {
   __connectorState?: Record<string, unknown>;
@@ -16,7 +17,7 @@ export interface SerializedChild {
 }
 
 export type ConnectorStateLike = {
-  mode?: "node" | "point";
+  mode?: "node" | "point" | "mixed";
   fromId?: string | number;
   toId?: string | number;
   fromPoint?: { x: number; y: number };
@@ -31,10 +32,34 @@ export interface DeserializeResult {
 }
 
 export const CUSTOM_DATA_PROP = "__flowCustomData";
+export const FLOW_SERIALIZATION_SCHEMA = "leafer-flow";
+export const FLOW_SERIALIZATION_VERSION = 1;
 
-export function serializeTreeWithConnectors(app: App): Record<string, unknown> {
+export interface SerializedFlowDocument extends Record<string, unknown> {
+  schema: typeof FLOW_SERIALIZATION_SCHEMA;
+  version: typeof FLOW_SERIALIZATION_VERSION;
+  children: SerializedChild[];
+}
+
+export function isSerializedFlowDocument(
+  json: Record<string, unknown>,
+): json is SerializedFlowDocument {
+  const version = json.version;
+  return (
+    (!json.schema || json.schema === FLOW_SERIALIZATION_SCHEMA) &&
+    (!version || version === FLOW_SERIALIZATION_VERSION) &&
+    Array.isArray(json.children)
+  );
+}
+
+export function serializeTreeWithConnectors(app: App): SerializedFlowDocument {
   const json = app.tree.toJSON() as Record<string, unknown>;
-  return { ...json, children: serializeChildrenWithConnectors(app) };
+  return {
+    ...json,
+    schema: FLOW_SERIALIZATION_SCHEMA,
+    version: FLOW_SERIALIZATION_VERSION,
+    children: serializeChildrenWithConnectors(app),
+  };
 }
 
 export function serializeChildrenWithConnectors(app: App): SerializedChild[] {
@@ -45,17 +70,21 @@ export function serializeChildrenWithConnectors(app: App): SerializedChild[] {
   for (let i = 0; i < treeChildren.length && i < children.length; i++) {
     const child = treeChildren[i];
     if (child instanceof Connector) {
-      const customData = (child as Record<string, unknown>)[CUSTOM_DATA_PROP];
+      const customData = (child as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP];
       children[i] = {
         __isConnector: true,
         __flowConnectorId: child.innerId,
-        __connectorState: child.getState() as Record<string, unknown>,
+        __connectorState: child.getState() as unknown as Record<string, unknown>,
         ...(customData ? { [CUSTOM_DATA_PROP]: customData } : {}),
       };
       continue;
     }
 
     children[i].__flowNodeId = child.innerId;
+    const customData = (child as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP];
+    if (customData) {
+      children[i][CUSTOM_DATA_PROP] = customData;
+    }
     persistConnectorLabel(child, children[i]);
   }
 
@@ -66,8 +95,11 @@ export function deserializeTreeWithConnectors(
   app: App,
   json: Record<string, unknown>,
 ): DeserializeResult {
-  const children = (json.children || []) as SerializedChild[];
-  return applySerializedChildren(app, children);
+  if (!isSerializedFlowDocument(json)) {
+    throw new Error("不支持的 Leafer Flow 文件格式或版本");
+  }
+
+  return applySerializedChildren(app, json.children);
 }
 
 export function applySerializedChildren(app: App, children: SerializedChild[]): DeserializeResult {
@@ -90,7 +122,14 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
     if (!added) return;
 
     if (child.__flowNodeId !== undefined) {
-      idMap.set(child.__flowNodeId, added);
+      addNodeMapping(idMap, child.__flowNodeId, added);
+    }
+    if (added.id !== undefined) {
+      addNodeMapping(idMap, added.id, added);
+    }
+    addNodeMapping(idMap, added.innerId, added);
+    if (child[CUSTOM_DATA_PROP]) {
+      (added as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
     }
     restoreConnectorLabelRuntimeProps(added, child);
   });
@@ -118,11 +157,12 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
     }
 
     if (child[CUSTOM_DATA_PROP]) {
-      (connector as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
+      (connector as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
     }
   });
 
   remapConnectorLabels(app, connectorMap);
+  normalizeAtomicGroups(app.tree.children as IUI[] | undefined);
   syncConnectorLabels(app);
   return { failedConnectors };
 }
@@ -131,7 +171,7 @@ export function createConnector(app: App) {
   return new Connector(app, {
     fromPoint: { x: 0, y: 0 },
     toPoint: { x: 0, y: 0 },
-    getNodeId: (node: IUI) => node.innerId,
+    getNodeId: (node: IUI) => String(node.innerId),
   });
 }
 
@@ -142,13 +182,41 @@ export function remapConnectorState(
 ): ConnectorStateLike | undefined {
   if (!state) return undefined;
 
-  const next = structuredClone(state);
+  const next = structuredClone(state) as ConnectorStateLike;
   if (next.mode === "node" && next.fromId !== undefined && next.toId !== undefined) {
-    const from = idMap.get(next.fromId);
-    const to = idMap.get(next.toId);
+    const from = getMappedNode(idMap, next.fromId);
+    const to = getMappedNode(idMap, next.toId);
     if (from && to) {
       next.fromId = from.innerId;
       next.toId = to.innerId;
+      return next;
+    }
+  }
+
+  if (next.mode === "mixed") {
+    const from = next.fromId !== undefined ? getMappedNode(idMap, next.fromId) : undefined;
+    const to = next.toId !== undefined ? getMappedNode(idMap, next.toId) : undefined;
+
+    if (next.fromId !== undefined) {
+      if (from) next.fromId = from.innerId;
+      else delete next.fromId;
+    }
+    if (next.toId !== undefined) {
+      if (to) next.toId = to.innerId;
+      else delete next.toId;
+    }
+
+    if (next.fromPoint) {
+      next.fromPoint = { x: next.fromPoint.x + offset, y: next.fromPoint.y + offset };
+    }
+    if (next.toPoint) {
+      next.toPoint = { x: next.toPoint.x + offset, y: next.toPoint.y + offset };
+    }
+
+    if (
+      (next.fromId !== undefined || next.fromPoint) &&
+      (next.toId !== undefined || next.toPoint)
+    ) {
       return next;
     }
   }
@@ -168,13 +236,22 @@ export function resolveNodeById(app: App, id: string | number): IUI | undefined 
   if (!children) return undefined;
 
   for (const child of children) {
-    if (child.innerId === id) return child;
+    if (matchesNodeId(child, id)) return child;
     if ("children" in child && Array.isArray((child as { children?: unknown }).children)) {
       const found = findNodeInGroup(child as IUI, id);
       if (found) return found;
     }
   }
   return undefined;
+}
+
+function addNodeMapping(idMap: Map<string | number, IUI>, id: string | number, node: IUI) {
+  idMap.set(id, node);
+  idMap.set(String(id), node);
+}
+
+function getMappedNode(idMap: Map<string | number, IUI>, id: string | number) {
+  return idMap.get(id) || idMap.get(String(id));
 }
 
 function restoreConnectorPoints(connector: Connector, state: ConnectorStateLike) {
@@ -196,12 +273,16 @@ function remapConnectorLabels(app: App, connectorMap: Map<string | number, Conne
   });
 }
 
+function matchesNodeId(node: IUI, id: string | number) {
+  return String(node.innerId) === String(id) || String(node.id) === String(id);
+}
+
 function findNodeInGroup(group: IUI, id: string | number): IUI | undefined {
   const children = (group as unknown as { children?: IUI[] }).children;
   if (!children) return undefined;
 
   for (const child of children) {
-    if (child.innerId === id) return child;
+    if (matchesNodeId(child, id)) return child;
     if ("children" in child && Array.isArray((child as unknown as { children?: IUI[] }).children)) {
       const found = findNodeInGroup(child, id);
       if (found) return found;

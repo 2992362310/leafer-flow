@@ -3,7 +3,7 @@ import { TOOL_NAME, type ToolName } from "./constants";
 import type { FlowNodeKind } from "./tools/draw-flow-node";
 
 export interface ShapeLibraryItem {
-  tool: ToolName;
+  tool: string;
   icon: IconName;
   label: string;
   keywords: string[];
@@ -18,10 +18,12 @@ export interface ShapeLibraryGroup {
 }
 
 type ToolGroupId = "basic" | "flow" | "bpmn" | "architecture";
+type ToolbarGroupId = "core" | "shapes" | ToolGroupId;
 type ClassToolKind = "rect" | "arrow" | "circle" | "diamond" | "text" | "freehand";
 
 interface ToolLibraryConfig {
   groupId: ToolGroupId;
+  groupTitle: string;
   icon: IconName;
   keywords: string[];
   width?: number;
@@ -30,21 +32,23 @@ interface ToolLibraryConfig {
 
 type ToolRegistrationConfig =
   | {
-    type: "class";
-    toolKind: ClassToolKind;
-  }
+      type: "class";
+      toolKind: ClassToolKind;
+    }
   | {
-    type: "flow-node";
-    kind: FlowNodeKind;
-    fill: string;
-    stroke: string;
-    strokeWidth?: number;
-    cornerRadius?: number;
-  };
+      type: "flow-node";
+      kind: FlowNodeKind;
+      fill: string;
+      stroke: string;
+      strokeWidth?: number;
+      cornerRadius?: number;
+    };
 
 interface BaseToolDefinition {
   tool: ToolName;
   label: string;
+  toolbarGroupId?: ToolbarGroupId;
+  toolbarGroupTitle?: string;
   library?: ToolLibraryConfig;
 }
 
@@ -58,13 +62,6 @@ export interface FlowNodeToolDefinition extends BaseToolDefinition {
 
 export type ToolDefinition = ClassToolDefinition | FlowNodeToolDefinition;
 
-const toolGroupTitles: Record<ToolGroupId, string> = {
-  basic: "基础图形",
-  flow: "流程图",
-  bpmn: "BPMN",
-  architecture: "架构图",
-};
-
 export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.DRAW_RECT,
@@ -72,8 +69,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "class", toolKind: "rect" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_rect",
-      keywords: ["rect", "rectangle"],
+      keywords: ["rect", "rectangle", "矩形", "方形", "节点", "kuang", "juxing", "fangxing"],
       width: 120,
       height: 72,
     },
@@ -89,8 +87,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "class", toolKind: "circle" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_circle",
-      keywords: ["circle", "ellipse"],
+      keywords: ["circle", "ellipse", "圆形", "椭圆", "事件", "yuan", "tuoyuan"],
       width: 96,
       height: 96,
     },
@@ -101,8 +100,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "class", toolKind: "diamond" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_diamond",
-      keywords: ["diamond"],
+      keywords: ["diamond", "菱形", "判断", "网关", "lingxing", "panduan"],
       width: 112,
       height: 82,
     },
@@ -113,8 +113,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "triangle", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_triangle",
-      keywords: ["triangle"],
+      keywords: ["triangle", "三角形", "sanjiao"],
       width: 112,
       height: 88,
     },
@@ -125,8 +126,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "pentagon", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_pentagon",
-      keywords: ["pentagon"],
+      keywords: ["pentagon", "五边形", "wubianxing"],
       width: 112,
       height: 92,
     },
@@ -137,8 +139,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "hexagon", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_hexagon",
-      keywords: ["hexagon"],
+      keywords: ["hexagon", "六边形", "liubianxing"],
       width: 124,
       height: 82,
     },
@@ -149,8 +152,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "class", toolKind: "text" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_text",
-      keywords: ["text"],
+      keywords: ["text", "文本", "文字", "标签", "wenben", "wenzi"],
       width: 140,
       height: 32,
     },
@@ -161,8 +165,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "class", toolKind: "freehand" },
     library: {
       groupId: "basic",
+      groupTitle: "基础图形",
       icon: "draw_freehand",
-      keywords: ["freehand", "pen"],
+      keywords: ["freehand", "pen", "自由绘制", "手绘", "画笔", "ziyou", "shouhui", "huabi"],
       width: 120,
       height: 72,
     },
@@ -173,8 +178,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "startEnd", fill: "#ecfdf5", stroke: "#059669" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_start_end",
-      keywords: ["start", "end"],
+      keywords: ["start", "end", "开始", "结束", "起止", "kaishi", "jieshu"],
       width: 132,
       height: 64,
     },
@@ -185,8 +191,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "process", fill: "#eff6ff", stroke: "#2563eb" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_process",
-      keywords: ["process"],
+      keywords: ["process", "处理", "流程", "步骤", "任务", "chuli", "liucheng", "buzhou"],
       width: 132,
       height: 72,
     },
@@ -197,8 +204,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "decision", fill: "#fffbeb", stroke: "#d97706" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_decision",
-      keywords: ["decision"],
+      keywords: ["decision", "判断", "条件", "分支", "菱形", "panduan", "tiaojian", "fenzhi"],
       width: 118,
       height: 88,
     },
@@ -209,8 +217,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "io", fill: "#f5f3ff", stroke: "#7c3aed" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_io",
-      keywords: ["input", "output"],
+      keywords: ["input", "output", "输入", "输出", "输入输出", "shuru", "shuchu"],
       width: 140,
       height: 72,
     },
@@ -221,8 +230,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "document", fill: "#fff7ed", stroke: "#ea580c" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_document",
-      keywords: ["document"],
+      keywords: ["document", "文档", "文件", "wendang", "wenjian"],
       width: 132,
       height: 82,
     },
@@ -233,8 +243,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "database", fill: "#ecfeff", stroke: "#0891b2" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_database",
-      keywords: ["database", "data"],
+      keywords: ["database", "data", "数据库", "数据", "存储", "shujuku", "shuju", "cunchu"],
       width: 126,
       height: 88,
     },
@@ -245,6 +256,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "subprocess", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_subprocess",
       keywords: ["subprocess"],
       width: 140,
@@ -262,8 +274,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "swimlane", fill: "#f0f9ff", stroke: "#0284c7" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_swimlane",
-      keywords: ["swimlane"],
+      keywords: ["swimlane", "泳道", "职责", "部门", "yongdao", "zhize", "bumen"],
       width: 220,
       height: 120,
     },
@@ -274,8 +287,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "delay", fill: "#fefce8", stroke: "#ca8a04" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_delay",
-      keywords: ["delay"],
+      keywords: ["delay", "延迟", "等待", "yan chi", "dengdai"],
       width: 128,
       height: 72,
     },
@@ -286,8 +300,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "preparation", fill: "#f0fdf4", stroke: "#16a34a" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_preparation",
-      keywords: ["preparation"],
+      keywords: ["preparation", "准备", "预处理", "zhunbei"],
       width: 132,
       height: 76,
     },
@@ -298,8 +313,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "manualInput", fill: "#fdf2f8", stroke: "#db2777" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_manual_input",
-      keywords: ["manual", "input"],
+      keywords: ["manual", "input", "手动输入", "人工输入", "shoudong", "rengong"],
       width: 140,
       height: 72,
     },
@@ -307,11 +323,17 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.FLOW_MANUAL_OPERATION,
     label: "手动操作",
-    registration: { type: "flow-node", kind: "manualOperation", fill: "#f5f3ff", stroke: "#7c3aed" },
+    registration: {
+      type: "flow-node",
+      kind: "manualOperation",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_manual_operation",
-      keywords: ["manual", "operation"],
+      keywords: ["manual", "operation", "手动操作", "人工操作", "shoudong", "rengong"],
       width: 140,
       height: 72,
     },
@@ -322,8 +344,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "storedData", fill: "#ecfeff", stroke: "#0891b2" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_stored_data",
-      keywords: ["stored", "data"],
+      keywords: ["stored", "data", "存储数据", "数据存储", "cunchu", "shuju"],
       width: 132,
       height: 78,
     },
@@ -334,8 +357,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "display", fill: "#eef2ff", stroke: "#4f46e5" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_display",
-      keywords: ["display"],
+      keywords: ["display", "显示", "展示", "xianshi", "zhanshi"],
       width: 128,
       height: 74,
     },
@@ -346,6 +370,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "offPage", fill: "#fff7ed", stroke: "#ea580c" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_off_page",
       keywords: ["offpage"],
       width: 110,
@@ -358,8 +383,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "merge", fill: "#fef2f2", stroke: "#dc2626" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_merge",
-      keywords: ["merge"],
+      keywords: ["merge", "合并", "汇聚", "hebing", "huiju"],
       width: 112,
       height: 86,
     },
@@ -370,8 +396,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "annotation", fill: "#ffffff", stroke: "#64748b" },
     library: {
       groupId: "flow",
+      groupTitle: "流程图",
       icon: "flow_annotation",
-      keywords: ["annotation"],
+      keywords: ["annotation", "注释", "备注", "说明", "zhushi", "beizhu", "shuoming"],
       width: 140,
       height: 72,
     },
@@ -382,6 +409,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "bpmnStartEvent", fill: "#ffffff", stroke: "#16a34a" },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_start_event",
       keywords: ["bpmn", "start", "event"],
       width: 90,
@@ -400,6 +428,7 @@ export const toolDefinitions: ToolDefinition[] = [
     },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_intermediate_event",
       keywords: ["bpmn", "intermediate", "event"],
       width: 90,
@@ -418,6 +447,7 @@ export const toolDefinitions: ToolDefinition[] = [
     },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_end_event",
       keywords: ["bpmn", "end", "event"],
       width: 90,
@@ -427,9 +457,15 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_EXCLUSIVE_GATEWAY,
     label: "排他网关",
-    registration: { type: "flow-node", kind: "bpmnExclusiveGateway", fill: "#fffbeb", stroke: "#d97706" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnExclusiveGateway",
+      fill: "#fffbeb",
+      stroke: "#d97706",
+    },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_exclusive_gateway",
       keywords: ["bpmn", "exclusive", "gateway"],
       width: 96,
@@ -439,9 +475,15 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_PARALLEL_GATEWAY,
     label: "并行网关",
-    registration: { type: "flow-node", kind: "bpmnParallelGateway", fill: "#eff6ff", stroke: "#2563eb" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnParallelGateway",
+      fill: "#eff6ff",
+      stroke: "#2563eb",
+    },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_parallel_gateway",
       keywords: ["bpmn", "parallel", "gateway"],
       width: 96,
@@ -451,9 +493,15 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_INCLUSIVE_GATEWAY,
     label: "包容网关",
-    registration: { type: "flow-node", kind: "bpmnInclusiveGateway", fill: "#f5f3ff", stroke: "#7c3aed" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnInclusiveGateway",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_inclusive_gateway",
       keywords: ["bpmn", "inclusive", "gateway"],
       width: 96,
@@ -472,6 +520,7 @@ export const toolDefinitions: ToolDefinition[] = [
     },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_task",
       keywords: ["bpmn", "task"],
       width: 140,
@@ -484,6 +533,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "bpmnDataObject", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_data_object",
       keywords: ["bpmn", "data", "object"],
       width: 104,
@@ -496,6 +546,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "bpmnDataStore", fill: "#ecfeff", stroke: "#0891b2" },
     library: {
       groupId: "bpmn",
+      groupTitle: "BPMN",
       icon: "bpmn_data_store",
       keywords: ["bpmn", "data", "store"],
       width: 126,
@@ -508,8 +559,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archActor", fill: "#ffffff", stroke: "#111827" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_actor",
-      keywords: ["actor", "user"],
+      keywords: ["actor", "user", "用户", "参与者", "角色", "yonghu", "juese"],
       width: 86,
       height: 128,
     },
@@ -520,6 +572,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archUseCase", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_use_case",
       keywords: ["usecase"],
       width: 136,
@@ -532,8 +585,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archComponent", fill: "#eff6ff", stroke: "#2563eb" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_component",
-      keywords: ["component"],
+      keywords: ["component", "组件", "模块", "zujian", "mokuai"],
       width: 140,
       height: 92,
     },
@@ -544,8 +598,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archPackage", fill: "#fff7ed", stroke: "#ea580c" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_package",
-      keywords: ["package"],
+      keywords: ["package", "包", "分组", "bao", "fenzu"],
       width: 148,
       height: 96,
     },
@@ -556,6 +611,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archNode", fill: "#f8fafc", stroke: "#475569" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_node",
       keywords: ["node", "deployment"],
       width: 140,
@@ -568,6 +624,7 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archQueue", fill: "#f0f9ff", stroke: "#0284c7" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_queue",
       keywords: ["queue", "mq"],
       width: 140,
@@ -580,8 +637,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archCache", fill: "#ecfeff", stroke: "#0891b2" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_cache",
-      keywords: ["cache"],
+      keywords: ["cache", "缓存", "redis", "huancun"],
       width: 126,
       height: 88,
     },
@@ -592,8 +650,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archCloud", fill: "#eef2ff", stroke: "#4f46e5" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_cloud",
-      keywords: ["cloud"],
+      keywords: ["cloud", "云", "云服务", "yun"],
       width: 140,
       height: 86,
     },
@@ -604,8 +663,9 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archService", fill: "#f0fdf4", stroke: "#16a34a" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_service",
-      keywords: ["service"],
+      keywords: ["service", "服务", "微服务", "接口", "fuwu", "weifuwu", "jiekou"],
       width: 140,
       height: 86,
     },
@@ -616,27 +676,11 @@ export const toolDefinitions: ToolDefinition[] = [
     registration: { type: "flow-node", kind: "archDevice", fill: "#f8fafc", stroke: "#334155" },
     library: {
       groupId: "architecture",
+      groupTitle: "架构图",
       icon: "arch_device",
-      keywords: ["device"],
+      keywords: ["device", "设备", "终端", "shebei", "zhongduan"],
       width: 126,
       height: 94,
     },
   },
 ];
-
-export const shapeLibraryGroups: ShapeLibraryGroup[] = Object.entries(toolGroupTitles).map(
-  ([id, title]) => ({
-    id,
-    title,
-    items: toolDefinitions
-      .filter((definition) => definition.library?.groupId === id)
-      .map((definition) => ({
-        tool: definition.tool,
-        icon: definition.library!.icon,
-        label: definition.label,
-        keywords: definition.library!.keywords,
-        width: definition.library!.width,
-        height: definition.library!.height,
-      })),
-  }),
-);
