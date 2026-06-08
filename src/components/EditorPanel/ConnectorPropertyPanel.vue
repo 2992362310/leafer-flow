@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConnectorRouteType, ConnectorSide } from "leafer-connector";
+import type { ConnectorRouteType, ConnectorSide } from "@/editor/core/connector";
 
 defineProps<{
   routeType: ConnectorRouteType;
@@ -28,7 +28,9 @@ const emit = defineEmits<{
     <select
       class="select select-bordered select-xs w-full"
       :value="routeType"
-      @change="emit('updateRouteType', ($event.target as HTMLSelectElement).value as ConnectorRouteType)"
+      @change="
+        emit('updateRouteType', ($event.target as HTMLSelectElement).value as ConnectorRouteType)
+      "
     >
       <option value="orthogonal">折线</option>
       <option value="bezier">贝塞尔</option>
@@ -41,7 +43,12 @@ const emit = defineEmits<{
     <select
       class="select select-bordered select-xs w-full"
       :value="arrowMode"
-      @change="emit('updateArrowMode', ($event.target as HTMLSelectElement).value as 'none' | 'end' | 'both')"
+      @change="
+        emit(
+          'updateArrowMode',
+          ($event.target as HTMLSelectElement).value as 'none' | 'end' | 'both',
+        )
+      "
     >
       <option value="none">无箭头</option>
       <option value="end">终点箭头</option>
@@ -81,7 +88,13 @@ const emit = defineEmits<{
       <select
         class="select select-bordered select-xs w-full"
         :value="fromSide"
-        @change="emit('updateConnectorSide', 'from', ($event.target as HTMLSelectElement).value as ConnectorSide | 'auto')"
+        @change="
+          emit(
+            'updateConnectorSide',
+            'from',
+            ($event.target as HTMLSelectElement).value as ConnectorSide | 'auto',
+          )
+        "
       >
         <option value="auto">自动</option>
         <option value="top">上</option>
@@ -95,7 +108,13 @@ const emit = defineEmits<{
       <select
         class="select select-bordered select-xs w-full"
         :value="toSide"
-        @change="emit('updateConnectorSide', 'to', ($event.target as HTMLSelectElement).value as ConnectorSide | 'auto')"
+        @change="
+          emit(
+            'updateConnectorSide',
+            'to',
+            ($event.target as HTMLSelectElement).value as ConnectorSide | 'auto',
+          )
+        "
       >
         <option value="auto">自动</option>
         <option value="top">上</option>

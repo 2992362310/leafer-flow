@@ -1,10 +1,10 @@
 import type { IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
 import type Editor from "../editor";
 import { getConnectorLabelTarget } from "../core/connector-labels";
 
 type ConnectorStateLike = {
-  mode?: "node" | "point";
+  mode?: "node" | "point" | "mixed";
   fromId?: string | number;
   toId?: string | number;
 };

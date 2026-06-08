@@ -13,6 +13,7 @@ import { PropertyPanelRegistry } from "./core/property-panel-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
+import { hasConnectors, syncConnectors } from "./core/connector";
 
 const INIT_CONFIG = {
   view: window,
@@ -36,6 +37,7 @@ export default class Editor {
   public viewControls: ViewControlRegistry;
   public propertyPanels: PropertyPanelRegistry;
   private currentCursorClass: string = "";
+  private syncingConnectors = false;
   public snap?: Snap;
 
   public history: HistoryManager;
@@ -66,9 +68,19 @@ export default class Editor {
     // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
     if (!this.app.editor) return;
 
+    this.app.on("render.end", () => this.syncConnectorsAfterRender());
+    this.app.tree.on("render.end", () => this.syncConnectorsAfterRender());
     this.app.editor.on("move.end", () => this.saveAfterTransform());
     this.app.editor.on("resize.end", () => this.saveAfterTransform());
     this.app.editor.on("rotate.end", () => this.saveAfterTransform());
+  }
+
+  private syncConnectorsAfterRender() {
+    if (this.syncingConnectors || !hasConnectors(this.app)) return;
+    this.syncingConnectors = true;
+    syncConnectors(this.app);
+    syncConnectorLabels(this.app);
+    this.syncingConnectors = false;
   }
 
   private saveAfterTransform() {
@@ -76,6 +88,8 @@ export default class Editor {
   }
 
   commitMutation(options: { syncConnectorLabels?: boolean; autoSave?: boolean } = {}) {
+    syncConnectors(this.app);
+
     if (options.syncConnectorLabels) {
       captureSelectedConnectorLabelOffsets(this.app);
       syncConnectorLabels(this.app);
@@ -175,8 +189,10 @@ export default class Editor {
     tool.execute((result) => {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
       const element = getDrawResultElement(result);
-      if (element) {
+      if (element && name !== TOOL_NAME.DRAW_ARROW) {
         app.editor.select(element);
+      } else if (name === TOOL_NAME.DRAW_ARROW) {
+        app.editor.target = undefined;
       }
 
       // 保存历史记录

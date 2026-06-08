@@ -1,7 +1,7 @@
 import { computed, onUnmounted, shallowRef, ref, watch, type Ref } from "vue";
 import { Text, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
-import type { ConnectorRouteType, ConnectorSide, ConnectorState } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
+import type { ConnectorRouteType, ConnectorSide, ConnectorState } from "@/editor/core/connector";
 import { EditorEvent } from "leafer-editor";
 import type { Editor } from "@/editor";
 import { applyStylePreset } from "@/editor/core/style-presets";
@@ -279,8 +279,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   function updateLineCornerRadius(value: number) {
     lineCornerRadius.value = value;
     applyToSelectedConnectors((connector) => {
-      connector.cornerRadius = value;
-      connector.update();
+      connector.setRouteCornerRadius(value);
     });
   }
 

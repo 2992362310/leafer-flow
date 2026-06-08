@@ -1,5 +1,5 @@
 import { App, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "./connector";
 import {
   CONNECTOR_LABEL_PROP,
   persistConnectorLabel,
@@ -17,7 +17,7 @@ export interface SerializedChild {
 }
 
 export type ConnectorStateLike = {
-  mode?: "node" | "point";
+  mode?: "node" | "point" | "mixed";
   fromId?: string | number;
   toId?: string | number;
   fromPoint?: { x: number; y: number };
@@ -122,12 +122,12 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
     if (!added) return;
 
     if (child.__flowNodeId !== undefined) {
-      idMap.set(child.__flowNodeId, added);
+      addNodeMapping(idMap, child.__flowNodeId, added);
     }
     if (added.id !== undefined) {
-      idMap.set(added.id, added);
+      addNodeMapping(idMap, added.id, added);
     }
-    idMap.set(added.innerId, added);
+    addNodeMapping(idMap, added.innerId, added);
     if (child[CUSTOM_DATA_PROP]) {
       (added as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
     }
@@ -184,11 +184,39 @@ export function remapConnectorState(
 
   const next = structuredClone(state) as ConnectorStateLike;
   if (next.mode === "node" && next.fromId !== undefined && next.toId !== undefined) {
-    const from = idMap.get(next.fromId);
-    const to = idMap.get(next.toId);
+    const from = getMappedNode(idMap, next.fromId);
+    const to = getMappedNode(idMap, next.toId);
     if (from && to) {
       next.fromId = from.innerId;
       next.toId = to.innerId;
+      return next;
+    }
+  }
+
+  if (next.mode === "mixed") {
+    const from = next.fromId !== undefined ? getMappedNode(idMap, next.fromId) : undefined;
+    const to = next.toId !== undefined ? getMappedNode(idMap, next.toId) : undefined;
+
+    if (next.fromId !== undefined) {
+      if (from) next.fromId = from.innerId;
+      else delete next.fromId;
+    }
+    if (next.toId !== undefined) {
+      if (to) next.toId = to.innerId;
+      else delete next.toId;
+    }
+
+    if (next.fromPoint) {
+      next.fromPoint = { x: next.fromPoint.x + offset, y: next.fromPoint.y + offset };
+    }
+    if (next.toPoint) {
+      next.toPoint = { x: next.toPoint.x + offset, y: next.toPoint.y + offset };
+    }
+
+    if (
+      (next.fromId !== undefined || next.fromPoint) &&
+      (next.toId !== undefined || next.toPoint)
+    ) {
       return next;
     }
   }
@@ -215,6 +243,15 @@ export function resolveNodeById(app: App, id: string | number): IUI | undefined 
     }
   }
   return undefined;
+}
+
+function addNodeMapping(idMap: Map<string | number, IUI>, id: string | number, node: IUI) {
+  idMap.set(id, node);
+  idMap.set(String(id), node);
+}
+
+function getMappedNode(idMap: Map<string | number, IUI>, id: string | number) {
+  return idMap.get(id) || idMap.get(String(id));
 }
 
 function restoreConnectorPoints(connector: Connector, state: ConnectorStateLike) {

@@ -35,9 +35,6 @@ importers:
       leafer:
         specifier: ^2.1.0
         version: 2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0)
-      leafer-connector:
-        specifier: ^1.6.2
-        version: 1.6.2(leafer-editor@2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0))
       leafer-editor:
         specifier: ^2.1.0
         version: 2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0)
@@ -1250,11 +1247,6 @@ packages:
 
   kolorist@1.8.0:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
-
-  leafer-connector@1.6.2:
-    resolution: {integrity: sha512-flqEKgxX2TgOgo0o1p/atI60me66UbCGKH73q/NnHV6PoZsnEhZF4rvFZsr144cEUsTic1BrNqD/VpR2Qmk7nA==}
-    peerDependencies:
-      leafer-editor: ^2.0.1
 
   leafer-editor@2.1.0:
     resolution: {integrity: sha512-VbeojgjZLDGvOkp+/+A+VFrA2+ar/qef8sHCDg1LlkK5rB+e4zP0BUDq/gk1c8h4h2J1GN6GtMvXnMTLJkXWcw==}
@@ -2953,10 +2945,6 @@ snapshots:
   json5@2.2.3: {}
 
   kolorist@1.8.0: {}
-
-  leafer-connector@1.6.2(leafer-editor@2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0)):
-    dependencies:
-      leafer-editor: 2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0)
 
   leafer-editor@2.1.0(@leafer-ui/interface@2.1.0)(@leafer/interface@2.1.0):
     dependencies:

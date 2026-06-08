@@ -50,7 +50,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed z-50 bg-base-100 rounded-lg shadow-xl border border-base-200 py-1 min-w-[180px]"
+      class="fixed z-50 bg-base-100 rounded-lg shadow-xl border border-base-200 py-1 min-w-45"
       :style="{ left: `${position.x}px`, top: `${position.y}px` }"
     >
       <template v-for="(group, groupIndex) in groups" :key="group.id">

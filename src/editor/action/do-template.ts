@@ -1,6 +1,6 @@
 import { Ellipse, Group, Path, Rect, Text, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
-import type { ConnectorSide, ConnectorState } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
+import type { ConnectorSide, ConnectorState } from "@/editor/core/connector";
 import type Editor from "../editor";
 import { createConnectorLabel } from "../core/connector-labels";
 import { makeGroupSelectionAtomic } from "../core/group-selection";

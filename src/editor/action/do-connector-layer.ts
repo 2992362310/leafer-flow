@@ -1,5 +1,5 @@
 import type { IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
 import type Editor from "../editor";
 
 export function doConnectorToFront(editor: Editor): { success: boolean; message: string } {

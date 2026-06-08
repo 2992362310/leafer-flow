@@ -1,7 +1,7 @@
 import type { Component } from "vue";
 import type { IUI } from "leafer";
 import type { Text } from "leafer";
-import type { Connector } from "leafer-connector";
+import type { Connector } from "../core/connector";
 import type Editor from "../editor";
 
 export interface PropertyPanelContext {

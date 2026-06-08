@@ -1,5 +1,5 @@
 import { type IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
 import type Editor from "../editor";
 import {
   getConnectorLabelTarget,
@@ -44,7 +44,7 @@ export function doCopy(editor: Editor): { success: boolean; message: string } {
       const json = el.toJSON() as Record<string, unknown>;
       persistConnectorLabel(el, json);
       items.push({ kind: "node", originalId: el.innerId, json });
-      selectedNodeIds.add(el.innerId);
+      addId(selectedNodeIds, el.innerId);
     });
 
     editor.app.tree.children?.forEach((child) => {
@@ -53,11 +53,12 @@ export function doCopy(editor: Editor): { success: boolean; message: string } {
       const state = child.getState() as unknown as ConnectorStateLike;
       const selectedConnector = selectedSet.has(child);
       const linksSelectedNodes =
-        state.mode === "node" &&
-        state.fromId !== undefined &&
-        state.toId !== undefined &&
-        selectedNodeIds.has(state.fromId) &&
-        selectedNodeIds.has(state.toId);
+        hasConnectorEndpoint(state, selectedNodeIds) &&
+        (state.mode !== "node" ||
+          (state.fromId !== undefined &&
+            state.toId !== undefined &&
+            hasId(selectedNodeIds, state.fromId) &&
+            hasId(selectedNodeIds, state.toId)));
 
       if (!selectedConnector && !linksSelectedNodes) return;
 
@@ -118,13 +119,13 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
         | undefined;
       restoreConnectorLabelRuntimeProps(added, data);
       if (added && item.originalId !== undefined) {
-        idMap.set(item.originalId, added);
+        addNodeMapping(idMap, item.originalId, added);
       }
       if (added?.id !== undefined) {
-        idMap.set(added.id, added);
+        addNodeMapping(idMap, added.id, added);
       }
       if (added) {
-        idMap.set(added.innerId, added);
+        addNodeMapping(idMap, added.innerId, added);
       }
       count++;
     });
@@ -181,6 +182,27 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
       message: "粘贴失败: " + (error instanceof Error ? error.message : "未知错误"),
     };
   }
+}
+
+function addId(ids: Set<string | number>, id: string | number) {
+  ids.add(id);
+  ids.add(String(id));
+}
+
+function hasId(ids: Set<string | number>, id: string | number) {
+  return ids.has(id) || ids.has(String(id));
+}
+
+function hasConnectorEndpoint(state: ConnectorStateLike, ids: Set<string | number>) {
+  return Boolean(
+    (state.fromId !== undefined && hasId(ids, state.fromId)) ||
+    (state.toId !== undefined && hasId(ids, state.toId)),
+  );
+}
+
+function addNodeMapping(idMap: Map<string | number, IUI>, id: string | number, node: IUI) {
+  idMap.set(id, node);
+  idMap.set(String(id), node);
 }
 
 function offsetJsonPosition(json: Record<string, unknown>) {

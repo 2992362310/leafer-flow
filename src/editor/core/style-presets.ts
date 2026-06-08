@@ -1,5 +1,5 @@
 import { Text, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "./connector";
 import type Editor from "../editor";
 
 export type StylePresetId = "default" | "blue" | "success" | "warning" | "danger" | "data" | "note";
