@@ -55,6 +55,7 @@ const editor = shallowRef<Editor>();
 
 const elementCount = ref(0);
 const zoomPercent = ref(100);
+const activeTool = ref<string>(TOOL_NAME.SELECT);
 const marquee = ref({ active: false, x: 0, y: 0, width: 0, height: 0 });
 let marqueeStart = { x: 0, y: 0 };
 let marqueeDragging = false;
@@ -339,12 +340,14 @@ function executeCallback<T>(arg: T) {
   });
 
   const nextTool = next ?? TOOL_NAME.SELECT;
+  activeTool.value = nextTool;
   toolbarRef.value?.changeTool(nextTool);
   syncCurrentTool(nextTool);
 }
 
 function handleTool(evt: IExecuteCommand) {
   if (!editor.value) return;
+  activeTool.value = evt.command;
   toolbarRef.value?.changeTool(evt.command);
   syncCurrentTool(evt.command);
   editor.value.execute(evt, executeCallback);
@@ -486,7 +489,7 @@ function handleContextMenuAction({
     :height="marquee.height"
   />
 
-  <ShapeLibrary @tool="handleLibraryTool" />
+  <ShapeLibrary :active-tool="activeTool" @tool="handleLibraryTool" />
 
   <div
     class="absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200 rounded-xl top-12! left-[calc(50%+5rem)]! -translate-x-1/2"
