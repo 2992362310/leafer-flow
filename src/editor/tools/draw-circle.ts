@@ -1,5 +1,6 @@
 import { Ellipse, Group, Text, type IPointData, type IUI } from "leafer";
 import type { IDrawOptions, IDrawResult, TCallback } from "../types";
+import { makeGroupSelectionAtomic } from "../core/group-selection";
 import { DrawBase } from "./draw-base";
 
 export class DrawCircle extends DrawBase {
@@ -38,13 +39,15 @@ export class DrawCircle extends DrawBase {
       y: 10,
     });
 
-    return new Group({
+    const group = new Group({
       editable: true,
       x: startPoint.x,
       y: startPoint.y,
       name: "圆形",
       children: [circle, text],
     });
+    makeGroupSelectionAtomic(group);
+    return group;
   }
 
   protected updateElement(element: IUI, endPoint: IPointData): void {

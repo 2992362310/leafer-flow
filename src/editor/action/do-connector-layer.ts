@@ -1,5 +1,5 @@
 import type { IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "@/editor/core/connector";
 import type Editor from "../editor";
 
 export function doConnectorToFront(editor: Editor): { success: boolean; message: string } {
@@ -24,7 +24,7 @@ export function doConnectorToFront(editor: Editor): { success: boolean; message:
       editor.app.tree.add(connector);
     });
 
-    editor.history.save();
+    editor.commitMutation({ autoSave: false });
     return { success: true, message: `已将 ${connectors.length} 条连接线置于顶层` };
   } catch (error) {
     console.error("连接线置顶失败", error);

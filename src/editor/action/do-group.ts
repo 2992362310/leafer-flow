@@ -1,6 +1,7 @@
 import { Group } from "leafer";
 import type { IUI, IGroup } from "@leafer-ui/interface";
 import type Editor from "../editor";
+import { makeGroupSelectionAtomic } from "../core/group-selection";
 
 /**
  * 智能检测并处理 Group 选择
@@ -169,11 +170,12 @@ export function doGroup(editor: Editor): { success: boolean; message: string } {
     node.dropTo(group);
   });
 
-  // 11. 选中新创建的 Group
+  // 11. 让 Group 在画布上作为一个整体被选择，子元素不可直接选中
+  makeGroupSelectionAtomic(group);
   app.editor.select(group);
 
   // 12. 保存历史记录
-  editor.history.save();
+  editor.commitMutation();
 
   // 13. 统计实际组合的元素（包括嵌套的 Group）
   const groupCount = list.filter((node) => node instanceof Group).length;

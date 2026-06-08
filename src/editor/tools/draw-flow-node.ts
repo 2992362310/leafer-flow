@@ -1,5 +1,6 @@
 import { Ellipse, Group, Path, Rect, Text, type IPointData, type IUI } from "leafer";
 import type { IDrawOptions, IDrawResult } from "../types";
+import { makeGroupSelectionAtomic } from "../core/group-selection";
 import { DrawBase } from "./draw-base";
 
 export type FlowNodeKind =
@@ -78,13 +79,15 @@ export class DrawFlowNode extends DrawBase {
       y: 10,
     });
 
-    return new Group({
+    const group = new Group({
       editable: true,
       x: startPoint.x,
       y: startPoint.y,
       name: this.options.label,
       children: [shape, text],
     });
+    makeGroupSelectionAtomic(group);
+    return group;
   }
 
   protected updateElement(element: IUI, endPoint: IPointData): void {
@@ -313,7 +316,11 @@ export class DrawFlowNode extends DrawBase {
       return;
     }
 
-    if (this.options.kind === "bpmnStartEvent" || this.options.kind === "bpmnEndEvent" || this.options.kind === "archUseCase") {
+    if (
+      this.options.kind === "bpmnStartEvent" ||
+      this.options.kind === "bpmnEndEvent" ||
+      this.options.kind === "archUseCase"
+    ) {
       shape.width = width;
       shape.height = height;
       return;

@@ -24,7 +24,7 @@ export function doNudge(
       return { success: false, message: "选中元素不可移动" };
     }
 
-    editor.history.save();
+    editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
     return { success: true, message: `已移动 ${moved} 个元素` };
   } catch (error) {
     console.error("执行移动操作时发生错误", error);

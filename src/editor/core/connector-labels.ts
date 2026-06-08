@@ -1,5 +1,5 @@
 import { Text, type App, type IUI } from "leafer";
-import { Connector } from "leafer-connector";
+import { Connector } from "./connector";
 
 export const CONNECTOR_LABEL_PROP = "__connectorLabelFor";
 export const CONNECTOR_LABEL_OFFSET_X_PROP = "__connectorLabelOffsetX";
@@ -107,8 +107,21 @@ export function restoreConnectorLabelRuntimeProps(
 
 export function findSelectedConnector(list: IUI[]): Connector | null {
   for (const item of list) {
-    if (item instanceof Connector) return item;
+    const connector = findOwningConnector(item);
+    if (connector) return connector;
   }
+  return null;
+}
+
+function findOwningConnector(item: IUI): Connector | null {
+  if (item instanceof Connector) return item;
+
+  let current = item.parent as IUI | undefined;
+  while (current) {
+    if (current instanceof Connector) return current;
+    current = current.parent as IUI | undefined;
+  }
+
   return null;
 }
 
@@ -134,7 +147,7 @@ function collectConnectorLabels(app: App) {
 function getConnectorCenter(connector: Connector) {
   try {
     const wirePath = connector.wire?.path;
-    if (wirePath) {
+    if (typeof wirePath === "string" && wirePath) {
       const mid = sampleSvgPathMid(wirePath);
       if (mid) return mid;
     }

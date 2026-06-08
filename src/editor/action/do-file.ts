@@ -29,7 +29,7 @@ export function doSave(editor: Editor): { success: boolean; message: string } {
   }
 }
 
-export function doLoad(editor: Editor): { success: boolean; message: string } {
+export function doLoad(editor: Editor): Promise<{ success: boolean; message: string }> {
   return new Promise<{ success: boolean; message: string }>((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -48,8 +48,7 @@ export function doLoad(editor: Editor): { success: boolean; message: string } {
 
         editor.app.editor.cancel();
         const result = deserializeTreeWithConnectors(editor.app, json);
-        editor.history.save();
-        editor.autoSave.save();
+        editor.commitMutation();
 
         let message = "文件已加载";
         if (result.failedConnectors > 0) {
@@ -66,12 +65,12 @@ export function doLoad(editor: Editor): { success: boolean; message: string } {
     };
 
     input.click();
-  }) as unknown as { success: boolean; message: string };
+  });
 }
 
-export function doExportPNG(editor: Editor): { success: boolean; message: string } {
+export async function doExportPNG(editor: Editor): Promise<{ success: boolean; message: string }> {
   try {
-    const dataURL = editor.app.tree.export("png") as string;
+    const dataURL = await exportAsUrl(editor, "png");
     const a = document.createElement("a");
     a.href = dataURL;
     a.download = `flow-${Date.now()}.png`;
@@ -89,9 +88,9 @@ export function doExportPNG(editor: Editor): { success: boolean; message: string
   }
 }
 
-export function doExportSVG(editor: Editor): { success: boolean; message: string } {
+export async function doExportSVG(editor: Editor): Promise<{ success: boolean; message: string }> {
   try {
-    const svg = editor.app.tree.export("svg") as string;
+    const svg = await exportAsText(editor, "svg");
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
@@ -111,4 +110,29 @@ export function doExportSVG(editor: Editor): { success: boolean; message: string
       message: "导出失败: " + (error instanceof Error ? error.message : "未知错误"),
     };
   }
+}
+
+type ExportResultLike = string | Blob | { data?: string | Blob; url?: string };
+
+async function exportAsUrl(editor: Editor, format: "png" | "svg") {
+  const result = (await editor.app.tree.export(format)) as ExportResultLike;
+  if (typeof result === "string") return result;
+  if (result instanceof Blob) return URL.createObjectURL(result);
+  if (typeof result.url === "string") return result.url;
+  if (typeof result.data === "string") return result.data;
+  if (result.data instanceof Blob) return URL.createObjectURL(result.data);
+  throw new Error("无法识别导出结果");
+}
+
+async function exportAsText(editor: Editor, format: "svg") {
+  const result = (await editor.app.tree.export(format)) as ExportResultLike;
+  if (typeof result === "string") return result;
+  if (result instanceof Blob) return result.text();
+  if (typeof result.data === "string") return result.data;
+  if (result.data instanceof Blob) return result.data.text();
+  if (typeof result.url === "string") {
+    const response = await fetch(result.url);
+    return response.text();
+  }
+  throw new Error("无法识别导出结果");
 }

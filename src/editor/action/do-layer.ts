@@ -3,7 +3,10 @@ import type Editor from "../editor";
 
 type LayerAction = "bringForward" | "sendBackward" | "bringToFront" | "sendToBack";
 
-export function doLayer(editor: Editor, action: LayerAction): { success: boolean; message: string } {
+export function doLayer(
+  editor: Editor,
+  action: LayerAction,
+): { success: boolean; message: string } {
   try {
     const list = [...(editor.app.editor.list as IUI[])];
     if (!list.length) {
@@ -37,7 +40,7 @@ export function doLayer(editor: Editor, action: LayerAction): { success: boolean
       return { success: false, message: "当前元素无法调整层级" };
     }
 
-    editor.history.save();
+    editor.commitMutation({ autoSave: false });
     return { success: true, message: `已调整 ${moved.size} 个元素的层级` };
   } catch (error) {
     console.error("调整层级失败", error);
@@ -48,7 +51,10 @@ export function doLayer(editor: Editor, action: LayerAction): { success: boolean
   }
 }
 
-export function doToggleLock(editor: Editor, locked: boolean): { success: boolean; message: string } {
+export function doToggleLock(
+  editor: Editor,
+  locked: boolean,
+): { success: boolean; message: string } {
   const list = editor.app.editor.list as IUI[];
   if (!list.length) return { success: false, message: "未选中元素" };
 
@@ -56,7 +62,7 @@ export function doToggleLock(editor: Editor, locked: boolean): { success: boolea
     item.locked = locked;
   });
 
-  editor.history.save();
+  editor.commitMutation({ autoSave: false });
   return { success: true, message: locked ? "已锁定选中元素" : "已解锁选中元素" };
 }
 
@@ -71,7 +77,7 @@ export function doToggleVisible(
     item.visible = visible;
   });
 
-  editor.history.save();
+  editor.commitMutation({ autoSave: false });
   return { success: true, message: visible ? "已显示选中元素" : "已隐藏选中元素" };
 }
 
