@@ -2,7 +2,7 @@
 import { ref, onUnmounted, shallowRef, watch, provide } from "vue";
 import type { IUI } from "@leafer-ui/interface";
 import type { Editor } from "../../editor";
-import { doLayer, doToggleLock, doToggleVisible } from "../../editor";
+import { ACTION_NAME } from "../../editor/constants";
 import LayerItem from "./LayerItem.vue";
 import { useDraggable, useCollapsible } from "../../composables/useDraggable";
 
@@ -140,48 +140,36 @@ function handleSelect(node: IUI) {
   props.editor.app.editor.select(node);
 }
 
-function handleToggleLock(node: IUI) {
+async function runLayerCommand(node: IUI, action: string) {
   if (!props.editor) return;
   props.editor.app.editor.select(node);
-  const result = doToggleLock(props.editor, !node.locked);
-  props.editor?.app.editor.select(node);
-  if (result.success) treeData.value = [...treeData.value];
+  const result = await props.editor.commands.execute(action);
+  props.editor.app.editor.select(node);
+  if (result.success) updateTree();
+}
+
+function handleToggleLock(node: IUI) {
+  void runLayerCommand(node, node.locked ? ACTION_NAME.UNLOCK_SELECTED : ACTION_NAME.LOCK_SELECTED);
 }
 
 function handleToggleVisible(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  const result = doToggleVisible(props.editor, !node.visible);
-  props.editor?.app.editor.select(node);
-  if (result.success) treeData.value = [...treeData.value];
+  void runLayerCommand(node, ACTION_NAME.TOGGLE_VISIBLE);
 }
 
 function handleMoveUp(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "bringForward");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.BRING_FORWARD);
 }
 
 function handleMoveDown(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "sendBackward");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.SEND_BACKWARD);
 }
 
 function handleMoveTop(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "bringToFront");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.BRING_TO_FRONT);
 }
 
 function handleMoveBottom(node: IUI) {
-  if (!props.editor) return;
-  props.editor.app.editor.select(node);
-  doLayer(props.editor, "sendToBack");
-  updateTree();
+  void runLayerCommand(node, ACTION_NAME.SEND_TO_BACK);
 }
 
 // 监听 editor prop 变化
