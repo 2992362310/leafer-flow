@@ -6,11 +6,7 @@ import { EditorEvent } from "leafer-editor";
 import type { Editor } from "../editor";
 import { applyStylePreset } from "../editor/core/style-presets";
 import type { StylePresetId } from "../editor/core/style-presets";
-import {
-  captureSelectedConnectorLabelOffsets,
-  getConnectorLabelTarget,
-  syncConnectorLabels,
-} from "../editor/core/connector-labels";
+import { getConnectorLabelTarget } from "../editor/core/connector-labels";
 import { resolveNodeById, CUSTOM_DATA_PROP } from "../editor/core/flow-serialization";
 
 interface EditorPanelStateOptions {
@@ -180,8 +176,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   }
 
   function saveHistory() {
-    options.editor.value?.history.save();
-    options.editor.value?.autoSave.save();
+    options.editor.value?.commitMutation();
   }
 
   function updateX(value: number) {
@@ -386,9 +381,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function syncAfterChange() {
     if (!options.editor.value) return;
-    captureSelectedConnectorLabelOffsets(options.editor.value.app);
-    syncConnectorLabels(options.editor.value.app);
-    saveHistory();
+    options.editor.value.commitMutation({ syncConnectorLabels: true });
   }
 
   function getSelectedShapes() {

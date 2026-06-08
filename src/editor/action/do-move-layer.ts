@@ -39,8 +39,7 @@ export function doMoveLayer(
     dropNode.add(dragNode);
   }
 
-  editor.history.save();
-  editor.autoSave.save();
+  editor.commitMutation();
   return { success: true, message: "图层顺序已更新" };
 }
 

@@ -173,7 +173,7 @@ export function doGroup(editor: Editor): { success: boolean; message: string } {
   app.editor.select(group);
 
   // 12. 保存历史记录
-  editor.history.save();
+  editor.commitMutation();
 
   // 13. 统计实际组合的元素（包括嵌套的 Group）
   const groupCount = list.filter((node) => node instanceof Group).length;

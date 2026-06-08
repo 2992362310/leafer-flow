@@ -36,6 +36,7 @@ export interface PluginContributionPreview {
   commands?: string[];
   menus?: string[];
   buttons?: string[];
+  viewControls?: string[];
 }
 
 export interface EditorPluginModule {

@@ -177,7 +177,8 @@ function categoryLabel(category?: string) {
                   item.contributions.toolLabels.length ||
                   item.contributions.commandLabels.length ||
                   item.contributions.menuLabels.length ||
-                  item.contributions.buttonLabels.length
+                  item.contributions.buttonLabels.length ||
+                  item.contributions.viewControlLabels.length
                 "
                 class="space-y-2"
               >
@@ -256,12 +257,32 @@ function categoryLabel(category?: string) {
                     </span>
                   </div>
                 </div>
+
+                <div v-if="item.contributions.viewControlLabels.length" class="space-y-1">
+                  <div class="text-[11px] font-medium text-base-content/60">视图控件贡献</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="label in previewLabels(item.contributions.viewControlLabels)"
+                      :key="`view-control-${label}`"
+                      class="badge badge-xs badge-outline"
+                    >
+                      {{ label }}
+                    </span>
+                    <span
+                      v-if="hiddenLabelCount(item.contributions.viewControlLabels)"
+                      class="badge badge-xs badge-ghost"
+                    >
+                      +{{ hiddenLabelCount(item.contributions.viewControlLabels) }}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div class="flex items-center justify-between text-[11px] text-base-content/60">
                 <span
                   >工具 {{ item.contributions.tools }} · 命令 {{ item.contributions.commands }} ·
-                  菜单 {{ item.contributions.menus }} · 按钮 {{ item.contributions.buttons }}</span
+                  菜单 {{ item.contributions.menus }} · 按钮 {{ item.contributions.buttons }} · 视图
+                  {{ item.contributions.viewControls }}</span
                 >
                 <span
                   v-if="pendingPluginId === item.manifest.id"

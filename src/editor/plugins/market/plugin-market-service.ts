@@ -12,10 +12,12 @@ export interface PluginMarketContributionSummary {
   commands: number;
   menus: number;
   buttons: number;
+  viewControls: number;
   toolLabels: string[];
   commandLabels: string[];
   menuLabels: string[];
   buttonLabels: string[];
+  viewControlLabels: string[];
 }
 
 export interface PluginMarketViewItem {
@@ -64,10 +66,12 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
       commands: 0,
       menus: 0,
       buttons: 0,
+      viewControls: 0,
       toolLabels: [],
       commandLabels: [],
       menuLabels: [],
       buttonLabels: [],
+      viewControlLabels: [],
     };
   }
 
@@ -75,6 +79,7 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
   const activeCommands = editor.commands.listByPlugin(pluginId);
   const activeMenus = editor.menus.listByPlugin(pluginId);
   const activeButtons = editor.actionButtons.listByPlugin(pluginId);
+  const activeViewControls = editor.viewControls.listByPlugin(pluginId);
   const plugin = getBuiltinPluginById(pluginId);
   const toolLabels = activeTools.length
     ? activeTools.map((tool) => tool.label)
@@ -86,17 +91,26 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
     ? activeMenus.map((menu) => menu.label)
     : (plugin?.contributes?.menus ?? []);
   const buttonLabels = activeButtons.length
-    ? activeButtons.flatMap((group) => group.items.map((item) => item.label))
+    ? activeButtons.flatMap((group) => [
+        ...group.items.map((item) => item.label),
+        ...(group.panelItems?.map((item) => item.label) ?? []),
+      ])
     : (plugin?.contributes?.buttons ?? []);
+
+  const viewControlLabels = activeViewControls.length
+    ? activeViewControls.map((control) => control.label)
+    : (plugin?.contributes?.viewControls ?? []);
 
   return {
     tools: toolLabels.length,
     commands: commandLabels.length,
     menus: menuLabels.length,
     buttons: buttonLabels.length,
+    viewControls: viewControlLabels.length,
     toolLabels,
     commandLabels,
     menuLabels,
     buttonLabels,
+    viewControlLabels,
   };
 }

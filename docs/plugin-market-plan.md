@@ -1,17 +1,19 @@
-# 插件市场模块规划
+# 插件市场与插件启停流程
+
+本文记录当前插件市场实现和后续演进约束。
 
 ## 当前形态
 
-插件市场当前采用编辑器内右侧 Drawer，不引入新路由。
+插件市场当前是编辑器内右侧 Drawer，不引入新路由。
 
 原因：
 
 - 保留画布编辑上下文，不打断当前工作流。
 - 当前市场只有内置插件源，不需要完整页面级信息架构。
-- 启停插件后需要立即刷新工具栏、图形库、操作按钮、状态栏工具名称和快捷键映射，Drawer 更适合即时反馈。
-- 避免过早引入 `vue-router` 和跨页面编辑器生命周期管理。
+- 启停插件后需要即时刷新 registry 驱动的 UI。
+- 避免过早引入跨页面编辑器生命周期管理。
 
-## 当前模块
+## 模块结构
 
 ```txt
 src/editor/plugins/market/
@@ -22,15 +24,23 @@ src/components/PluginMarket/
   PluginMarketDrawer.vue
 ```
 
+## 数据与服务边界
+
 ### `builtin-registry.ts`
 
-负责内置插件市场数据：
+负责内置插件源和启用状态：
 
-- 读取启用插件 id。
-- 保存启用插件 id。
-- 强制合并必需插件 id。
-- 列出内置插件 market item。
-- 根据 id 获取内置插件模块。
+- `getEnabledPluginIds()`
+  - 从 `localStorage` 读取启用插件 id。
+  - 自动合并 required 插件。
+  - 无存储值时返回 required + enabledByDefault 插件。
+- `saveEnabledPluginIds(ids)`
+  - 保存启用插件 id。
+  - 强制保留 required 插件。
+- `listPluginMarketItems()`
+  - 从 `builtinPlugins` 生成市场条目。
+- `getBuiltinPluginById(pluginId)`
+  - 按 id 查找内置插件模块。
 
 当前存储 key：
 
@@ -38,36 +48,30 @@ src/components/PluginMarket/
 leafer-flow.enabled-plugins
 ```
 
-必需插件来自：
-
-```ts
-plugin.manifest.required
-```
-
-当前必需插件：
-
-```txt
-leafer-flow.builtin-core
-```
-
 ### `plugin-market-service.ts`
 
-负责市场业务边界，避免 Vue 组件直接操作 localStorage 或内置插件表：
+负责市场业务流程，避免 Vue 组件直接操作 localStorage 或内置插件表：
 
 - `listInstalledPlugins(editor?)`
 - `enablePlugin(editor, pluginId)`
 - `disablePlugin(editor, pluginId)`
 
-服务会基于 editor 的 registry 统计插件贡献：
+`listInstalledPlugins()` 会组合：
 
-- 工具数量：`editor.toolRegistry.listByPlugin(pluginId)`
-- 命令数量：`editor.commands.listByPlugin(pluginId)`
-- 菜单数量：`editor.menus.listByPlugin(pluginId)`
-- 按钮数量：`editor.actionButtons.listByPlugin(pluginId)`
+- 插件 manifest。
+- 是否内置。
+- 是否启用。
+- 是否 active。
+- 工具、命令、菜单、按钮贡献摘要。
 
-未启用插件会回退到 `plugin.contributes` 展示贡献预览。
+贡献摘要优先读取当前 active registry：
 
-`disablePlugin()` 会拒绝禁用 `manifest.required` 插件。
+- `editor.toolRegistry.listByPlugin(pluginId)`
+- `editor.commands.listByPlugin(pluginId)`
+- `editor.menus.listByPlugin(pluginId)`
+- `editor.actionButtons.listByPlugin(pluginId)`
+
+如果插件未启用，则回退到 `plugin.contributes` 展示预览标签。
 
 ### `PluginMarketDrawer.vue`
 
@@ -75,84 +79,116 @@ leafer-flow.builtin-core
 
 - 展示插件列表。
 - 搜索插件名称、id、描述、分类和 capabilities。
-- 展示启用状态、内置标记、必需标记、版本、分类、能力、贡献摘要。
-- 支持即时启用/禁用非必需插件。
-- 必需插件开关禁用。
+- 展示启用状态、active 状态、内置标记、必需标记、版本、分类、能力。
 - 展示工具、命令、菜单、按钮贡献数量。
 - 展示工具、命令、菜单、按钮标签预览。
+- 支持启用/禁用非必需插件。
+- 禁用必需插件开关。
 
-## 当前启停策略
+## 初始化流程
 
-### 可即时启停
+```mermaid
+flowchart TD
+    A[initEditor] --> B[创建 Editor]
+    B --> C[getEnabledPluginIds]
+    C --> D[读取 localStorage]
+    D --> E[合并 required 插件]
+    E --> F[遍历 builtinPlugins]
+    F --> G{required 或已启用?}
+    G -->|是| H[pluginManager.activate]
+    G -->|否| I[跳过]
+```
 
-当前支持即时启停的插件：
+## 启用流程
 
-- 工具插件
-- 图形插件
-- 命令插件
-- 菜单插件
-- action button 插件
-- 画布辅助插件
+```mermaid
+flowchart TD
+    A[用户打开插件开关] --> B[enablePlugin]
+    B --> C[getBuiltinPluginById]
+    C --> D{插件存在?}
+    D -->|否| E[返回 false]
+    D -->|是| F[pluginManager.activate]
+    F --> G[插件注册贡献]
+    G --> H[saveEnabledPluginIds]
+    H --> I[Drawer 刷新市场列表]
+    I --> J[App 刷新工具栏/图形库/按钮/快捷键等派生数据]
+```
 
-原因：
+## 禁用流程
 
-- `ToolRegistry` 支持 `unregisterByPlugin(pluginId)`。
-- `CommandRegistry` 支持 `unregisterByPlugin(pluginId)`。
-- `MenuRegistry` 支持 `unregisterByPlugin(pluginId)`。
-- `ActionButtonRegistry` 支持 `unregisterByPlugin(pluginId)`。
-- `PluginManager.deactivate(pluginId)` 会自动清理工具、命令、菜单和按钮贡献。
-- 标尺、点阵和吸附插件已接入第三方运行时的释放 API：
-  - `Ruler.dispose()`
-  - `DotMatrix.destroy()`
-  - `Snap.destroy()`
+```mermaid
+flowchart TD
+    A[用户关闭插件开关] --> B[disablePlugin]
+    B --> C[getBuiltinPluginById]
+    C --> D{manifest.required?}
+    D -->|是| E[返回 false]
+    D -->|否| F{当前 active?}
+    F -->|否| G[仅更新启用 id]
+    F -->|是| H[pluginManager.deactivate]
+    H --> I[插件释放自身资源]
+    I --> J[按 pluginId 清理工具/命令/菜单/按钮]
+    J --> K[saveEnabledPluginIds]
+    G --> K
+    K --> L[Drawer 和宿主 UI 刷新]
+```
 
-### 不可禁用
+## 当前可即时启停的贡献
 
-必需插件不可禁用。当前 `leafer-flow.builtin-core` 属于必需插件，负责注册默认命令、右键菜单和顶部操作按钮。
+- 工具插件。
+- 图形插件。
+- 命令插件。
+- 菜单插件。
+- action button 插件。
+- 已实现释放逻辑的 canvas overlay 插件。
 
-### 后续注意
+即时启停依赖：
 
-新增 canvas overlay 插件时必须实现可靠的 `deactivate(ctx)`。如果第三方运行时没有释放 API，应在市场 UI 中标记为“需刷新后生效”，避免出现显示状态和画布实际状态不一致。
+- `ToolRegistry.unregisterByPlugin(pluginId)`。
+- `CommandRegistry.unregisterByPlugin(pluginId)`。
+- `MenuRegistry.unregisterByPlugin(pluginId)`。
+- `ActionButtonRegistry.unregisterByPlugin(pluginId)`。
+- `PluginManager.deactivate(pluginId)` 的统一清理。
 
-## 已完成阶段
+Canvas overlay 插件还必须实现自身释放逻辑。当前已覆盖：
 
-### 阶段 1：当前最小闭环
+- `Ruler.dispose()`。
+- `Snap.destroy()`。
+- `DotMatrix.destroy()`。
 
-已完成目标：
+## 必需插件策略
 
-- Drawer 市场入口。
-- 内置插件列表。
-- 工具/图形/画布辅助插件启停。
-- 启停后刷新工具栏和图形库。
-- 插件贡献归属 `pluginId`。
-- 插件贡献详情预览。
+当前必需插件：
 
-### 阶段 2：插件贡献详情
+```txt
+leafer-flow.builtin-core
+```
 
-已完成目标：
+必需插件规则：
 
-- `toolRegistry.listByPlugin(pluginId)`。
-- `commands.listByPlugin(pluginId)`。
-- `menus.listByPlugin(pluginId)`。
-- `actionButtons.listByPlugin(pluginId)`。
-- 市场中展示贡献的工具、命令、菜单、按钮数量。
-- 市场中展示贡献标签预览。
-- 未启用插件通过 `plugin.contributes` 展示预览。
+- `getEnabledPluginIds()` 始终合并 required 插件。
+- `saveEnabledPluginIds()` 始终保留 required 插件。
+- `initEditor()` 无条件激活 required 插件。
+- `disablePlugin()` 拒绝禁用 required 插件。
+- 市场 UI 展示必需标记，并禁用开关。
 
-### 阶段 3：必需插件保护
+`builtin-core` 当前负责默认命令、右键菜单和顶部操作按钮。若后续拆分文件、导出、模板等功能域插件，需要重新评估哪些能力仍必须保留在 required 插件中。
 
-已完成目标：
+## 宿主刷新要求
 
-- `EditorPluginManifest.required`。
-- `getEnabledPluginIds()` 强制合并必需插件。
-- `saveEnabledPluginIds()` 强制保留必需插件。
-- `disablePlugin()` 拒绝禁用必需插件。
-- 市场 UI 展示“必需”标记。
-- 必需插件开关禁用。
+插件启停后，宿主需要刷新所有由 registry 派生的数据：
 
-## 推荐后续演进
+- 工具栏分组。
+- 图形库分组。
+- 状态栏工具名称映射。
+- 工具快捷键映射。
+- 顶部 action button 分组。
+- 右键菜单分组。
 
-### 阶段 4：插件配置
+如果当前选中工具来自刚禁用的工具插件，应切回 `select`。
+
+## 后续演进
+
+### 插件配置
 
 为插件协议增加配置入口，例如：
 
@@ -160,15 +196,9 @@ leafer-flow.builtin-core
 configure?(ctx: PluginContext): PluginConfigSchema | VueComponent
 ```
 
-市场中提供：
+可优先承接当前仍在宿主 UI 中的绘制设置面板。
 
-- 插件配置按钮。
-- 插件私有 storage 配置。
-- 重置插件配置。
-
-可优先用于承接当前仍在宿主 UI 中的“绘制设置”面板。
-
-### 阶段 5：插件源抽象
+### 插件源抽象
 
 拆分市场数据源：
 
@@ -185,9 +215,9 @@ src/editor/plugins/market/sources/
 - 远程插件索引。
 - 本地开发插件。
 
-### 阶段 6：新路由市场
+### 页面级市场
 
-当出现以下需求时，再升级到新路由：
+当出现以下需求时，再升级到新路由或独立页面：
 
 - 插件数量明显增多。
 - 需要插件详情页。
@@ -195,19 +225,13 @@ src/editor/plugins/market/sources/
 - 需要评分、版本历史、依赖关系。
 - 需要开发者发布入口。
 
-可能路由：
+### 远程插件安全边界
 
-```txt
-/editor
-/plugins
-/plugins/:pluginId
-/settings/plugins
-```
+远程插件启用前必须明确：
 
-## 当前约束
-
-- 市场启停插件后，应刷新所有由 registry 派生的 UI 数据。
-- 禁用当前正在使用的工具插件时，应把 active tool 重置为 `select`。
-- 不要让 Vue 组件直接依赖内置插件数组，统一经过 market service。
-- 必需插件只能展示状态，不允许关闭。
-- 远程插件启用前必须考虑权限、沙箱、签名和安全边界。
+- 权限模型。
+- 沙箱边界。
+- 签名与来源校验。
+- 插件代码加载方式。
+- 网络、文件、localStorage 访问限制。
+- 插件异常隔离和卸载恢复策略。

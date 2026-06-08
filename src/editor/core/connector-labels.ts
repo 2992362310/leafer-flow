@@ -134,7 +134,7 @@ function collectConnectorLabels(app: App) {
 function getConnectorCenter(connector: Connector) {
   try {
     const wirePath = connector.wire?.path;
-    if (wirePath) {
+    if (typeof wirePath === "string" && wirePath) {
       const mid = sampleSvgPathMid(wirePath);
       if (mid) return mid;
     }

@@ -1,6 +1,6 @@
 import type { IUI } from "leafer";
 import type Editor from "../editor";
-import { createConnectorLabel, findSelectedConnector, syncConnectorLabels } from "../core/connector-labels";
+import { createConnectorLabel, findSelectedConnector } from "../core/connector-labels";
 
 export function doAddConnectorLabel(editor: Editor): { success: boolean; message: string } {
   const connector = findSelectedConnector(editor.app.editor.list as IUI[]);
@@ -10,9 +10,8 @@ export function doAddConnectorLabel(editor: Editor): { success: boolean; message
 
   const label = createConnectorLabel(connector);
   editor.app.tree.add(label);
-  syncConnectorLabels(editor.app);
   editor.app.editor.select(label);
-  editor.history.save();
+  editor.commitMutation({ syncConnectorLabels: true });
 
   return { success: true, message: "已添加连线标签" };
 }

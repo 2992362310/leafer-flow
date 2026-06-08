@@ -101,8 +101,7 @@ export function doInsertTemplate(
     }
   });
 
-  editor.history.save();
-  editor.autoSave.save();
+  editor.commitMutation();
   return { success: true, message: data.message };
 }
 

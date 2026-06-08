@@ -28,6 +28,9 @@ export class ActionButtonRegistry {
       .map((group) => ({
         ...group,
         items: [...group.items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        panelItems: group.panelItems
+          ? [...group.panelItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          : undefined,
       }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }

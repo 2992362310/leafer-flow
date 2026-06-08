@@ -1,12 +1,4 @@
 <script setup lang="ts">
-import {
-  getConnectorRouteType,
-  getFreehandSmoothness,
-  getSnapEnabled,
-  setConnectorRouteType,
-  setFreehandSmoothness,
-  setSnapEnabled,
-} from "../editor/core/drawing-settings";
 import type { ActionButtonGroupContribution } from "../editor/api/action-button";
 import Icon from "./Icon.vue";
 
@@ -17,29 +9,6 @@ const props = defineProps<{
 const emits = defineEmits<{
   action: [action: string];
 }>();
-
-const connectorRouteOptions = [
-  { value: "orthogonal", label: "直角线" },
-  { value: "bezier", label: "曲线" },
-  { value: "straight", label: "直线" },
-] as const;
-
-const snapOptions = [
-  { value: true, label: "开启吸附" },
-  { value: false, label: "关闭吸附" },
-] as const;
-
-function handleRouteChange(value: string) {
-  setConnectorRouteType(value as "orthogonal" | "bezier" | "straight");
-}
-
-function handleSmoothnessChange(value: number) {
-  setFreehandSmoothness(value);
-}
-
-function handleSnapChange(value: boolean) {
-  setSnapEnabled(value);
-}
 
 function handleClick(action: string) {
   emits("action", action);
@@ -88,62 +57,56 @@ function handleClick(action: string) {
           </li>
         </ul>
       </div>
-    </template>
+      <div v-else-if="group.kind === 'panel'" class="dropdown dropdown-bottom dropdown-end">
+        <div class="tooltip tooltip-bottom" :data-tip="group.label">
+          <button tabindex="0" role="button" class="btn btn-sm join-item h-9 w-9 px-0">
+            <Icon :name="group.icon" class="h-5 w-5" />
+          </button>
+        </div>
+        <div
+          tabindex="0"
+          class="dropdown-content bg-base-100 rounded-box z-20 w-56 p-3 shadow border border-base-200"
+        >
+          <div
+            v-for="panelItem in group.panelItems ?? []"
+            :key="panelItem.id"
+            class="mb-3 last:mb-0"
+          >
+            <template v-if="panelItem.kind === 'select'">
+              <div class="text-xs font-medium mb-2">{{ panelItem.label }}</div>
+              <div class="join w-full">
+                <button
+                  v-for="option in panelItem.options"
+                  :key="String(option.value)"
+                  class="btn btn-xs join-item flex-1"
+                  :class="{ 'btn-primary': panelItem.getValue() === option.value }"
+                  @click="panelItem.setValue(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </template>
 
-    <div class="dropdown dropdown-bottom dropdown-end">
-      <div class="tooltip tooltip-bottom" data-tip="绘制设置">
-        <button tabindex="0" role="button" class="btn btn-sm join-item h-9 w-9 px-0">
-          <Icon name="template" class="h-5 w-5" />
-        </button>
-      </div>
-      <div
-        tabindex="0"
-        class="dropdown-content bg-base-100 rounded-box z-20 w-56 p-3 shadow border border-base-200"
-      >
-        <div class="mb-3">
-          <div class="text-xs font-medium mb-2">连线样式</div>
-          <div class="join w-full">
-            <button
-              v-for="item in connectorRouteOptions"
-              :key="item.value"
-              class="btn btn-xs join-item flex-1"
-              :class="{ 'btn-primary': getConnectorRouteType() === item.value }"
-              @click="handleRouteChange(item.value)"
-            >
-              {{ item.label }}
-            </button>
-          </div>
-        </div>
-        <div class="mb-3">
-          <div class="flex items-center justify-between text-xs font-medium mb-2">
-            <span>自由绘制平滑度</span>
-            <span class="tabular-nums">{{ getFreehandSmoothness().toFixed(1) }}</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="4"
-            step="0.5"
-            :value="getFreehandSmoothness()"
-            @input="(e) => handleSmoothnessChange(Number((e.target as HTMLInputElement).value))"
-            class="range range-xs"
-          />
-        </div>
-        <div>
-          <div class="text-xs font-medium mb-2">吸附</div>
-          <div class="join w-full">
-            <button
-              v-for="item in snapOptions"
-              :key="String(item.value)"
-              class="btn btn-xs join-item flex-1"
-              :class="{ 'btn-primary': getSnapEnabled() === item.value }"
-              @click="handleSnapChange(item.value)"
-            >
-              {{ item.label }}
-            </button>
+            <template v-else-if="panelItem.kind === 'range'">
+              <div class="flex items-center justify-between text-xs font-medium mb-2">
+                <span>{{ panelItem.label }}</span>
+                <span class="tabular-nums">
+                  {{ panelItem.formatValue?.(panelItem.getValue()) ?? panelItem.getValue() }}
+                </span>
+              </div>
+              <input
+                type="range"
+                :min="panelItem.min"
+                :max="panelItem.max"
+                :step="panelItem.step"
+                :value="panelItem.getValue()"
+                @input="(e) => panelItem.setValue(Number((e.target as HTMLInputElement).value))"
+                class="range range-xs"
+              />
+            </template>
           </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>

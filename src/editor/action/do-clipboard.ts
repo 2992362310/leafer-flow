@@ -49,7 +49,7 @@ export function doCopy(editor: Editor): { success: boolean; message: string } {
     editor.app.tree.children?.forEach((child) => {
       if (!(child instanceof Connector)) return;
 
-      const state = child.getState() as ConnectorStateLike;
+      const state = child.getState() as unknown as ConnectorStateLike;
       const selectedConnector = selectedSet.has(child);
       const linksSelectedNodes =
         state.mode === "node" &&
@@ -112,7 +112,9 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
 
       const data = offsetJsonPosition(item.json);
       editor.app.tree.add(data as object);
-      const added = editor.app.tree.children?.[editor.app.tree.children.length - 1] as IUI | undefined;
+      const added = editor.app.tree.children?.[editor.app.tree.children.length - 1] as
+        | IUI
+        | undefined;
       restoreConnectorLabelRuntimeProps(added, data);
       if (added && item.originalId !== undefined) {
         idMap.set(item.originalId, added);
@@ -129,7 +131,9 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
       const connector = createConnector(editor.app);
       editor.app.tree.add(connector);
       try {
-        connector.setState(state as never, (id: string | number) => resolveNodeById(editor.app, id));
+        connector.setState(state as never, (id: string | number) =>
+          resolveNodeById(editor.app, id),
+        );
       } catch (e) {
         console.warn("粘贴 Connector 状态恢复失败", e);
         if (state.fromPoint && state.toPoint) {
@@ -152,14 +156,14 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
       const data = offsetJsonPosition(item.json);
       data.__connectorLabelFor = connector.innerId;
       editor.app.tree.add(data as object);
-      const added = editor.app.tree.children?.[editor.app.tree.children.length - 1] as IUI | undefined;
+      const added = editor.app.tree.children?.[editor.app.tree.children.length - 1] as
+        | IUI
+        | undefined;
       restoreConnectorLabelRuntimeProps(added, data);
       count++;
     });
 
-    syncConnectorLabels(editor.app);
-    editor.history.save();
-    editor.autoSave.save();
+    editor.commitMutation({ syncConnectorLabels: true });
 
     return { success: true, message: `已粘贴 ${count} 个元素` };
   } catch (error) {

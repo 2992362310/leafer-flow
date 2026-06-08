@@ -14,7 +14,7 @@ export function doClear(editor: Editor): { success: boolean; message: string } {
     editor.app.editor.target = undefined;
 
     // 保存历史记录，使清空操作可撤销
-    editor.history.save();
+    editor.commitMutation();
 
     return {
       success: true,

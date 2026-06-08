@@ -6,13 +6,23 @@ import { builtinCorePlugin } from "../plugins/builtin-core";
 import { canvasDotMatrixPlugin } from "../plugins/canvas-dot-matrix";
 import { canvasRulerPlugin } from "../plugins/canvas-ruler";
 import { canvasSnapPlugin } from "../plugins/canvas-snap";
+import { drawingSettingsPlugin } from "../plugins/drawing-settings";
+import { exportActionsPlugin } from "../plugins/export-actions";
+import { fileActionsPlugin } from "../plugins/file-actions";
 import { flowShapesPlugin } from "../plugins/flow-shapes";
+import { templateActionsPlugin } from "../plugins/template-actions";
+import { viewControlsPlugin } from "../plugins/view-controls";
 
 export const builtinPlugins: EditorPluginModule[] = [
   builtinCorePlugin,
   canvasRulerPlugin,
   canvasSnapPlugin,
   canvasDotMatrixPlugin,
+  drawingSettingsPlugin,
+  viewControlsPlugin,
+  fileActionsPlugin,
+  exportActionsPlugin,
+  templateActionsPlugin,
   basicToolsPlugin,
   flowShapesPlugin,
   bpmnShapesPlugin,

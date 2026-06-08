@@ -8,6 +8,7 @@ import { ToolRegistry } from "./core/tool-registry";
 import { CommandRegistry } from "./core/command-registry";
 import { MenuRegistry } from "./core/menu-registry";
 import { ActionButtonRegistry } from "./core/action-button-registry";
+import { ViewControlRegistry } from "./core/view-control-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
@@ -26,6 +27,7 @@ export default class Editor {
   public commands: CommandRegistry;
   public menus: MenuRegistry;
   public actionButtons: ActionButtonRegistry;
+  public viewControls: ViewControlRegistry;
   private currentCursorClass: string = "";
   public snap?: Snap;
 
@@ -42,6 +44,7 @@ export default class Editor {
     this.commands = new CommandRegistry(this);
     this.menus = new MenuRegistry(this);
     this.actionButtons = new ActionButtonRegistry();
+    this.viewControls = new ViewControlRegistry();
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {
@@ -61,9 +64,19 @@ export default class Editor {
   }
 
   private saveAfterTransform() {
-    captureSelectedConnectorLabelOffsets(this.app);
-    syncConnectorLabels(this.app);
+    this.commitMutation({ syncConnectorLabels: true, autoSave: false });
+  }
+
+  commitMutation(options: { syncConnectorLabels?: boolean; autoSave?: boolean } = {}) {
+    if (options.syncConnectorLabels) {
+      captureSelectedConnectorLabelOffsets(this.app);
+      syncConnectorLabels(this.app);
+    }
+
     this.history.save();
+    if (options.autoSave ?? true) {
+      this.autoSave.save();
+    }
   }
 
   use<T>(plugin: IEditorPlugin): T {
@@ -103,8 +116,7 @@ export default class Editor {
 
     this.app.tree.add(element);
     this.app.editor.select(element);
-    this.history.save();
-    this.autoSave.save();
+    this.commitMutation();
     return element;
   }
 
@@ -156,7 +168,7 @@ export default class Editor {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
 
       // 保存历史记录
-      this.history.save();
+      this.commitMutation({ syncConnectorLabels: true });
 
       // 恢复选择器
       app.editor.config.selector = true;

@@ -29,7 +29,7 @@ function toggleCollapse() {
 </script>
 
 <template>
-  <div class="bg-base-100 rounded-lg shadow-md p-2 min-w-[220px]">
+  <div class="bg-base-100 rounded-lg shadow-md p-2 min-w-55">
     <div class="flex justify-between items-center mb-2">
       <span class="font-bold text-sm">状态信息</span>
       <button

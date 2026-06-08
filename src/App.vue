@@ -21,6 +21,7 @@ import type { ShapeLibraryGroup, ShapeLibraryItem } from "./editor/shape-library
 import { SHAPE_DROP_MIME } from "./editor/shape-library";
 import type { ToolToolbarGroup } from "./editor/api/tool";
 import type { ActionButtonGroupContribution } from "./editor/api/action-button";
+import type { ViewControlContribution } from "./editor/api/view-control";
 import type { CommandResult } from "./editor/api/command";
 import type { IExecuteArg, IExecuteCommand } from "./editor/types";
 
@@ -35,6 +36,7 @@ const activeTool = ref<string>(TOOL_NAME.SELECT);
 const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>([]);
 const runtimeToolbarGroups = ref<ToolToolbarGroup[]>([]);
 const runtimeActionButtonGroups = ref<ActionButtonGroupContribution[]>([]);
+const runtimeViewControls = ref<ViewControlContribution[]>([]);
 const runtimeToolLabels = ref<Record<string, string>>({ [TOOL_NAME.SELECT]: "选择" });
 const runtimeToolShortcuts = ref<Record<string, string>>({});
 const pluginMarketOpen = ref(false);
@@ -77,7 +79,7 @@ function initializeApp() {
   const loadResult = editor.value.autoSave.load();
   if (loadResult.loaded) {
     refreshEditorStats(editor.value);
-    editor.value.history.save();
+    editor.value.commitMutation({ autoSave: false });
     logRef.value?.addLog({ message: "已恢复上次编辑的数据", level: "info" });
     if (loadResult.failedConnectors > 0) {
       logRef.value?.addLog({
@@ -99,6 +101,7 @@ function refreshRuntimeToolContributions(currentEditor: Editor) {
   refreshShapeLibraryGroups(currentEditor);
   refreshToolbarGroups(currentEditor);
   refreshActionButtonGroups(currentEditor);
+  refreshViewControls(currentEditor);
   refreshToolLabels(currentEditor);
   refreshToolShortcuts(currentEditor);
 }
@@ -113,6 +116,10 @@ function refreshToolbarGroups(currentEditor: Editor) {
 
 function refreshActionButtonGroups(currentEditor: Editor) {
   runtimeActionButtonGroups.value = currentEditor.actionButtons.list();
+}
+
+function refreshViewControls(currentEditor: Editor) {
+  runtimeViewControls.value = currentEditor.viewControls.list();
 }
 
 function refreshToolLabels(currentEditor: Editor) {
@@ -375,7 +382,11 @@ function handlePluginMarketChanged() {
   </div>
 
   <div class="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
-    <ViewControls :zoom-percent="zoomPercent" @action="handleAction" />
+    <ViewControls
+      :zoom-percent="zoomPercent"
+      :controls="runtimeViewControls"
+      @action="handleAction"
+    />
   </div>
 
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
