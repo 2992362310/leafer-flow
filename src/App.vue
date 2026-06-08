@@ -45,7 +45,7 @@ import ContextMenu from "./components/ContextMenu.vue";
 import SelectionMarquee from "./components/SelectionMarquee.vue";
 import ShapeLibrary from "./components/ShapeLibrary.vue";
 import type { ShapeLibraryItem } from "./editor/shape-library";
-import { shapeLibraryGroups } from "./editor/shape-library";
+import { shapeLibraryGroups, SHAPE_DROP_MIME } from "./editor/shape-library";
 import type { IExecuteArg, IExecuteCommand } from "./editor/types";
 
 const editorRef = useTemplateRef("editorRef");
@@ -58,7 +58,81 @@ const zoomPercent = ref(100);
 const marquee = ref({ active: false, x: 0, y: 0, width: 0, height: 0 });
 let marqueeStart = { x: 0, y: 0 };
 let marqueeDragging = false;
-let cleanupMarquee: (() => void) | null = null;
+const cleanupCallbacks: Array<() => void> = [];
+
+type AlignAction =
+  | typeof ACTION_NAME.ALIGN_LEFT
+  | typeof ACTION_NAME.ALIGN_CENTER
+  | typeof ACTION_NAME.ALIGN_RIGHT
+  | typeof ACTION_NAME.ALIGN_TOP
+  | typeof ACTION_NAME.ALIGN_MIDDLE
+  | typeof ACTION_NAME.ALIGN_BOTTOM
+  | typeof ACTION_NAME.DISTRIBUTE_HORIZONTAL
+  | typeof ACTION_NAME.DISTRIBUTE_VERTICAL;
+type ActionResult = { success: boolean; message: string };
+type ActionRunner = {
+  run: (currentEditor: Editor) => ActionResult | Promise<ActionResult>;
+  warning?: boolean;
+  refreshZoom?: boolean;
+};
+
+const MARQUEE_MIN_SIZE = 6;
+
+const baseActionRunners: Record<string, ActionRunner> = {
+  [ACTION_NAME.CLEAR_CANVAS]: { run: doClear, warning: false },
+  [ACTION_NAME.UNDO]: { run: doUndo },
+  [ACTION_NAME.REDO]: { run: doRedo },
+  [ACTION_NAME.DELETE]: { run: doDelete },
+  [ACTION_NAME.GROUP]: { run: doGroup },
+  [ACTION_NAME.UNGROUP]: { run: doUnGroup },
+  [ACTION_NAME.SAVE]: { run: doSave, warning: false },
+  [ACTION_NAME.LOAD]: { run: doLoad, warning: false },
+  [ACTION_NAME.EXPORT_PNG]: { run: doExportPNG, warning: false },
+  [ACTION_NAME.EXPORT_SVG]: { run: doExportSVG, warning: false },
+  [ACTION_NAME.COPY]: { run: doCopy },
+  [ACTION_NAME.PASTE]: { run: doPaste },
+  [ACTION_NAME.ADD_CONNECTOR_LABEL]: { run: doAddConnectorLabel },
+  [ACTION_NAME.SELECT_ALL]: { run: doSelectAll },
+  [ACTION_NAME.CONNECTORS_TO_FRONT]: { run: doConnectorToFront },
+};
+
+const alignActions = new Set<string>([
+  ACTION_NAME.ALIGN_LEFT,
+  ACTION_NAME.ALIGN_CENTER,
+  ACTION_NAME.ALIGN_RIGHT,
+  ACTION_NAME.ALIGN_TOP,
+  ACTION_NAME.ALIGN_MIDDLE,
+  ACTION_NAME.ALIGN_BOTTOM,
+  ACTION_NAME.DISTRIBUTE_HORIZONTAL,
+  ACTION_NAME.DISTRIBUTE_VERTICAL,
+]);
+
+const layerActionMap = {
+  [ACTION_NAME.BRING_FORWARD]: "bringForward",
+  [ACTION_NAME.SEND_BACKWARD]: "sendBackward",
+  [ACTION_NAME.BRING_TO_FRONT]: "bringToFront",
+  [ACTION_NAME.SEND_TO_BACK]: "sendToBack",
+} as const;
+
+const templateActionMap = {
+  [ACTION_NAME.TEMPLATE_APPROVAL]: "approval",
+  [ACTION_NAME.TEMPLATE_DECISION]: "decision",
+  [ACTION_NAME.TEMPLATE_WORK_ORDER]: "workOrder",
+  [ACTION_NAME.TEMPLATE_CRM]: "crm",
+  [ACTION_NAME.TEMPLATE_LOGIN]: "login",
+  [ACTION_NAME.TEMPLATE_PAYMENT]: "payment",
+  [ACTION_NAME.TEMPLATE_BPMN_ORDER]: "bpmnOrder",
+  [ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE]: "systemArchitecture",
+  [ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION]: "swimlaneCollaboration",
+} as const;
+
+const viewActionMap = {
+  [ACTION_NAME.VIEW_FIT]: "fit",
+  [ACTION_NAME.VIEW_CENTER]: "center",
+  [ACTION_NAME.ZOOM_IN]: "zoomIn",
+  [ACTION_NAME.ZOOM_OUT]: "zoomOut",
+  [ACTION_NAME.ZOOM_RESET]: "reset",
+} as const;
 
 const { syncCurrentTool } = useEditorShortcuts({
   onTool: handleTool,
@@ -70,7 +144,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  cleanupMarquee?.();
+  cleanupCallbacks.splice(0).forEach((cleanup) => cleanup());
 });
 
 function initializeApp() {
@@ -82,14 +156,12 @@ function initializeApp() {
 
   editor.value.app.tree.on(WatchEvent.DATA, () => {
     if (!editor.value) return;
-    elementCount.value = editor.value.app.tree.children.length;
-    zoomPercent.value = getZoomPercent(editor.value);
+    refreshEditorStats(editor.value);
   });
 
   const loadResult = editor.value.autoSave.load();
   if (loadResult.loaded) {
-    elementCount.value = editor.value.app.tree.children.length;
-    zoomPercent.value = getZoomPercent(editor.value);
+    refreshEditorStats(editor.value);
     editor.value.history.save();
     logRef.value?.addLog({ message: "已恢复上次编辑的数据", level: "info" });
     if (loadResult.failedConnectors > 0) {
@@ -103,18 +175,27 @@ function initializeApp() {
   logRef.value?.addLog({ message: "应用初始化完成", level: "success" });
 }
 
+function refreshEditorStats(currentEditor: Editor) {
+  elementCount.value = currentEditor.app.tree.children.length;
+  zoomPercent.value = getZoomPercent(currentEditor);
+}
+
+function addCleanup(cleanup: () => void) {
+  cleanupCallbacks.push(cleanup);
+}
+
 function bindShapeDrop(currentEditor: Editor) {
   const container = currentEditor.app.view as HTMLElement;
   if (!container) return;
 
   const onDragOver = (evt: DragEvent) => {
-    if (!evt.dataTransfer?.types.includes("application/x-leafer-flow-shape")) return;
+    if (!evt.dataTransfer?.types.includes(SHAPE_DROP_MIME)) return;
     evt.preventDefault();
     evt.dataTransfer.dropEffect = "copy";
   };
 
   const onDrop = (evt: DragEvent) => {
-    const raw = evt.dataTransfer?.getData("application/x-leafer-flow-shape");
+    const raw = evt.dataTransfer?.getData(SHAPE_DROP_MIME);
     if (!raw) return;
 
     evt.preventDefault();
@@ -129,12 +210,10 @@ function bindShapeDrop(currentEditor: Editor) {
   container.addEventListener("dragover", onDragOver);
   container.addEventListener("drop", onDrop);
 
-  const previousCleanup = cleanupMarquee;
-  cleanupMarquee = () => {
-    previousCleanup?.();
+  addCleanup(() => {
     container.removeEventListener("dragover", onDragOver);
     container.removeEventListener("drop", onDrop);
-  };
+  });
 }
 
 function createShapeAtPointer(item: ShapeLibraryItem, evt: DragEvent) {
@@ -154,7 +233,7 @@ function createShapeAtPointer(item: ShapeLibraryItem, evt: DragEvent) {
     return;
   }
 
-  elementCount.value = editor.value.app.tree.children.length;
+  refreshEditorStats(editor.value);
   logRef.value?.addLog({ message: `已创建 ${item.label}`, level: "success" });
 }
 
@@ -185,11 +264,11 @@ function bindSelectionMarquee(currentEditor: Editor) {
   container.addEventListener("pointerdown", onDown);
   window.addEventListener("pointermove", onMove);
   window.addEventListener("pointerup", onUp);
-  cleanupMarquee = () => {
+  addCleanup(() => {
     container.removeEventListener("pointerdown", onDown);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
-  };
+  });
 }
 
 function getCanvasPoint(evt: PointerEvent, container: HTMLElement) {
@@ -229,7 +308,7 @@ function handleMarqueeUp(evt: PointerEvent, container: HTMLElement) {
   const height = Math.abs(point.y - marqueeStart.y);
   marquee.value.active = false;
 
-  if (width < 6 && height < 6) return;
+  if (width < MARQUEE_MIN_SIZE && height < MARQUEE_MIN_SIZE) return;
   selectWithinBounds({ x, y, width, height });
 }
 
@@ -272,7 +351,7 @@ function handleTool(evt: IExecuteCommand) {
   logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: "info" });
 }
 
-function logResult(result: { success: boolean; message: string }, warning = true) {
+function logResult(result: ActionResult, warning = true) {
   logRef.value?.addLog({
     message: result.message,
     level: result.success ? "success" : warning ? "warning" : "error",
@@ -280,126 +359,111 @@ function logResult(result: { success: boolean; message: string }, warning = true
 }
 
 function handleAction(action: string) {
-  if (!editor.value) return;
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
   logRef.value?.addLog({ message: `执行操作: ${action}` });
+  dispatchAction(currentEditor, action);
+}
 
-  if (action === ACTION_NAME.CLEAR_CANVAS) logResult(doClear(editor.value), false);
-  if (action === ACTION_NAME.UNDO) logResult(doUndo(editor.value));
-  if (action === ACTION_NAME.REDO) logResult(doRedo(editor.value));
-  if (action === ACTION_NAME.DELETE) logResult(doDelete(editor.value));
-  if (action === ACTION_NAME.GROUP) logResult(doGroup(editor.value));
-  if (action === ACTION_NAME.UNGROUP) logResult(doUnGroup(editor.value));
-  if (action === ACTION_NAME.SAVE) logResult(doSave(editor.value), false);
+function isAlignAction(action: string): action is AlignAction {
+  return alignActions.has(action);
+}
 
-  if (action === ACTION_NAME.LOAD) {
-    const result = doLoad(editor.value);
-    if (result instanceof Promise) result.then((r) => logResult(r, false));
-    else logResult(result, false);
+function dispatchAction(currentEditor: Editor, action: string) {
+  const runner = baseActionRunners[action];
+  if (runner) {
+    runAction(currentEditor, runner);
+    return;
   }
 
-  if (action === ACTION_NAME.EXPORT_PNG) logResult(doExportPNG(editor.value), false);
-  if (action === ACTION_NAME.EXPORT_SVG) logResult(doExportSVG(editor.value), false);
-  if (action === ACTION_NAME.COPY) logResult(doCopy(editor.value));
-  if (action === ACTION_NAME.PASTE) logResult(doPaste(editor.value));
-
-  if (
-    action === ACTION_NAME.ALIGN_LEFT ||
-    action === ACTION_NAME.ALIGN_CENTER ||
-    action === ACTION_NAME.ALIGN_RIGHT ||
-    action === ACTION_NAME.ALIGN_TOP ||
-    action === ACTION_NAME.ALIGN_MIDDLE ||
-    action === ACTION_NAME.ALIGN_BOTTOM ||
-    action === ACTION_NAME.DISTRIBUTE_HORIZONTAL ||
-    action === ACTION_NAME.DISTRIBUTE_VERTICAL
-  ) {
-    logResult(doAlign(editor.value, action));
+  if (isAlignAction(action)) {
+    logResult(doAlign(currentEditor, action));
+    return;
   }
 
-  if (action === ACTION_NAME.ADD_CONNECTOR_LABEL) logResult(doAddConnectorLabel(editor.value));
-  if (action === ACTION_NAME.SELECT_ALL) logResult(doSelectAll(editor.value));
-
-  if (
-    action === ACTION_NAME.BRING_FORWARD ||
-    action === ACTION_NAME.SEND_BACKWARD ||
-    action === ACTION_NAME.BRING_TO_FRONT ||
-    action === ACTION_NAME.SEND_TO_BACK
-  ) {
-    logResult(
-      doLayer(
-        editor.value,
-        action as "bringForward" | "sendBackward" | "bringToFront" | "sendToBack",
-      ),
-    );
+  if (action in layerActionMap) {
+    logResult(doLayer(currentEditor, layerActionMap[action as keyof typeof layerActionMap]));
+    return;
   }
 
-  if (action === ACTION_NAME.LOCK_SELECTED) logResult(doToggleLock(editor.value, true));
-  if (action === ACTION_NAME.UNLOCK_SELECTED) logResult(doToggleLock(editor.value, false));
+  if (action === ACTION_NAME.LOCK_SELECTED) {
+    logResult(doToggleLock(currentEditor, true));
+    return;
+  }
+
+  if (action === ACTION_NAME.UNLOCK_SELECTED) {
+    logResult(doToggleLock(currentEditor, false));
+    return;
+  }
+
   if (action === ACTION_NAME.TOGGLE_VISIBLE) {
-    const selected = editor.value.app.editor.list || [];
+    const selected = currentEditor.app.editor.list || [];
     logResult(
       doToggleVisible(
-        editor.value,
+        currentEditor,
         selected.some((item) => !item.visible),
       ),
     );
+    return;
   }
 
   if (action === ACTION_NAME.TOGGLE_SNAP) {
-    const next = !getSnapEnabled();
-    setSnapEnabled(next);
-    editor.value.snap?.enable(next);
-    logRef.value?.addLog({ message: next ? "已开启吸附" : "已关闭吸附", level: "info" });
+    toggleSnap(currentEditor);
+    return;
   }
 
-  if (action === ACTION_NAME.CONNECTORS_TO_FRONT) logResult(doConnectorToFront(editor.value));
-
-  if (
-    action.startsWith("nudgeLeft") ||
-    action.startsWith("nudgeRight") ||
-    action.startsWith("nudgeUp") ||
-    action.startsWith("nudgeDown")
-  ) {
-    const step = Number(action.split(":")[1] || 1);
-    logResult(
-      doNudge(
-        editor.value,
-        action.startsWith("nudgeLeft") ? -step : action.startsWith("nudgeRight") ? step : 0,
-        action.startsWith("nudgeUp") ? -step : action.startsWith("nudgeDown") ? step : 0,
-      ),
-    );
+  const nudge = parseNudgeAction(action);
+  if (nudge) {
+    logResult(doNudge(currentEditor, nudge.x, nudge.y));
+    return;
   }
-
-  const templateActionMap = {
-    [ACTION_NAME.TEMPLATE_APPROVAL]: "approval",
-    [ACTION_NAME.TEMPLATE_DECISION]: "decision",
-    [ACTION_NAME.TEMPLATE_WORK_ORDER]: "workOrder",
-    [ACTION_NAME.TEMPLATE_CRM]: "crm",
-    [ACTION_NAME.TEMPLATE_LOGIN]: "login",
-    [ACTION_NAME.TEMPLATE_PAYMENT]: "payment",
-    [ACTION_NAME.TEMPLATE_BPMN_ORDER]: "bpmnOrder",
-    [ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE]: "systemArchitecture",
-    [ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION]: "swimlaneCollaboration",
-  } as const;
 
   if (action in templateActionMap) {
     logResult(
-      doInsertTemplate(editor.value, templateActionMap[action as keyof typeof templateActionMap]),
+      doInsertTemplate(currentEditor, templateActionMap[action as keyof typeof templateActionMap]),
     );
-    zoomPercent.value = getZoomPercent(editor.value);
+    refreshEditorStats(currentEditor);
+    return;
   }
-
-  const viewActionMap = {
-    [ACTION_NAME.VIEW_FIT]: "fit",
-    [ACTION_NAME.VIEW_CENTER]: "center",
-    [ACTION_NAME.ZOOM_IN]: "zoomIn",
-    [ACTION_NAME.ZOOM_OUT]: "zoomOut",
-    [ACTION_NAME.ZOOM_RESET]: "reset",
-  } as const;
 
   if (action in viewActionMap) {
-    logResult(doViewAction(editor.value, viewActionMap[action as keyof typeof viewActionMap]));
-    zoomPercent.value = getZoomPercent(editor.value);
+    logResult(doViewAction(currentEditor, viewActionMap[action as keyof typeof viewActionMap]));
+    refreshEditorStats(currentEditor);
   }
+}
+
+function runAction(currentEditor: Editor, runner: ActionRunner) {
+  const result = runner.run(currentEditor);
+  if (result instanceof Promise) {
+    result.then((resolved) => {
+      logResult(resolved, runner.warning);
+      if (runner.refreshZoom) refreshEditorStats(currentEditor);
+    });
+    return;
+  }
+
+  logResult(result, runner.warning);
+  if (runner.refreshZoom) refreshEditorStats(currentEditor);
+}
+
+function toggleSnap(currentEditor: Editor) {
+  const next = !getSnapEnabled();
+  setSnapEnabled(next);
+  currentEditor.snap?.enable(next);
+  logRef.value?.addLog({ message: next ? "已开启吸附" : "已关闭吸附", level: "info" });
+}
+
+function parseNudgeAction(action: string) {
+  const match = /^(nudgeLeft|nudgeRight|nudgeUp|nudgeDown)(?::(\d+))?$/.exec(action);
+  if (!match) return null;
+
+  const direction = match[1];
+  const step = Number(match[2] || 1);
+  return {
+    x: direction === "nudgeLeft" ? -step : direction === "nudgeRight" ? step : 0,
+    y: direction === "nudgeUp" ? -step : direction === "nudgeDown" ? step : 0,
+  };
 }
 
 function handleContextMenuAction({
@@ -425,7 +489,7 @@ function handleContextMenuAction({
   <ShapeLibrary @tool="handleLibraryTool" />
 
   <div
-    class="absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200 rounded-xl !top-12 !left-[calc(50%+5rem)] -translate-x-1/2"
+    class="absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200 rounded-xl top-12! left-[calc(50%+5rem)]! -translate-x-1/2"
   >
     <EditorToolbar @tool="handleTool" ref="toolbarRef" />
     <span class="divider divider-horizontal mx-0 my-1"></span>
