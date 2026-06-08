@@ -3,11 +3,12 @@ import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from "./t
 import { TOOL_NAME } from "./constants";
 import { HistoryManager } from "./core/history";
 import { AutoSave } from "./core/auto-save";
+import { PluginManager } from "./core/plugin-manager";
+import { ToolRegistry } from "./core/tool-registry";
+import { CommandRegistry } from "./core/command-registry";
+import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
-import {
-  captureSelectedConnectorLabelOffsets,
-  syncConnectorLabels,
-} from "./core/connector-labels";
+import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
 
 const INIT_CONFIG = {
   view: window,
@@ -19,6 +20,9 @@ export default class Editor {
   app: App;
   plugins: IEditorPlugin[] = [];
   tools = new Map<string, IEditorTool>();
+  public pluginManager: PluginManager;
+  public toolRegistry: ToolRegistry;
+  public commands: CommandRegistry;
   private currentCursorClass: string = "";
   public snap?: Snap;
 
@@ -30,6 +34,9 @@ export default class Editor {
     this.app = app;
     this.history = new HistoryManager(app);
     this.autoSave = new AutoSave(app);
+    this.pluginManager = new PluginManager(this);
+    this.toolRegistry = new ToolRegistry(this);
+    this.commands = new CommandRegistry(this);
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {
@@ -65,9 +72,28 @@ export default class Editor {
   }
 
   register(name: string, tool: IEditorTool) {
-    tool.init(this);
-    this.tools.set(name, tool);
-    return tool;
+    const registered = this.toolRegistry.registerLegacy(name, tool);
+    this.tools.set(name, registered);
+    return registered;
+  }
+
+  registerTool(contribution: ToolContribution) {
+    const registered = this.toolRegistry.register(contribution);
+    this.tools.set(contribution.id, registered.tool);
+    return registered;
+  }
+
+  unregisterTool(id: string) {
+    this.toolRegistry.unregister(id);
+    this.tools.delete(id);
+  }
+
+  unregisterToolsByPlugin(pluginId: string) {
+    this.toolRegistry
+      .list()
+      .filter((contribution) => contribution.pluginId === pluginId)
+      .forEach((contribution) => this.tools.delete(contribution.id));
+    this.toolRegistry.unregisterByPlugin(pluginId);
   }
 
   createElementFromTool(

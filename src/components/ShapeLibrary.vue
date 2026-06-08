@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { ShapeLibraryGroup, ShapeLibraryItem } from "../editor/shape-library";
-import { TOOL_NAME, type ToolName } from "../editor/constants";
+import { TOOL_NAME } from "../editor/constants";
 import {
   getShapeLibrarySearchText,
   shapeLibraryGroups,
@@ -11,6 +11,7 @@ import Icon from "./Icon.vue";
 
 const props = defineProps<{
   activeTool?: string;
+  groups?: ShapeLibraryGroup[];
 }>();
 
 const emit = defineEmits<{
@@ -23,7 +24,7 @@ const SHAPE_LIBRARY_COLLAPSED_KEY = "leafer-flow-shape-library-collapsed";
 const SHAPE_LIBRARY_POSITION_KEY = "leafer-flow-shape-library-position";
 const DEFAULT_PANEL_POSITION = { x: 12, y: 96 };
 const PANEL_MARGIN = 8;
-const DEFAULT_COLLAPSED_TOOLS: ToolName[] = [
+const DEFAULT_COLLAPSED_TOOLS = [
   TOOL_NAME.DRAW_RECT,
   TOOL_NAME.DRAW_CIRCLE,
   TOOL_NAME.DRAW_DIAMOND,
@@ -46,13 +47,14 @@ interface DragState {
 
 const query = ref("");
 const collapsed = ref(false);
-const recentTools = ref<ToolName[]>([]);
+const recentTools = ref<string[]>([]);
 const panelRef = ref<HTMLElement | null>(null);
 const panelPosition = ref<PanelPosition>({ ...DEFAULT_PANEL_POSITION });
 const dragging = ref(false);
 let dragState: DragState | null = null;
 
-const allItems = computed(() => shapeLibraryGroups.flatMap((group) => group.items));
+const libraryGroups = computed(() => (props.groups?.length ? props.groups : shapeLibraryGroups));
+const allItems = computed(() => libraryGroups.value.flatMap((group) => group.items));
 const itemMap = computed(() => new Map(allItems.value.map((item) => [item.tool, item])));
 const recentItems = computed(() =>
   recentTools.value
@@ -68,7 +70,7 @@ const collapsedShortcutItems = computed(() => {
 });
 
 const displayGroups = computed<ShapeLibraryGroup[]>(() => {
-  const groups = [...shapeLibraryGroups];
+  const groups = [...libraryGroups.value];
   if (recentItems.value.length > 0) {
     groups.unshift({ id: "recent", title: "最近使用", items: recentItems.value });
   }
@@ -79,7 +81,7 @@ const filteredGroups = computed(() => {
   const keyword = query.value.trim().toLowerCase();
   if (!keyword) return displayGroups.value;
 
-  return shapeLibraryGroups
+  return libraryGroups.value
     .map((group) => {
       const groupMatched = group.title.toLowerCase().includes(keyword);
       return {
@@ -255,19 +257,17 @@ function loadRecentTools() {
 
     const tools = JSON.parse(raw) as string[];
     if (!Array.isArray(tools)) return;
-    recentTools.value = tools
-      .filter((tool): tool is ToolName => isKnownTool(tool))
-      .slice(0, RECENT_SHAPES_LIMIT);
+    recentTools.value = tools.filter(isKnownTool).slice(0, RECENT_SHAPES_LIMIT);
   } catch (error) {
     console.warn("读取最近使用图形失败", error);
   }
 }
 
-function isKnownTool(tool: string): tool is ToolName {
-  return itemMap.value.has(tool as ToolName);
+function isKnownTool(tool: string) {
+  return itemMap.value.has(tool);
 }
 
-function rememberShape(tool: ToolName) {
+function rememberShape(tool: string) {
   recentTools.value = [tool, ...recentTools.value.filter((item) => item !== tool)].slice(
     0,
     RECENT_SHAPES_LIMIT,

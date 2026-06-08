@@ -1,18 +1,7 @@
 import Editor from "./editor";
-import { TOOL_NAME } from "./constants";
-
-import { editorDotMatrix } from "./plugins/dot-matrix";
-import { editorRuler } from "./plugins/ruler";
-import { editorSnap } from "./plugins/snap";
-
-import { DrawArrow } from "./tools/draw-arrow";
-import { DrawCircle } from "./tools/draw-circle";
-import { DrawDiamond } from "./tools/draw-diamond";
-import { DrawFlowNode, type FlowNodeKind } from "./tools/draw-flow-node";
-import { DrawFreehand } from "./tools/draw-freehand";
-import { DrawRect } from "./tools/draw-rect";
-import { DrawText } from "./tools/draw-text";
-import { toolDefinitions, type ToolDefinition } from "./tool-definitions";
+import { registerDefaultCommands } from "./builtin/commands/default-commands";
+import { builtinPlugins } from "./builtin/plugins";
+import { getEnabledPluginIds } from "./plugins/market/builtin-registry";
 
 import { doAlign } from "./action/do-align";
 import { doClear } from "./action/do-clear";
@@ -47,49 +36,19 @@ export function initEditor(view: HTMLElement) {
     tree: { type: "design" },
   });
 
-  editor.use(editorRuler);
-  editor.use(editorSnap);
-  editor.use(editorDotMatrix);
-
-  registerTools(editor);
+  registerDefaultCommands(editor);
+  activateEnabledPlugins(editor);
 
   return editor;
 }
 
-function registerTools(editor: Editor) {
-  toolDefinitions.forEach((definition) => {
-    editor.register(definition.tool, createTool(definition));
+function activateEnabledPlugins(editor: Editor) {
+  const enabledIds = new Set(getEnabledPluginIds());
+  builtinPlugins.forEach((plugin) => {
+    if (enabledIds.has(plugin.manifest.id)) {
+      void editor.pluginManager.activate(plugin);
+    }
   });
-}
-
-function createTool(definition: ToolDefinition) {
-  const { registration } = definition;
-
-  if (registration.type === "flow-node") {
-    return new DrawFlowNode({
-      kind: registration.kind as FlowNodeKind,
-      label: definition.label,
-      fill: registration.fill,
-      stroke: registration.stroke,
-      strokeWidth: registration.strokeWidth,
-      cornerRadius: registration.cornerRadius,
-    });
-  }
-
-  switch (registration.toolKind) {
-    case "rect":
-      return new DrawRect();
-    case "arrow":
-      return new DrawArrow();
-    case "circle":
-      return new DrawCircle();
-    case "diamond":
-      return new DrawDiamond();
-    case "text":
-      return new DrawText();
-    case "freehand":
-      return new DrawFreehand();
-  }
 }
 
 export {

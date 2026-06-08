@@ -2,37 +2,9 @@
 import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from "vue";
 import type { IUI } from "leafer";
 import { WatchEvent } from "leafer";
-import {
-  initEditor,
-  type Editor,
-  doClear,
-  doUndo,
-  doRedo,
-  doConnectorToFront,
-  doDelete,
-  doGroup,
-  doUnGroup,
-  doSave,
-  doLoad,
-  doExportPNG,
-  doExportSVG,
-  doCopy,
-  doPaste,
-  doAlign,
-  doAddConnectorLabel,
-  doSelectAll,
-  doInsertTemplate,
-  doViewAction,
-  getZoomPercent,
-  doNudge,
-  doLayer,
-  doToggleLock,
-  doToggleVisible,
-  getSnapEnabled,
-  setSnapEnabled,
-} from "./editor";
+import { initEditor, type Editor, getZoomPercent } from "./editor";
 import { useEditorShortcuts } from "./editor/shortcuts";
-import { ACTION_NAME, TOOL_NAME } from "./editor/constants";
+import { TOOL_NAME } from "./editor/constants";
 import { collectSelectableItems } from "./editor/utils/selection";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import EditorButton from "./components/EditorButton.vue";
@@ -44,8 +16,11 @@ import ViewControls from "./components/ViewControls.vue";
 import ContextMenu from "./components/ContextMenu.vue";
 import SelectionMarquee from "./components/SelectionMarquee.vue";
 import ShapeLibrary from "./components/ShapeLibrary.vue";
-import type { ShapeLibraryItem } from "./editor/shape-library";
+import PluginMarketDrawer from "./components/PluginMarket/PluginMarketDrawer.vue";
+import type { ShapeLibraryGroup, ShapeLibraryItem } from "./editor/shape-library";
 import { shapeLibraryGroups, SHAPE_DROP_MIME } from "./editor/shape-library";
+import type { ToolToolbarGroup } from "./editor/api/tool";
+import type { CommandResult } from "./editor/api/command";
 import type { IExecuteArg, IExecuteCommand } from "./editor/types";
 
 const editorRef = useTemplateRef("editorRef");
@@ -56,84 +31,17 @@ const editor = shallowRef<Editor>();
 const elementCount = ref(0);
 const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
+const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>(shapeLibraryGroups);
+const runtimeToolbarGroups = ref<ToolToolbarGroup[]>([]);
+const pluginMarketOpen = ref(false);
 const marquee = ref({ active: false, x: 0, y: 0, width: 0, height: 0 });
 let marqueeStart = { x: 0, y: 0 };
 let marqueeDragging = false;
 const cleanupCallbacks: Array<() => void> = [];
 
-type AlignAction =
-  | typeof ACTION_NAME.ALIGN_LEFT
-  | typeof ACTION_NAME.ALIGN_CENTER
-  | typeof ACTION_NAME.ALIGN_RIGHT
-  | typeof ACTION_NAME.ALIGN_TOP
-  | typeof ACTION_NAME.ALIGN_MIDDLE
-  | typeof ACTION_NAME.ALIGN_BOTTOM
-  | typeof ACTION_NAME.DISTRIBUTE_HORIZONTAL
-  | typeof ACTION_NAME.DISTRIBUTE_VERTICAL;
-type ActionResult = { success: boolean; message: string };
-type ActionRunner = {
-  run: (currentEditor: Editor) => ActionResult | Promise<ActionResult>;
-  warning?: boolean;
-  refreshZoom?: boolean;
-};
+type ActionResult = CommandResult;
 
 const MARQUEE_MIN_SIZE = 6;
-
-const baseActionRunners: Record<string, ActionRunner> = {
-  [ACTION_NAME.CLEAR_CANVAS]: { run: doClear, warning: false },
-  [ACTION_NAME.UNDO]: { run: doUndo },
-  [ACTION_NAME.REDO]: { run: doRedo },
-  [ACTION_NAME.DELETE]: { run: doDelete },
-  [ACTION_NAME.GROUP]: { run: doGroup },
-  [ACTION_NAME.UNGROUP]: { run: doUnGroup },
-  [ACTION_NAME.SAVE]: { run: doSave, warning: false },
-  [ACTION_NAME.LOAD]: { run: doLoad, warning: false },
-  [ACTION_NAME.EXPORT_PNG]: { run: doExportPNG, warning: false },
-  [ACTION_NAME.EXPORT_SVG]: { run: doExportSVG, warning: false },
-  [ACTION_NAME.COPY]: { run: doCopy },
-  [ACTION_NAME.PASTE]: { run: doPaste },
-  [ACTION_NAME.ADD_CONNECTOR_LABEL]: { run: doAddConnectorLabel },
-  [ACTION_NAME.SELECT_ALL]: { run: doSelectAll },
-  [ACTION_NAME.CONNECTORS_TO_FRONT]: { run: doConnectorToFront },
-};
-
-const alignActions = new Set<string>([
-  ACTION_NAME.ALIGN_LEFT,
-  ACTION_NAME.ALIGN_CENTER,
-  ACTION_NAME.ALIGN_RIGHT,
-  ACTION_NAME.ALIGN_TOP,
-  ACTION_NAME.ALIGN_MIDDLE,
-  ACTION_NAME.ALIGN_BOTTOM,
-  ACTION_NAME.DISTRIBUTE_HORIZONTAL,
-  ACTION_NAME.DISTRIBUTE_VERTICAL,
-]);
-
-const layerActionMap = {
-  [ACTION_NAME.BRING_FORWARD]: "bringForward",
-  [ACTION_NAME.SEND_BACKWARD]: "sendBackward",
-  [ACTION_NAME.BRING_TO_FRONT]: "bringToFront",
-  [ACTION_NAME.SEND_TO_BACK]: "sendToBack",
-} as const;
-
-const templateActionMap = {
-  [ACTION_NAME.TEMPLATE_APPROVAL]: "approval",
-  [ACTION_NAME.TEMPLATE_DECISION]: "decision",
-  [ACTION_NAME.TEMPLATE_WORK_ORDER]: "workOrder",
-  [ACTION_NAME.TEMPLATE_CRM]: "crm",
-  [ACTION_NAME.TEMPLATE_LOGIN]: "login",
-  [ACTION_NAME.TEMPLATE_PAYMENT]: "payment",
-  [ACTION_NAME.TEMPLATE_BPMN_ORDER]: "bpmnOrder",
-  [ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE]: "systemArchitecture",
-  [ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION]: "swimlaneCollaboration",
-} as const;
-
-const viewActionMap = {
-  [ACTION_NAME.VIEW_FIT]: "fit",
-  [ACTION_NAME.VIEW_CENTER]: "center",
-  [ACTION_NAME.ZOOM_IN]: "zoomIn",
-  [ACTION_NAME.ZOOM_OUT]: "zoomOut",
-  [ACTION_NAME.ZOOM_RESET]: "reset",
-} as const;
 
 const { syncCurrentTool } = useEditorShortcuts({
   onTool: handleTool,
@@ -152,6 +60,7 @@ function initializeApp() {
   if (!editorRef.value) return;
 
   editor.value = initEditor(editorRef.value);
+  refreshRuntimeToolContributions(editor.value);
   bindSelectionMarquee(editor.value);
   bindShapeDrop(editor.value);
 
@@ -179,6 +88,20 @@ function initializeApp() {
 function refreshEditorStats(currentEditor: Editor) {
   elementCount.value = currentEditor.app.tree.children.length;
   zoomPercent.value = getZoomPercent(currentEditor);
+}
+
+function refreshRuntimeToolContributions(currentEditor: Editor) {
+  refreshShapeLibraryGroups(currentEditor);
+  refreshToolbarGroups(currentEditor);
+}
+
+function refreshShapeLibraryGroups(currentEditor: Editor) {
+  const groups = currentEditor.toolRegistry.getShapeLibraryGroups();
+  runtimeShapeLibraryGroups.value = groups.length > 0 ? groups : shapeLibraryGroups;
+}
+
+function refreshToolbarGroups(currentEditor: Editor) {
+  runtimeToolbarGroups.value = currentEditor.toolRegistry.getToolbarGroups();
 }
 
 function addCleanup(cleanup: () => void) {
@@ -247,7 +170,7 @@ function handleLibraryTool(tool: string) {
 }
 
 function findShapeItem(tool: string) {
-  for (const group of shapeLibraryGroups) {
+  for (const group of runtimeShapeLibraryGroups.value) {
     const item = group.items.find((entry) => entry.tool === tool);
     if (item) return item;
   }
@@ -361,112 +284,25 @@ function logResult(result: ActionResult, warning = true) {
   });
 }
 
-function handleAction(action: string) {
+async function handleAction(action: string) {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
   logRef.value?.addLog({ message: `执行操作: ${action}` });
-  dispatchAction(currentEditor, action);
+  const result = await currentEditor.commands.execute(action);
+  logResult(result, result.warning);
+  if (result.refreshZoom) refreshEditorStats(currentEditor);
 }
 
-function isAlignAction(action: string): action is AlignAction {
-  return alignActions.has(action);
-}
+function handlePluginMarketChanged() {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
 
-function dispatchAction(currentEditor: Editor, action: string) {
-  const runner = baseActionRunners[action];
-  if (runner) {
-    runAction(currentEditor, runner);
-    return;
-  }
-
-  if (isAlignAction(action)) {
-    logResult(doAlign(currentEditor, action));
-    return;
-  }
-
-  if (action in layerActionMap) {
-    logResult(doLayer(currentEditor, layerActionMap[action as keyof typeof layerActionMap]));
-    return;
-  }
-
-  if (action === ACTION_NAME.LOCK_SELECTED) {
-    logResult(doToggleLock(currentEditor, true));
-    return;
-  }
-
-  if (action === ACTION_NAME.UNLOCK_SELECTED) {
-    logResult(doToggleLock(currentEditor, false));
-    return;
-  }
-
-  if (action === ACTION_NAME.TOGGLE_VISIBLE) {
-    const selected = currentEditor.app.editor.list || [];
-    logResult(
-      doToggleVisible(
-        currentEditor,
-        selected.some((item) => !item.visible),
-      ),
-    );
-    return;
-  }
-
-  if (action === ACTION_NAME.TOGGLE_SNAP) {
-    toggleSnap(currentEditor);
-    return;
-  }
-
-  const nudge = parseNudgeAction(action);
-  if (nudge) {
-    logResult(doNudge(currentEditor, nudge.x, nudge.y));
-    return;
-  }
-
-  if (action in templateActionMap) {
-    logResult(
-      doInsertTemplate(currentEditor, templateActionMap[action as keyof typeof templateActionMap]),
-    );
-    refreshEditorStats(currentEditor);
-    return;
-  }
-
-  if (action in viewActionMap) {
-    logResult(doViewAction(currentEditor, viewActionMap[action as keyof typeof viewActionMap]));
-    refreshEditorStats(currentEditor);
-  }
-}
-
-function runAction(currentEditor: Editor, runner: ActionRunner) {
-  const result = runner.run(currentEditor);
-  if (result instanceof Promise) {
-    result.then((resolved) => {
-      logResult(resolved, runner.warning);
-      if (runner.refreshZoom) refreshEditorStats(currentEditor);
-    });
-    return;
-  }
-
-  logResult(result, runner.warning);
-  if (runner.refreshZoom) refreshEditorStats(currentEditor);
-}
-
-function toggleSnap(currentEditor: Editor) {
-  const next = !getSnapEnabled();
-  setSnapEnabled(next);
-  currentEditor.snap?.enable(next);
-  logRef.value?.addLog({ message: next ? "已开启吸附" : "已关闭吸附", level: "info" });
-}
-
-function parseNudgeAction(action: string) {
-  const match = /^(nudgeLeft|nudgeRight|nudgeUp|nudgeDown)(?::(\d+))?$/.exec(action);
-  if (!match) return null;
-
-  const direction = match[1];
-  const step = Number(match[2] || 1);
-  return {
-    x: direction === "nudgeLeft" ? -step : direction === "nudgeRight" ? step : 0,
-    y: direction === "nudgeUp" ? -step : direction === "nudgeDown" ? step : 0,
-  };
+  refreshRuntimeToolContributions(currentEditor);
+  activeTool.value = TOOL_NAME.SELECT;
+  toolbarRef.value?.changeTool(TOOL_NAME.SELECT);
+  syncCurrentTool(TOOL_NAME.SELECT);
+  logRef.value?.addLog({ message: "插件状态已更新", level: "success" });
 }
 
 function handleContextMenuAction({
@@ -489,12 +325,18 @@ function handleContextMenuAction({
     :height="marquee.height"
   />
 
-  <ShapeLibrary :active-tool="activeTool" @tool="handleLibraryTool" />
+  <ShapeLibrary
+    :active-tool="activeTool"
+    :groups="runtimeShapeLibraryGroups"
+    @tool="handleLibraryTool"
+  />
 
   <div
     class="absolute z-10 px-2 py-1.5 w-max flex gap-1 bg-base-100/90 backdrop-blur shadow-lg border border-base-200 rounded-xl top-12! left-[calc(50%+5rem)]! -translate-x-1/2"
   >
-    <EditorToolbar @tool="handleTool" ref="toolbarRef" />
+    <EditorToolbar :groups="runtimeToolbarGroups" @tool="handleTool" ref="toolbarRef" />
+    <span class="divider divider-horizontal mx-0 my-1"></span>
+    <button class="btn btn-sm h-9" @click="pluginMarketOpen = true">插件</button>
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <EditorButton @action="handleAction" />
   </div>
@@ -512,4 +354,10 @@ function handleContextMenuAction({
 
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
   <ContextMenu :editor="editor" @action="handleContextMenuAction" />
+  <PluginMarketDrawer
+    :editor="editor"
+    :open="pluginMarketOpen"
+    @close="pluginMarketOpen = false"
+    @changed="handlePluginMarketChanged"
+  />
 </template>

@@ -53,7 +53,6 @@ const shapeSearchAliases: Partial<Record<ToolName, string[]>> = {
 };
 
 export function getShapeLibrarySearchText(item: ShapeLibraryItem) {
-  return [item.label, item.tool, ...item.keywords, ...(shapeSearchAliases[item.tool] ?? [])]
-    .join(" ")
-    .toLowerCase();
+  const aliases = shapeSearchAliases[item.tool as ToolName] ?? [];
+  return [item.label, item.tool, ...item.keywords, ...aliases].join(" ").toLowerCase();
 }

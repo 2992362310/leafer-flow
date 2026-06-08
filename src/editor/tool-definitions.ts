@@ -3,7 +3,7 @@ import { TOOL_NAME, type ToolName } from "./constants";
 import type { FlowNodeKind } from "./tools/draw-flow-node";
 
 export interface ShapeLibraryItem {
-  tool: ToolName;
+  tool: string;
   icon: IconName;
   label: string;
   keywords: string[];
@@ -30,17 +30,17 @@ interface ToolLibraryConfig {
 
 type ToolRegistrationConfig =
   | {
-    type: "class";
-    toolKind: ClassToolKind;
-  }
+      type: "class";
+      toolKind: ClassToolKind;
+    }
   | {
-    type: "flow-node";
-    kind: FlowNodeKind;
-    fill: string;
-    stroke: string;
-    strokeWidth?: number;
-    cornerRadius?: number;
-  };
+      type: "flow-node";
+      kind: FlowNodeKind;
+      fill: string;
+      stroke: string;
+      strokeWidth?: number;
+      cornerRadius?: number;
+    };
 
 interface BaseToolDefinition {
   tool: ToolName;
@@ -307,7 +307,12 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.FLOW_MANUAL_OPERATION,
     label: "手动操作",
-    registration: { type: "flow-node", kind: "manualOperation", fill: "#f5f3ff", stroke: "#7c3aed" },
+    registration: {
+      type: "flow-node",
+      kind: "manualOperation",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    },
     library: {
       groupId: "flow",
       icon: "flow_manual_operation",
@@ -427,7 +432,12 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_EXCLUSIVE_GATEWAY,
     label: "排他网关",
-    registration: { type: "flow-node", kind: "bpmnExclusiveGateway", fill: "#fffbeb", stroke: "#d97706" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnExclusiveGateway",
+      fill: "#fffbeb",
+      stroke: "#d97706",
+    },
     library: {
       groupId: "bpmn",
       icon: "bpmn_exclusive_gateway",
@@ -439,7 +449,12 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_PARALLEL_GATEWAY,
     label: "并行网关",
-    registration: { type: "flow-node", kind: "bpmnParallelGateway", fill: "#eff6ff", stroke: "#2563eb" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnParallelGateway",
+      fill: "#eff6ff",
+      stroke: "#2563eb",
+    },
     library: {
       groupId: "bpmn",
       icon: "bpmn_parallel_gateway",
@@ -451,7 +466,12 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     tool: TOOL_NAME.BPMN_INCLUSIVE_GATEWAY,
     label: "包容网关",
-    registration: { type: "flow-node", kind: "bpmnInclusiveGateway", fill: "#f5f3ff", stroke: "#7c3aed" },
+    registration: {
+      type: "flow-node",
+      kind: "bpmnInclusiveGateway",
+      fill: "#f5f3ff",
+      stroke: "#7c3aed",
+    },
     library: {
       groupId: "bpmn",
       icon: "bpmn_inclusive_gateway",
