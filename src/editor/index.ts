@@ -1,6 +1,7 @@
 import Editor from "./editor";
 import { registerDefaultCommands } from "./builtin/commands/default-commands";
 import { registerDefaultMenus } from "./builtin/commands/default-menus";
+import { registerDefaultActionButtons } from "./builtin/commands/default-action-buttons";
 import { builtinPlugins } from "./builtin/plugins";
 import { getEnabledPluginIds } from "./plugins/market/builtin-registry";
 
@@ -39,6 +40,7 @@ export function initEditor(view: HTMLElement) {
 
   registerDefaultCommands(editor);
   registerDefaultMenus(editor);
+  registerDefaultActionButtons(editor);
   activateEnabledPlugins(editor);
 
   return editor;

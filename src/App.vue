@@ -20,6 +20,7 @@ import PluginMarketDrawer from "./components/PluginMarket/PluginMarketDrawer.vue
 import type { ShapeLibraryGroup, ShapeLibraryItem } from "./editor/shape-library";
 import { shapeLibraryGroups, SHAPE_DROP_MIME } from "./editor/shape-library";
 import type { ToolToolbarGroup } from "./editor/api/tool";
+import type { ActionButtonGroupContribution } from "./editor/api/action-button";
 import type { CommandResult } from "./editor/api/command";
 import type { IExecuteArg, IExecuteCommand } from "./editor/types";
 
@@ -33,6 +34,7 @@ const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
 const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>(shapeLibraryGroups);
 const runtimeToolbarGroups = ref<ToolToolbarGroup[]>([]);
+const runtimeActionButtonGroups = ref<ActionButtonGroupContribution[]>([]);
 const pluginMarketOpen = ref(false);
 const marquee = ref({ active: false, x: 0, y: 0, width: 0, height: 0 });
 let marqueeStart = { x: 0, y: 0 };
@@ -93,6 +95,7 @@ function refreshEditorStats(currentEditor: Editor) {
 function refreshRuntimeToolContributions(currentEditor: Editor) {
   refreshShapeLibraryGroups(currentEditor);
   refreshToolbarGroups(currentEditor);
+  refreshActionButtonGroups(currentEditor);
 }
 
 function refreshShapeLibraryGroups(currentEditor: Editor) {
@@ -102,6 +105,10 @@ function refreshShapeLibraryGroups(currentEditor: Editor) {
 
 function refreshToolbarGroups(currentEditor: Editor) {
   runtimeToolbarGroups.value = currentEditor.toolRegistry.getToolbarGroups();
+}
+
+function refreshActionButtonGroups(currentEditor: Editor) {
+  runtimeActionButtonGroups.value = currentEditor.actionButtons.list();
 }
 
 function addCleanup(cleanup: () => void) {
@@ -329,7 +336,7 @@ function handlePluginMarketChanged() {
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <button class="btn btn-sm h-9" @click="pluginMarketOpen = true">插件</button>
     <span class="divider divider-horizontal mx-0 my-1"></span>
-    <EditorButton @action="handleAction" />
+    <EditorButton :groups="runtimeActionButtonGroups" @action="handleAction" />
   </div>
 
   <LayerPanel :editor="editor" />

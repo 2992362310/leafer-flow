@@ -7,6 +7,7 @@ import { PluginManager } from "./core/plugin-manager";
 import { ToolRegistry } from "./core/tool-registry";
 import { CommandRegistry } from "./core/command-registry";
 import { MenuRegistry } from "./core/menu-registry";
+import { ActionButtonRegistry } from "./core/action-button-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
@@ -24,6 +25,7 @@ export default class Editor {
   public toolRegistry: ToolRegistry;
   public commands: CommandRegistry;
   public menus: MenuRegistry;
+  public actionButtons: ActionButtonRegistry;
   private currentCursorClass: string = "";
   public snap?: Snap;
 
@@ -39,6 +41,7 @@ export default class Editor {
     this.toolRegistry = new ToolRegistry(this);
     this.commands = new CommandRegistry(this);
     this.menus = new MenuRegistry(this);
+    this.actionButtons = new ActionButtonRegistry();
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {

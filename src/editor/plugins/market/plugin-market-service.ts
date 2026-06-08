@@ -11,9 +11,11 @@ export interface PluginMarketContributionSummary {
   tools: number;
   commands: number;
   menus: number;
+  buttons: number;
   toolLabels: string[];
   commandLabels: string[];
   menuLabels: string[];
+  buttonLabels: string[];
 }
 
 export interface PluginMarketViewItem {
@@ -54,12 +56,22 @@ export async function disablePlugin(editor: Editor, pluginId: string): Promise<b
 
 function getPluginContributionSummary(editor: Editor | undefined, pluginId: string) {
   if (!editor) {
-    return { tools: 0, commands: 0, menus: 0, toolLabels: [], commandLabels: [], menuLabels: [] };
+    return {
+      tools: 0,
+      commands: 0,
+      menus: 0,
+      buttons: 0,
+      toolLabels: [],
+      commandLabels: [],
+      menuLabels: [],
+      buttonLabels: [],
+    };
   }
 
   const activeTools = editor.toolRegistry.listByPlugin(pluginId);
   const activeCommands = editor.commands.listByPlugin(pluginId);
   const activeMenus = editor.menus.listByPlugin(pluginId);
+  const activeButtons = editor.actionButtons.listByPlugin(pluginId);
   const plugin = getBuiltinPluginById(pluginId);
   const toolLabels = activeTools.length
     ? activeTools.map((tool) => tool.label)
@@ -70,13 +82,18 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
   const menuLabels = activeMenus.length
     ? activeMenus.map((menu) => menu.label)
     : (plugin?.contributes?.menus ?? []);
+  const buttonLabels = activeButtons.length
+    ? activeButtons.flatMap((group) => group.items.map((item) => item.label))
+    : (plugin?.contributes?.buttons ?? []);
 
   return {
     tools: toolLabels.length,
     commands: commandLabels.length,
     menus: menuLabels.length,
+    buttons: buttonLabels.length,
     toolLabels,
     commandLabels,
     menuLabels,
+    buttonLabels,
   };
 }
