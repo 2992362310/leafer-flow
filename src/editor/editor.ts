@@ -6,6 +6,7 @@ import { AutoSave } from "./core/auto-save";
 import { PluginManager } from "./core/plugin-manager";
 import { ToolRegistry } from "./core/tool-registry";
 import { CommandRegistry } from "./core/command-registry";
+import { MenuRegistry } from "./core/menu-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
@@ -19,10 +20,10 @@ const INIT_CONFIG = {
 export default class Editor {
   app: App;
   plugins: IEditorPlugin[] = [];
-  tools = new Map<string, IEditorTool>();
   public pluginManager: PluginManager;
   public toolRegistry: ToolRegistry;
   public commands: CommandRegistry;
+  public menus: MenuRegistry;
   private currentCursorClass: string = "";
   public snap?: Snap;
 
@@ -37,6 +38,7 @@ export default class Editor {
     this.pluginManager = new PluginManager(this);
     this.toolRegistry = new ToolRegistry(this);
     this.commands = new CommandRegistry(this);
+    this.menus = new MenuRegistry(this);
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {
@@ -72,27 +74,18 @@ export default class Editor {
   }
 
   register(name: string, tool: IEditorTool) {
-    const registered = this.toolRegistry.registerLegacy(name, tool);
-    this.tools.set(name, registered);
-    return registered;
+    return this.toolRegistry.registerLegacy(name, tool);
   }
 
   registerTool(contribution: ToolContribution) {
-    const registered = this.toolRegistry.register(contribution);
-    this.tools.set(contribution.id, registered.tool);
-    return registered;
+    return this.toolRegistry.register(contribution);
   }
 
   unregisterTool(id: string) {
     this.toolRegistry.unregister(id);
-    this.tools.delete(id);
   }
 
   unregisterToolsByPlugin(pluginId: string) {
-    this.toolRegistry
-      .list()
-      .filter((contribution) => contribution.pluginId === pluginId)
-      .forEach((contribution) => this.tools.delete(contribution.id));
     this.toolRegistry.unregisterByPlugin(pluginId);
   }
 
@@ -101,7 +94,7 @@ export default class Editor {
     startPoint: IPointData,
     size: { width: number; height: number },
   ): IUI | null {
-    const tool = this.tools.get(name);
+    const tool = this.toolRegistry.get(name);
     if (!tool?.createFixedElement) return null;
 
     const element = tool.createFixedElement(startPoint, {
@@ -117,9 +110,8 @@ export default class Editor {
   }
 
   execute(command: IExecuteCommand, callback: TCallback) {
-    const { tools } = this;
     const { pre, command: next } = command;
-    const tool = tools.get(pre);
+    const tool = this.toolRegistry.get(pre);
 
     // 1. 如果有前置工具在运行，先取消它
     if (tool) {
@@ -139,8 +131,8 @@ export default class Editor {
   }
 
   private runTool(name: string, callback: TCallback) {
-    const { app, tools } = this;
-    const tool = tools.get(name);
+    const { app } = this;
+    const tool = this.toolRegistry.get(name);
 
     // 清除之前的强制光标样式
     this.clearCursor();

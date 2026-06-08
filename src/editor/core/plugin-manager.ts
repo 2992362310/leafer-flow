@@ -73,6 +73,7 @@ export class PluginManager {
     await plugin.deactivate?.(ctx);
     this.editor.unregisterToolsByPlugin(pluginId);
     this.editor.commands.unregisterByPlugin(pluginId);
+    this.editor.menus.unregisterByPlugin(pluginId);
     this.activePlugins.delete(pluginId);
   }
 

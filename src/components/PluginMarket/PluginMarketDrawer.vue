@@ -169,7 +169,9 @@ function categoryLabel(category?: string) {
 
               <div
                 v-if="
-                  item.contributions.toolLabels.length || item.contributions.commandLabels.length
+                  item.contributions.toolLabels.length ||
+                  item.contributions.commandLabels.length ||
+                  item.contributions.menuLabels.length
                 "
                 class="space-y-2"
               >
@@ -210,12 +212,31 @@ function categoryLabel(category?: string) {
                     </span>
                   </div>
                 </div>
+
+                <div v-if="item.contributions.menuLabels.length" class="space-y-1">
+                  <div class="text-[11px] font-medium text-base-content/60">菜单贡献</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="label in previewLabels(item.contributions.menuLabels)"
+                      :key="`menu-${label}`"
+                      class="badge badge-xs badge-outline"
+                    >
+                      {{ label }}
+                    </span>
+                    <span
+                      v-if="hiddenLabelCount(item.contributions.menuLabels)"
+                      class="badge badge-xs badge-ghost"
+                    >
+                      +{{ hiddenLabelCount(item.contributions.menuLabels) }}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div class="flex items-center justify-between text-[11px] text-base-content/60">
                 <span
-                  >工具 {{ item.contributions.tools }} · 命令
-                  {{ item.contributions.commands }}</span
+                  >工具 {{ item.contributions.tools }} · 命令 {{ item.contributions.commands }} ·
+                  菜单 {{ item.contributions.menus }}</span
                 >
                 <span
                   v-if="pendingPluginId === item.manifest.id"

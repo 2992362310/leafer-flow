@@ -304,15 +304,6 @@ function handlePluginMarketChanged() {
   syncCurrentTool(TOOL_NAME.SELECT);
   logRef.value?.addLog({ message: "插件状态已更新", level: "success" });
 }
-
-function handleContextMenuAction({
-  result,
-}: {
-  action: string;
-  result: { success: boolean; message: string };
-}) {
-  logResult(result);
-}
 </script>
 
 <template>
@@ -353,7 +344,7 @@ function handleContextMenuAction({
   </div>
 
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
-  <ContextMenu :editor="editor" @action="handleContextMenuAction" />
+  <ContextMenu :editor="editor" @action="handleAction" />
   <PluginMarketDrawer
     :editor="editor"
     :open="pluginMarketOpen"

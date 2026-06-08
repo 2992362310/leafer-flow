@@ -10,8 +10,10 @@ import {
 export interface PluginMarketContributionSummary {
   tools: number;
   commands: number;
+  menus: number;
   toolLabels: string[];
   commandLabels: string[];
+  menuLabels: string[];
 }
 
 export interface PluginMarketViewItem {
@@ -52,11 +54,12 @@ export async function disablePlugin(editor: Editor, pluginId: string): Promise<b
 
 function getPluginContributionSummary(editor: Editor | undefined, pluginId: string) {
   if (!editor) {
-    return { tools: 0, commands: 0, toolLabels: [], commandLabels: [] };
+    return { tools: 0, commands: 0, menus: 0, toolLabels: [], commandLabels: [], menuLabels: [] };
   }
 
   const activeTools = editor.toolRegistry.listByPlugin(pluginId);
   const activeCommands = editor.commands.listByPlugin(pluginId);
+  const activeMenus = editor.menus.listByPlugin(pluginId);
   const plugin = getBuiltinPluginById(pluginId);
   const toolLabels = activeTools.length
     ? activeTools.map((tool) => tool.label)
@@ -64,11 +67,16 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
   const commandLabels = activeCommands.length
     ? activeCommands.map((command) => command.label)
     : (plugin?.contributes?.commands ?? []);
+  const menuLabels = activeMenus.length
+    ? activeMenus.map((menu) => menu.label)
+    : (plugin?.contributes?.menus ?? []);
 
   return {
     tools: toolLabels.length,
     commands: commandLabels.length,
+    menus: menuLabels.length,
     toolLabels,
     commandLabels,
+    menuLabels,
   };
 }

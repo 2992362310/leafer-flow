@@ -33,6 +33,7 @@ export interface EditorPluginManifest {
 export interface PluginContributionPreview {
   tools?: string[];
   commands?: string[];
+  menus?: string[];
 }
 
 export interface EditorPluginModule {
