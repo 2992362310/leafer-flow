@@ -44,6 +44,9 @@ export async function enablePlugin(editor: Editor, pluginId: string): Promise<bo
 }
 
 export async function disablePlugin(editor: Editor, pluginId: string): Promise<boolean> {
+  const plugin = getBuiltinPluginById(pluginId);
+  if (plugin?.manifest.required) return false;
+
   if (!editor.pluginManager.isActive(pluginId)) {
     saveEnabledPluginIds(getEnabledPluginIds().filter((id) => id !== pluginId));
     return true;

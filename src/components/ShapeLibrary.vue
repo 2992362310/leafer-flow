@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { ShapeLibraryGroup, ShapeLibraryItem } from "../editor/shape-library";
-import { TOOL_NAME } from "../editor/constants";
-import {
-  getShapeLibrarySearchText,
-  shapeLibraryGroups,
-  SHAPE_DROP_MIME,
-} from "../editor/shape-library";
+import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "../editor/shape-library";
 import Icon from "./Icon.vue";
 
 const props = defineProps<{
@@ -24,13 +19,6 @@ const SHAPE_LIBRARY_COLLAPSED_KEY = "leafer-flow-shape-library-collapsed";
 const SHAPE_LIBRARY_POSITION_KEY = "leafer-flow-shape-library-position";
 const DEFAULT_PANEL_POSITION = { x: 12, y: 96 };
 const PANEL_MARGIN = 8;
-const DEFAULT_COLLAPSED_TOOLS = [
-  TOOL_NAME.DRAW_RECT,
-  TOOL_NAME.DRAW_CIRCLE,
-  TOOL_NAME.DRAW_DIAMOND,
-  TOOL_NAME.DRAW_TEXT,
-  TOOL_NAME.FLOW_PROCESS,
-];
 
 interface PanelPosition {
   x: number;
@@ -53,7 +41,7 @@ const panelPosition = ref<PanelPosition>({ ...DEFAULT_PANEL_POSITION });
 const dragging = ref(false);
 let dragState: DragState | null = null;
 
-const libraryGroups = computed(() => (props.groups?.length ? props.groups : shapeLibraryGroups));
+const libraryGroups = computed(() => props.groups ?? []);
 const allItems = computed(() => libraryGroups.value.flatMap((group) => group.items));
 const itemMap = computed(() => new Map(allItems.value.map((item) => [item.tool, item])));
 const recentItems = computed(() =>
@@ -62,7 +50,8 @@ const recentItems = computed(() =>
     .filter((item): item is ShapeLibraryItem => Boolean(item)),
 );
 const collapsedShortcutItems = computed(() => {
-  const sourceTools = recentTools.value.length > 0 ? recentTools.value : DEFAULT_COLLAPSED_TOOLS;
+  const sourceTools =
+    recentTools.value.length > 0 ? recentTools.value : allItems.value.map((item) => item.tool);
   return sourceTools
     .map((tool) => itemMap.value.get(tool))
     .filter((item): item is ShapeLibraryItem => Boolean(item))

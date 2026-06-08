@@ -135,6 +135,9 @@ function categoryLabel(category?: string) {
                       {{ item.active ? "已启用" : "未启用" }}
                     </span>
                     <span v-if="item.builtin" class="badge badge-xs badge-outline">内置</span>
+                    <span v-if="item.manifest.required" class="badge badge-xs badge-primary"
+                      >必需</span
+                    >
                   </div>
                   <p class="text-[11px] text-base-content/50 mt-1 font-mono truncate">
                     {{ item.manifest.id }} · v{{ item.manifest.version }}
@@ -145,7 +148,9 @@ function categoryLabel(category?: string) {
                   type="checkbox"
                   class="toggle toggle-sm toggle-primary"
                   :checked="item.active"
-                  :disabled="pendingPluginId === item.manifest.id || !editor"
+                  :disabled="
+                    pendingPluginId === item.manifest.id || !editor || item.manifest.required
+                  "
                   @change="handleToggle(item)"
                 />
               </div>

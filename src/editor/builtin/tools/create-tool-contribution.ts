@@ -23,6 +23,7 @@ export function createToolContribution(
     library: definition.library
       ? {
           groupId: definition.library.groupId,
+          groupTitle: definition.library.groupTitle,
           icon: definition.library.icon,
           keywords: definition.library.keywords,
           width: definition.library.width,
@@ -40,6 +41,7 @@ function createToolbarContribution(definition: ToolDefinition, order: number) {
 
   return {
     groupId: getToolbarGroupId(definition),
+    groupTitle: getToolbarGroupTitle(definition),
     icon,
     tip: createToolTip(definition),
     shortcut: getToolShortcut(definition.tool),
@@ -48,9 +50,17 @@ function createToolbarContribution(definition: ToolDefinition, order: number) {
 }
 
 function getToolbarGroupId(definition: ToolDefinition) {
+  if (definition.toolbarGroupId) return definition.toolbarGroupId;
   if (!definition.library) return "core";
   if (definition.library.groupId === "basic") return "shapes";
   return definition.library.groupId;
+}
+
+function getToolbarGroupTitle(definition: ToolDefinition) {
+  if (definition.toolbarGroupTitle) return definition.toolbarGroupTitle;
+  if (!definition.library) return "核心工具";
+  if (definition.library.groupId === "basic") return "基础图形";
+  return definition.library.groupTitle;
 }
 
 function createToolTip(definition: ToolDefinition) {

@@ -4,15 +4,17 @@ import { TOOL_NAME, ACTION_NAME } from "./constants";
 
 type ToolHandler = (cmd: IExecuteCommand) => void;
 type ActionHandler = (action: string) => void;
+type ToolShortcutResolver = (key: string) => string | undefined;
 
 interface ShortcutOptions {
   onTool: ToolHandler;
   onAction: ActionHandler;
+  resolveToolShortcut?: ToolShortcutResolver;
 }
 
 export function useEditorShortcuts(options: ShortcutOptions) {
-  const { onTool, onAction } = options;
-  let currentTool = TOOL_NAME.SELECT;
+  const { onTool, onAction, resolveToolShortcut } = options;
+  let currentTool: string = TOOL_NAME.SELECT;
 
   const handleKeydown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -129,69 +131,20 @@ export function useEditorShortcuts(options: ShortcutOptions) {
     }
 
     if (!shiftKey) {
-      switch (key) {
-        case "v":
-        case "escape":
-          switchTool(TOOL_NAME.SELECT);
-          break;
-        case "r":
-          switchTool(TOOL_NAME.DRAW_RECT);
-          break;
-        case "d":
-          switchTool(TOOL_NAME.DRAW_DIAMOND);
-          break;
-        case "u":
-          switchTool(TOOL_NAME.DRAW_TRIANGLE);
-          break;
-        case "x":
-          switchTool(TOOL_NAME.DRAW_HEXAGON);
-          break;
-        case "o":
-        case "c":
-          switchTool(TOOL_NAME.DRAW_CIRCLE);
-          break;
-        case "a":
-        case "l":
-          switchTool(TOOL_NAME.DRAW_ARROW);
-          break;
-        case "p":
-          switchTool(TOOL_NAME.DRAW_FREEHAND);
-          break;
-        case "t":
-          switchTool(TOOL_NAME.DRAW_TEXT);
-          break;
-        case "1":
-          switchTool(TOOL_NAME.FLOW_START_END);
-          break;
-        case "2":
-          switchTool(TOOL_NAME.FLOW_PROCESS);
-          break;
-        case "3":
-          switchTool(TOOL_NAME.FLOW_DECISION);
-          break;
-        case "4":
-          switchTool(TOOL_NAME.FLOW_IO);
-          break;
-        case "5":
-          switchTool(TOOL_NAME.FLOW_DOCUMENT);
-          break;
-        case "6":
-          switchTool(TOOL_NAME.FLOW_DATABASE);
-          break;
-        case "7":
-          switchTool(TOOL_NAME.FLOW_SUBPROCESS);
-          break;
-        case "8":
-          switchTool(TOOL_NAME.FLOW_CONNECTOR);
-          break;
-        case "9":
-          switchTool(TOOL_NAME.FLOW_SWIMLANE);
-          break;
-        case "delete":
-        case "backspace":
-          e.preventDefault();
-          onAction(ACTION_NAME.DELETE);
-          break;
+      if (key === "v" || key === "escape") {
+        switchTool(TOOL_NAME.SELECT);
+        return;
+      }
+
+      const shortcutTool = resolveToolShortcut?.(key);
+      if (shortcutTool) {
+        switchTool(shortcutTool);
+        return;
+      }
+
+      if (key === "delete" || key === "backspace") {
+        e.preventDefault();
+        onAction(ACTION_NAME.DELETE);
       }
     }
   };

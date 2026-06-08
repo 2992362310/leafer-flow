@@ -2,7 +2,7 @@ import { ACTION_NAME } from "../../constants";
 import type Editor from "../../editor";
 import type { MenuContribution } from "../../api/menu";
 
-export const BUILTIN_MENUS_PLUGIN_ID = "leafer-flow.builtin-menus";
+export const BUILTIN_MENUS_PLUGIN_ID = "leafer-flow.builtin-core";
 
 const DEFAULT_CONTEXT_MENUS: MenuContribution[] = [
   {
@@ -76,5 +76,7 @@ function hasSelection(editor: Editor) {
 
 function hasGroup(editor: Editor) {
   const list = editor.app.editor.list;
-  return Boolean(list && list.some((el) => "children" in el && (el as { children?: unknown }).children));
+  return Boolean(
+    list && list.some((el) => "children" in el && (el as { children?: unknown }).children),
+  );
 }

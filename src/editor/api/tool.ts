@@ -5,6 +5,7 @@ export type ToolContributionGroup = "core" | "basic" | "flow" | "bpmn" | "archit
 
 export interface ToolLibraryContribution {
   groupId: ToolContributionGroup;
+  groupTitle?: string;
   icon: IconName;
   keywords?: string[];
   width?: number;
@@ -13,6 +14,7 @@ export interface ToolLibraryContribution {
 
 export interface ToolToolbarContribution {
   groupId: ToolContributionGroup;
+  groupTitle?: string;
   icon: IconName;
   tip?: string;
   shortcut?: string;

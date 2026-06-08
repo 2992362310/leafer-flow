@@ -11,19 +11,6 @@ import type {
 export class ToolRegistry {
   private editor: Editor;
   private contributions = new Map<string, RegisteredToolContribution>();
-  private libraryGroupTitles = new Map<string, string>([
-    ["basic", "基础图形"],
-    ["flow", "流程图"],
-    ["bpmn", "BPMN"],
-    ["architecture", "架构图"],
-  ]);
-  private toolbarGroupTitles = new Map<string, string>([
-    ["core", "核心工具"],
-    ["shapes", "基础图形"],
-    ["flow", "流程图"],
-    ["bpmn", "BPMN"],
-    ["architecture", "架构图"],
-  ]);
 
   constructor(editor: Editor) {
     this.editor = editor;
@@ -43,17 +30,6 @@ export class ToolRegistry {
 
     this.contributions.set(contribution.id, registered);
     return registered;
-  }
-
-  registerLegacy(id: string, tool: IEditorTool): IEditorTool {
-    tool.init(this.editor);
-    this.contributions.set(id, {
-      id,
-      label: id,
-      createTool: () => tool,
-      tool,
-    });
-    return tool;
   }
 
   unregister(id: string): void {
@@ -93,14 +69,17 @@ export class ToolRegistry {
   }
 
   getShapeLibraryGroups(): ShapeLibraryGroup[] {
-    const groups = new Map<string, ShapeLibraryItem[]>();
+    const groups = new Map<string, { title: string; items: ShapeLibraryItem[] }>();
 
     this.listLibraryTools().forEach((contribution) => {
       const { library } = contribution;
       if (!library) return;
 
-      const items = groups.get(library.groupId) ?? [];
-      items.push({
+      const group = groups.get(library.groupId) ?? {
+        title: library.groupTitle ?? library.groupId,
+        items: [],
+      };
+      group.items.push({
         tool: contribution.id,
         icon: library.icon,
         label: contribution.label,
@@ -108,13 +87,13 @@ export class ToolRegistry {
         width: library.width,
         height: library.height,
       });
-      groups.set(library.groupId, items);
+      groups.set(library.groupId, group);
     });
 
-    return [...groups.entries()].map(([id, items]) => ({
+    return [...groups.entries()].map(([id, group]) => ({
       id,
-      title: this.libraryGroupTitles.get(id) ?? id,
-      items,
+      title: group.title,
+      items: group.items,
     }));
   }
 
@@ -123,27 +102,30 @@ export class ToolRegistry {
   }
 
   getToolbarGroups(): ToolToolbarGroup[] {
-    const groups = new Map<string, ToolToolbarItem[]>();
+    const groups = new Map<string, { title: string; items: ToolToolbarItem[] }>();
 
     this.listToolbarTools().forEach((contribution) => {
       const { toolbar } = contribution;
       if (!toolbar) return;
 
-      const items = groups.get(toolbar.groupId) ?? [];
-      items.push({
+      const group = groups.get(toolbar.groupId) ?? {
+        title: toolbar.groupTitle ?? toolbar.groupId,
+        items: [],
+      };
+      group.items.push({
         tool: contribution.id,
         icon: toolbar.icon,
         tip: toolbar.tip ?? contribution.label,
         shortcut: toolbar.shortcut,
         order: toolbar.order,
       });
-      groups.set(toolbar.groupId, items);
+      groups.set(toolbar.groupId, group);
     });
 
-    return [...groups.entries()].map(([id, items]) => ({
+    return [...groups.entries()].map(([id, group]) => ({
       id,
-      title: this.toolbarGroupTitles.get(id) ?? id,
-      items: items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      title: group.title,
+      items: group.items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     }));
   }
 }

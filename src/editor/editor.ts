@@ -1,5 +1,5 @@
 import { App, type IAppConfig, type IPointData, type IUI } from "leafer";
-import type { IEditorPlugin, IEditorTool, IExecuteCommand, TCallback } from "./types";
+import type { IEditorPlugin, IExecuteCommand, TCallback } from "./types";
 import { TOOL_NAME } from "./constants";
 import { HistoryManager } from "./core/history";
 import { AutoSave } from "./core/auto-save";
@@ -74,10 +74,6 @@ export default class Editor {
       this.snap = uPlugin as Snap;
     }
     return uPlugin as T;
-  }
-
-  register(name: string, tool: IEditorTool) {
-    return this.toolRegistry.registerLegacy(name, tool);
   }
 
   registerTool(contribution: ToolContribution) {

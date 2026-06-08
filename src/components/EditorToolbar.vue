@@ -26,62 +26,12 @@ const selectTool: ToolItem = {
   shortcut: "V",
 };
 
-const fallbackGroups: ToolToolbarGroup[] = [
-  {
-    id: "core",
-    title: "核心工具",
-    items: [
-      { tool: TOOL_NAME.DRAW_ARROW, icon: "draw_arrow", tip: "连接线 (A)", shortcut: "A" },
-      { tool: TOOL_NAME.DRAW_TEXT, icon: "draw_text", tip: "文本 (T)", shortcut: "T" },
-    ],
-  },
-  {
-    id: "flow",
-    title: "流程图",
-    items: [
-      {
-        tool: TOOL_NAME.FLOW_START_END,
-        icon: "flow_start_end",
-        tip: "开始/结束 (1)",
-        shortcut: "1",
-      },
-      { tool: TOOL_NAME.FLOW_PROCESS, icon: "flow_process", tip: "处理 (2)", shortcut: "2" },
-      { tool: TOOL_NAME.FLOW_DECISION, icon: "flow_decision", tip: "判断 (3)", shortcut: "3" },
-      { tool: TOOL_NAME.FLOW_IO, icon: "flow_io", tip: "输入/输出 (4)", shortcut: "4" },
-    ],
-  },
-  {
-    id: "shapes",
-    title: "更多图形",
-    items: [
-      { tool: TOOL_NAME.DRAW_RECT, icon: "draw_rect", tip: "矩形 (R)", shortcut: "R" },
-      { tool: TOOL_NAME.DRAW_CIRCLE, icon: "draw_circle", tip: "圆形 (C)", shortcut: "C" },
-      { tool: TOOL_NAME.DRAW_DIAMOND, icon: "draw_diamond", tip: "菱形 (D)", shortcut: "D" },
-      { tool: TOOL_NAME.DRAW_TRIANGLE, icon: "draw_triangle", tip: "三角形 (U)", shortcut: "U" },
-      { tool: TOOL_NAME.DRAW_PENTAGON, icon: "draw_pentagon", tip: "五边形" },
-      { tool: TOOL_NAME.DRAW_HEXAGON, icon: "draw_hexagon", tip: "六边形 (X)", shortcut: "X" },
-      { tool: TOOL_NAME.DRAW_FREEHAND, icon: "draw_freehand", tip: "自由绘制 (P)", shortcut: "P" },
-    ],
-  },
-];
-
-const visibleGroups = computed(() => (props.groups?.length ? props.groups : fallbackGroups));
-const coreItems = computed<ToolItem[]>(() => [
-  selectTool,
-  ...toToolItems(findGroup("core")?.items ?? []),
-]);
-const primaryFlowItems = computed(() => toToolItems(findGroup("flow")?.items.slice(0, 4) ?? []));
-const advancedFlowItems = computed(() => toToolItems(findGroup("flow")?.items.slice(4) ?? []));
-const bpmnItems = computed(() => toToolItems(findGroup("bpmn")?.items ?? []));
-const architectureItems = computed(() => toToolItems(findGroup("architecture")?.items ?? []));
-const shapeItems = computed(() => toToolItems(findGroup("shapes")?.items ?? []));
-const activeShapeTool = computed(
-  () => shapeItems.value.find((item) => item.tool === selectedTool.value) ?? shapeItems.value[0],
+const visibleGroups = computed(() =>
+  (props.groups ?? []).map((group) => ({
+    ...group,
+    items: toToolItems(group.items),
+  })),
 );
-
-function findGroup(id: string) {
-  return visibleGroups.value.find((group) => group.id === id);
-}
 
 function toToolItems(items: ToolToolbarItem[]): ToolItem[] {
   return items.map((item) => ({
@@ -102,6 +52,32 @@ function handleClick(tool: string) {
 
 function changeTool(tool: string) {
   selectedTool.value = tool;
+}
+
+function shouldCollapseGroup(items: ToolItem[]) {
+  return items.length > 4;
+}
+
+function getGroupIcon(items: ToolItem[]) {
+  const activeItem = items.find((item) => item.tool === selectedTool.value);
+  return activeItem?.icon ?? items[0]?.icon;
+}
+
+function isGroupActive(items: ToolItem[]) {
+  return items.some((item) => item.tool === selectedTool.value);
+}
+
+function getGroupButtonClass(items: ToolItem[]) {
+  return [
+    "btn",
+    "btn-sm",
+    "join-item",
+    "relative",
+    "h-9",
+    "w-9",
+    "px-0",
+    { "btn-active": isGroupActive(items) },
+  ];
 }
 
 function getButtonClass(tool: string) {
@@ -125,120 +101,63 @@ defineExpose({
 
 <template>
   <div class="join">
-    <div
-      v-for="item in coreItems"
-      :key="item.tool"
-      class="tooltip tooltip-bottom"
-      :data-tip="item.tip"
-    >
-      <button @click.prevent="handleClick(item.tool)" :class="getButtonClass(item.tool)">
-        <Icon :name="item.icon" class="h-5 w-5" />
-        <span
-          v-if="item.shortcut"
-          class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono"
-          >{{ item.shortcut }}</span
-        >
+    <div class="tooltip tooltip-bottom" :data-tip="selectTool.tip">
+      <button
+        @click.prevent="handleClick(selectTool.tool)"
+        :class="getButtonClass(selectTool.tool)"
+      >
+        <Icon :name="selectTool.icon" class="h-5 w-5" />
+        <span class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono">
+          {{ selectTool.shortcut }}
+        </span>
       </button>
     </div>
 
-    <template v-if="primaryFlowItems.length > 0">
-      <span class="divider divider-horizontal mx-0 my-1"></span>
-      <div
-        v-for="item in primaryFlowItems"
-        :key="item.tool"
-        class="tooltip tooltip-bottom"
-        :data-tip="item.tip"
-      >
-        <button @click.prevent="handleClick(item.tool)" :class="getButtonClass(item.tool)">
-          <Icon :name="item.icon" class="h-5 w-5" />
-          <span
-            v-if="item.shortcut"
-            class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono"
-            >{{ item.shortcut }}</span
+    <template v-for="group in visibleGroups" :key="group.id">
+      <template v-if="group.items.length > 0">
+        <span class="divider divider-horizontal mx-0 my-1"></span>
+
+        <template v-if="!shouldCollapseGroup(group.items)">
+          <div
+            v-for="item in group.items"
+            :key="item.tool"
+            class="tooltip tooltip-bottom"
+            :data-tip="item.tip"
           >
-        </button>
-      </div>
-    </template>
-
-    <span class="divider divider-horizontal mx-0 my-1"></span>
-
-    <div v-if="advancedFlowItems.length > 0" class="dropdown dropdown-bottom">
-      <div class="tooltip tooltip-bottom" data-tip="更多流程元素">
-        <button tabindex="0" role="button" :class="getButtonClass(advancedFlowItems[0].tool)">
-          <Icon name="template" class="h-5 w-5" />
-        </button>
-      </div>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200 max-h-[70vh] overflow-y-auto"
-      >
-        <li v-for="item in advancedFlowItems" :key="item.tool">
-          <button @click.prevent="handleClick(item.tool)" class="text-xs">
-            <Icon :name="item.icon" class="h-4 w-4" />
-            {{ item.tip }}
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <div v-if="bpmnItems.length > 0" class="dropdown dropdown-bottom">
-      <div class="tooltip tooltip-bottom" data-tip="BPMN">
-        <button tabindex="0" role="button" :class="getButtonClass(bpmnItems[0].tool)">
-          <Icon name="bpmn_start_event" class="h-5 w-5" />
-        </button>
-      </div>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200"
-      >
-        <li v-for="item in bpmnItems" :key="item.tool">
-          <button @click.prevent="handleClick(item.tool)" class="text-xs">
-            <Icon :name="item.icon" class="h-4 w-4" />
-            {{ item.tip }}
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <div v-if="architectureItems.length > 0" class="dropdown dropdown-bottom">
-      <div class="tooltip tooltip-bottom" data-tip="架构图">
-        <button tabindex="0" role="button" :class="getButtonClass(architectureItems[0].tool)">
-          <Icon name="arch_component" class="h-5 w-5" />
-        </button>
-      </div>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200"
-      >
-        <li v-for="item in architectureItems" :key="item.tool">
-          <button @click.prevent="handleClick(item.tool)" class="text-xs">
-            <Icon :name="item.icon" class="h-4 w-4" />
-            {{ item.tip }}
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <template v-if="activeShapeTool">
-      <span class="divider divider-horizontal mx-0 my-1"></span>
-      <div class="dropdown dropdown-bottom">
-        <div class="tooltip tooltip-bottom" data-tip="更多图形">
-          <button tabindex="0" role="button" :class="getButtonClass(activeShapeTool.tool)">
-            <Icon :name="activeShapeTool.icon" class="h-5 w-5" />
-          </button>
-        </div>
-        <ul
-          tabindex="0"
-          class="dropdown-content menu bg-base-100 rounded-box z-20 w-44 p-2 shadow border border-base-200"
-        >
-          <li v-for="item in shapeItems" :key="item.tool">
-            <button @click.prevent="handleClick(item.tool)" class="text-xs">
-              <Icon :name="item.icon" class="h-4 w-4" />
-              {{ item.tip }}
+            <button @click.prevent="handleClick(item.tool)" :class="getButtonClass(item.tool)">
+              <Icon :name="item.icon" class="h-5 w-5" />
+              <span
+                v-if="item.shortcut"
+                class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono"
+                >{{ item.shortcut }}</span
+              >
             </button>
-          </li>
-        </ul>
-      </div>
+          </div>
+        </template>
+
+        <div v-else class="dropdown dropdown-bottom">
+          <div class="tooltip tooltip-bottom" :data-tip="group.title">
+            <button tabindex="0" role="button" :class="getGroupButtonClass(group.items)">
+              <Icon
+                v-if="getGroupIcon(group.items)"
+                :name="getGroupIcon(group.items)!"
+                class="h-5 w-5"
+              />
+            </button>
+          </div>
+          <ul
+            tabindex="0"
+            class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200 max-h-[70vh] overflow-y-auto"
+          >
+            <li v-for="item in group.items" :key="item.tool">
+              <button @click.prevent="handleClick(item.tool)" class="text-xs">
+                <Icon :name="item.icon" class="h-4 w-4" />
+                {{ item.tip }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </template>
     </template>
   </div>
 </template>

@@ -5,9 +5,14 @@ import type { IDrawOptions, IDrawResult } from "../types";
 import { DrawBase } from "./draw-base";
 import { getConnectorRouteType } from "../core/drawing-settings";
 
+type EditableConnector = Connector & {
+  routeType?: ReturnType<typeof getConnectorRouteType>;
+};
+
 export class DrawArrow extends DrawBase {
   private options: IDrawOptions;
   private startNode: IUI | null = null;
+  private startAnchorPoint: IPointData | null = null;
   private readonly BASE_SNAP_DISTANCE = 18;
 
   private getSnapDistance(): number {
@@ -34,6 +39,7 @@ export class DrawArrow extends DrawBase {
     const startTarget = this.pickConnectableNode(startPoint);
     this.startNode = startTarget.node;
     const fromPoint = startTarget.point;
+    this.startAnchorPoint = fromPoint;
 
     const connector = new Connector(this.editor.app, {
       fromPoint,
@@ -43,7 +49,7 @@ export class DrawArrow extends DrawBase {
       cornerRadius: this.options.cornerRadius,
       endArrow: "arrow",
       routeType: getConnectorRouteType(),
-      getNodeId: (node: IUI) => node.innerId,
+      getNodeId: (node: IUI) => String(node.innerId),
     });
 
     connector.opacity = this.options.opacity;
@@ -53,7 +59,7 @@ export class DrawArrow extends DrawBase {
   protected updateElement(element: IUI, endPoint: IPointData): void {
     this.points[1] = endPoint;
 
-    const startPoint = this.points[0];
+    const startPoint = this.startAnchorPoint || this.points[0];
     if (startPoint) {
       const connector = element as Connector;
       const endTarget = this.pickConnectableNode(endPoint, startPoint);
@@ -63,6 +69,8 @@ export class DrawArrow extends DrawBase {
 
   protected onUp(evt: PointerEvent | null) {
     if (!this.element) {
+      this.startAnchorPoint = null;
+      this.startNode = null;
       super.onUp(evt);
       return;
     }
@@ -72,11 +80,12 @@ export class DrawArrow extends DrawBase {
       evt && evt.getPagePoint
         ? evt.getPagePoint()
         : connector.getPoints()?.to || this.points[1] || { x: 0, y: 0 };
-    const startPoint = this.points[0] || connector.getPoints()?.from || rawEndPoint;
+    const startPoint =
+      this.startAnchorPoint || this.points[0] || connector.getPoints()?.from || rawEndPoint;
     const endTarget = this.pickConnectableNode(rawEndPoint, startPoint);
     const endNode = endTarget.node;
 
-    connector.routeType = getConnectorRouteType();
+    (connector as EditableConnector).routeType = getConnectorRouteType();
 
     if (this.startNode && endNode && this.startNode !== endNode) {
       connector.switchToNodeMode(this.startNode, endNode, {
@@ -96,9 +105,11 @@ export class DrawArrow extends DrawBase {
         },
       );
     } else {
-      const fromPoint = this.startNode
-        ? getNearestSideAnchor(this.startNode, rawEndPoint).point
-        : this.points[0] || { x: 0, y: 0 };
+      const fromPoint =
+        this.startAnchorPoint ||
+        (this.startNode
+          ? getNearestSideAnchor(this.startNode, rawEndPoint).point
+          : this.points[0] || { x: 0, y: 0 });
       const toPoint = endNode ? getNodeCenter(endNode) : endTarget.point;
 
       if (this.startNode || endNode) {
@@ -110,6 +121,8 @@ export class DrawArrow extends DrawBase {
     }
 
     connector.hittable = true;
+    this.startAnchorPoint = null;
+    this.startNode = null;
     super.onUp(evt);
   }
 

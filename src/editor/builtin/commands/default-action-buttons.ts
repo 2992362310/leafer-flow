@@ -2,7 +2,7 @@ import { ACTION_NAME } from "../../constants";
 import type { ActionButtonGroupContribution } from "../../api/action-button";
 import type Editor from "../../editor";
 
-export const BUILTIN_ACTION_BUTTONS_PLUGIN_ID = "leafer-flow.builtin-action-buttons";
+export const BUILTIN_ACTION_BUTTONS_PLUGIN_ID = "leafer-flow.builtin-core";
 
 const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
   {
@@ -32,11 +32,26 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     order: 20,
     items: [
       { id: "align-left", command: ACTION_NAME.ALIGN_LEFT, icon: "align_left", label: "左对齐" },
-      { id: "align-center", command: ACTION_NAME.ALIGN_CENTER, icon: "align_center", label: "水平居中" },
+      {
+        id: "align-center",
+        command: ACTION_NAME.ALIGN_CENTER,
+        icon: "align_center",
+        label: "水平居中",
+      },
       { id: "align-right", command: ACTION_NAME.ALIGN_RIGHT, icon: "align_right", label: "右对齐" },
       { id: "align-top", command: ACTION_NAME.ALIGN_TOP, icon: "align_top", label: "顶部对齐" },
-      { id: "align-middle", command: ACTION_NAME.ALIGN_MIDDLE, icon: "align_middle", label: "垂直居中" },
-      { id: "align-bottom", command: ACTION_NAME.ALIGN_BOTTOM, icon: "align_bottom", label: "底部对齐" },
+      {
+        id: "align-middle",
+        command: ACTION_NAME.ALIGN_MIDDLE,
+        icon: "align_middle",
+        label: "垂直居中",
+      },
+      {
+        id: "align-bottom",
+        command: ACTION_NAME.ALIGN_BOTTOM,
+        icon: "align_bottom",
+        label: "底部对齐",
+      },
       {
         id: "distribute-horizontal",
         command: ACTION_NAME.DISTRIBUTE_HORIZONTAL,
@@ -59,10 +74,30 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     kind: "dropdown",
     order: 30,
     items: [
-      { id: "bring-forward", command: ACTION_NAME.BRING_FORWARD, icon: "arrow-up", label: "上移一层" },
-      { id: "send-backward", command: ACTION_NAME.SEND_BACKWARD, icon: "arrow-down", label: "下移一层" },
-      { id: "bring-to-front", command: ACTION_NAME.BRING_TO_FRONT, icon: "arrow-up", label: "置于顶层" },
-      { id: "send-to-back", command: ACTION_NAME.SEND_TO_BACK, icon: "arrow-down", label: "置于底层" },
+      {
+        id: "bring-forward",
+        command: ACTION_NAME.BRING_FORWARD,
+        icon: "arrow-up",
+        label: "上移一层",
+      },
+      {
+        id: "send-backward",
+        command: ACTION_NAME.SEND_BACKWARD,
+        icon: "arrow-down",
+        label: "下移一层",
+      },
+      {
+        id: "bring-to-front",
+        command: ACTION_NAME.BRING_TO_FRONT,
+        icon: "arrow-up",
+        label: "置于顶层",
+      },
+      {
+        id: "send-to-back",
+        command: ACTION_NAME.SEND_TO_BACK,
+        icon: "arrow-down",
+        label: "置于底层",
+      },
       {
         id: "connectors-to-front",
         command: ACTION_NAME.CONNECTORS_TO_FRONT,
@@ -70,8 +105,18 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         label: "连接线置顶",
       },
       { id: "lock-selected", command: ACTION_NAME.LOCK_SELECTED, icon: "lock", label: "锁定选中" },
-      { id: "unlock-selected", command: ACTION_NAME.UNLOCK_SELECTED, icon: "unlock", label: "解锁选中" },
-      { id: "toggle-visible", command: ACTION_NAME.TOGGLE_VISIBLE, icon: "visible", label: "切换显示" },
+      {
+        id: "unlock-selected",
+        command: ACTION_NAME.UNLOCK_SELECTED,
+        icon: "unlock",
+        label: "解锁选中",
+      },
+      {
+        id: "toggle-visible",
+        command: ACTION_NAME.TOGGLE_VISIBLE,
+        icon: "visible",
+        label: "切换显示",
+      },
     ],
   },
   {
@@ -98,12 +143,42 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     kind: "dropdown",
     order: 60,
     items: [
-      { id: "template-approval", command: ACTION_NAME.TEMPLATE_APPROVAL, icon: "template", label: "审批流程" },
-      { id: "template-decision", command: ACTION_NAME.TEMPLATE_DECISION, icon: "flow_decision", label: "判断分支" },
-      { id: "template-work-order", command: ACTION_NAME.TEMPLATE_WORK_ORDER, icon: "flow_process", label: "工单流转" },
-      { id: "template-crm", command: ACTION_NAME.TEMPLATE_CRM, icon: "template", label: "CRM 跟进" },
-      { id: "template-login", command: ACTION_NAME.TEMPLATE_LOGIN, icon: "flow_start_end", label: "登录注册" },
-      { id: "template-payment", command: ACTION_NAME.TEMPLATE_PAYMENT, icon: "flow_database", label: "支付流程" },
+      {
+        id: "template-approval",
+        command: ACTION_NAME.TEMPLATE_APPROVAL,
+        icon: "template",
+        label: "审批流程",
+      },
+      {
+        id: "template-decision",
+        command: ACTION_NAME.TEMPLATE_DECISION,
+        icon: "flow_decision",
+        label: "判断分支",
+      },
+      {
+        id: "template-work-order",
+        command: ACTION_NAME.TEMPLATE_WORK_ORDER,
+        icon: "flow_process",
+        label: "工单流转",
+      },
+      {
+        id: "template-crm",
+        command: ACTION_NAME.TEMPLATE_CRM,
+        icon: "template",
+        label: "CRM 跟进",
+      },
+      {
+        id: "template-login",
+        command: ACTION_NAME.TEMPLATE_LOGIN,
+        icon: "flow_start_end",
+        label: "登录注册",
+      },
+      {
+        id: "template-payment",
+        command: ACTION_NAME.TEMPLATE_PAYMENT,
+        icon: "flow_database",
+        label: "支付流程",
+      },
     ],
   },
   {
@@ -114,7 +189,12 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     kind: "dropdown",
     order: 70,
     items: [
-      { id: "template-bpmn-order", command: ACTION_NAME.TEMPLATE_BPMN_ORDER, icon: "bpmn_start_event", label: "BPMN 订单" },
+      {
+        id: "template-bpmn-order",
+        command: ACTION_NAME.TEMPLATE_BPMN_ORDER,
+        icon: "bpmn_start_event",
+        label: "BPMN 订单",
+      },
       {
         id: "template-system-architecture",
         command: ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE,

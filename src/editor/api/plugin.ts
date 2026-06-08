@@ -28,6 +28,7 @@ export interface EditorPluginManifest {
   category?: "tool" | "shape" | "panel" | "export" | "layout" | "utility" | string;
   capabilities?: string[];
   enabledByDefault?: boolean;
+  required?: boolean;
 }
 
 export interface PluginContributionPreview {

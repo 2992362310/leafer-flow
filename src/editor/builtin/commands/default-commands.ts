@@ -10,6 +10,7 @@ import { doDelete } from "../../action/do-delete";
 import { doExportPNG, doExportSVG, doLoad, doSave } from "../../action/do-file";
 import { doGroup } from "../../action/do-group";
 import { doLayer, doToggleLock, doToggleVisible } from "../../action/do-layer";
+import { doMoveLayer, type MoveLayerPayload } from "../../action/do-move-layer";
 import { doNudge } from "../../action/do-nudge";
 import { doRedo } from "../../action/do-redo";
 import { doSelectAll } from "../../action/do-select-all";
@@ -19,7 +20,7 @@ import { doUnGroup } from "../../action/do-ungroup";
 import { doViewAction } from "../../action/do-view";
 import { getSnapEnabled, setSnapEnabled } from "../../core/drawing-settings";
 
-export const BUILTIN_COMMANDS_PLUGIN_ID = "leafer-flow.builtin-commands";
+export const BUILTIN_COMMANDS_PLUGIN_ID = "leafer-flow.builtin-core";
 
 const CORE_COMMANDS: CommandContribution[] = [
   {
@@ -178,6 +179,13 @@ export function registerDefaultCommands(editor: Editor) {
         selected.some((item) => !item.visible),
       );
     },
+  });
+
+  editor.commands.register<MoveLayerPayload>({
+    id: ACTION_NAME.MOVE_LAYER,
+    label: "移动图层",
+    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    run: doMoveLayer,
   });
 
   editor.commands.register({

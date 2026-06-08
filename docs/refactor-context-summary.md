@@ -30,14 +30,6 @@
 - `pinia` 已安装但未启用
 - `vue-router` 已安装但未启用
 
-构建命令：
-
-```sh
-pnpm run build
-```
-
-当前没有自动化测试文件。
-
 ## 高风险模块
 
 重构时谨慎处理以下模块：
@@ -56,30 +48,6 @@ src/editor/action/do-file.ts
 
 本轮重构基本没有深入修改这些 action/serialization 内部逻辑，主要做注册表、插件宿主、UI 分发边界。
 
-## Git 保存点
-
-用户体验插件市场后已保存一版到仓库：
-
-```txt
-ba8b56a Add plugin marketplace
-```
-
-该提交包含插件协议、工具注册表、命令注册表、插件市场 Drawer、内置插件拆分等主要内容。
-
-提交后继续做了以下未必已提交的后续工作：
-
-- `ContextMenu.vue` command 化。
-- 新增 `MenuRegistry`。
-- 右键菜单从 registry 派生。
-- 插件市场展示菜单贡献统计。
-- 移除旧 `Editor.tools` Map，工具运行路径直接读 `ToolRegistry`。
-
-如果接力时需要保存当前进度，先检查：
-
-```sh
-git status --short
-```
-
 ## 当前已完成重构概览
 
 当前已完成以下方向：
@@ -88,22 +56,29 @@ git status --short
 2. 建立工具贡献协议。
 3. 建立命令贡献协议。
 4. 建立菜单贡献协议。
-5. 新增 `PluginManager`。
-6. 新增 `ToolRegistry`。
-7. 新增 `CommandRegistry`。
-8. 新增 `MenuRegistry`。
-9. `Editor` 接入 `pluginManager`、`toolRegistry`、`commands`、`menus`。
-10. 基础工具、流程图节点、BPMN 节点、架构图节点已拆为内置插件。
-11. 标尺、吸附、点阵已拆为内置插件，且支持 `deactivate()` 即时停用。
-12. `EditorToolbar` 和 `ShapeLibrary` 已从 `ToolRegistry` 派生 UI 数据。
-13. `ContextMenu` 已从 `MenuRegistry` 派生菜单项。
-14. `App.vue` action 分发已迁移到 `CommandRegistry`。
-15. 新增插件市场数据层和服务层。
-16. 新增插件市场 Drawer，支持启用/禁用内置插件。
-17. 插件市场展示工具、命令、菜单贡献数量和标签预览。
-18. 旧 `Editor.tools` Map 已移除，工具运行路径直接读 `ToolRegistry`。
-19. 新增插件架构文档：`docs/plugin-architecture.md`。
-20. 新增插件市场规划文档：`docs/plugin-market-plan.md`。
+5. 建立 action button 贡献协议。
+6. 新增 `PluginManager`。
+7. 新增 `ToolRegistry`。
+8. 新增 `CommandRegistry`。
+9. 新增 `MenuRegistry`。
+10. 新增 `ActionButtonRegistry`。
+11. `Editor` 接入 `pluginManager`、`toolRegistry`、`commands`、`menus`、`actionButtons`。
+12. 基础工具、流程图节点、BPMN 节点、架构图节点已拆为内置插件。
+13. 标尺、吸附、点阵已拆为内置插件，且支持 `deactivate()` 即时停用。
+14. 默认命令、右键菜单、顶部 action buttons 已包装为必需内置插件 `leafer-flow.builtin-core`。
+15. `EditorToolbar` 和 `ShapeLibrary` 已完全从 `ToolRegistry` 派生 UI 数据，不再保留静态 fallback。
+16. `ContextMenu` 已从 `MenuRegistry` 派生菜单项。
+17. `EditorButton` 已从 `ActionButtonRegistry` 派生按钮/下拉 UI。
+18. `App.vue` action 分发已迁移到 `CommandRegistry`。
+19. `LayerPanel.vue` 图层操作和拖拽排序已迁移到 `CommandRegistry`。
+20. 新增插件市场数据层和服务层。
+21. 新增插件市场 Drawer，支持启用/禁用内置插件。
+22. 插件市场展示工具、命令、菜单、按钮贡献数量和标签预览。
+23. 必需插件会强制启用，且在插件市场中不可关闭。
+24. 旧 `Editor.tools` Map、旧 `Editor.register(name, tool)`、`ToolRegistry.registerLegacy(...)` 已移除。
+25. 工具栏、状态栏工具名称、工具快捷键、图形库搜索均改为运行时贡献驱动。
+26. 新增插件架构文档：`docs/plugin-architecture.md`。
+27. 新增插件市场规划文档：`docs/plugin-market-plan.md`。
 
 ## 插件协议
 
@@ -116,6 +91,18 @@ src/editor/api/plugin.ts
 当前核心类型：
 
 ```ts
+export interface EditorPluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  author?: string;
+  category?: "tool" | "shape" | "panel" | "export" | "layout" | "utility" | string;
+  capabilities?: string[];
+  enabledByDefault?: boolean;
+  required?: boolean;
+}
+
 export interface PluginContext {
   pluginId: string;
   editor: Editor;
@@ -127,6 +114,7 @@ export interface PluginContributionPreview {
   tools?: string[];
   commands?: string[];
   menus?: string[];
+  buttons?: string[];
 }
 
 export interface EditorPluginModule {
@@ -144,6 +132,13 @@ leafer-flow.plugin.${pluginId}.
 ```
 
 `contributes` 是未启用插件的市场预览元数据，不需要激活插件即可展示贡献内容。
+
+`manifest.required` 表示宿主必需插件：
+
+- 始终纳入启用插件集合。
+- `initEditor()` 激活内置插件时会无条件激活。
+- 插件市场展示“必需”标记。
+- 插件市场开关禁用，不允许关闭。
 
 ## PluginManager
 
@@ -166,6 +161,7 @@ src/editor/core/plugin-manager.ts
 this.editor.unregisterToolsByPlugin(pluginId);
 this.editor.commands.unregisterByPlugin(pluginId);
 this.editor.menus.unregisterByPlugin(pluginId);
+this.editor.actionButtons.unregisterByPlugin(pluginId);
 ```
 
 ## 工具协议与 ToolRegistry
@@ -185,6 +181,24 @@ src/editor/core/tool-registry.ts
 核心类型：
 
 ```ts
+export interface ToolLibraryContribution {
+  groupId: ToolContributionGroup;
+  groupTitle?: string;
+  icon: IconName;
+  keywords?: string[];
+  width?: number;
+  height?: number;
+}
+
+export interface ToolToolbarContribution {
+  groupId: ToolContributionGroup;
+  groupTitle?: string;
+  icon: IconName;
+  tip?: string;
+  shortcut?: string;
+  order?: number;
+}
+
 export interface ToolContribution {
   id: string;
   label: string;
@@ -199,7 +213,6 @@ export interface ToolContribution {
 `ToolRegistry` 提供：
 
 - `register(contribution)`
-- `registerLegacy(id, tool)`
 - `unregister(id)`
 - `unregisterByPlugin(pluginId)`
 - `get(id)`
@@ -215,9 +228,12 @@ export interface ToolContribution {
 重要状态：
 
 - 旧 `editor.tools` Map 已移除。
+- 旧 `Editor.register(name, tool)` 已移除。
+- 旧 `ToolRegistry.registerLegacy(...)` 已移除。
 - `Editor.execute()` 直接使用 `this.toolRegistry.get(...)`。
 - `Editor.createElementFromTool()` 直接使用 `this.toolRegistry.get(...)`。
 - `registerTool()` 只写入 `ToolRegistry`。
+- 图形库和工具栏分组标题由贡献中的 `groupTitle` 提供，不再依赖宿主内置 group title map。
 
 ## 命令协议与 CommandRegistry
 
@@ -278,17 +294,26 @@ nudgeRight:10
 src/editor/builtin/commands/default-commands.ts
 ```
 
-内置命令归属：
+内置命令当前归属必需插件：
 
 ```txt
-leafer-flow.builtin-commands
+leafer-flow.builtin-core
 ```
 
-目前 `App.vue`、快捷键、右键菜单都统一走：
+目前 `App.vue`、快捷键、右键菜单、图层面板都统一走：
 
 ```ts
-editor.commands.execute(action)
+editor.commands.execute(action, payload?)
 ```
+
+图层拖拽排序已新增命令：
+
+```txt
+src/editor/action/do-move-layer.ts
+ACTION_NAME.MOVE_LAYER
+```
+
+`LayerPanel.vue` 拖拽排序通过 `MOVE_LAYER` 命令提交，由 action 内部处理节点查找、循环移动防护、树移动、`history.save()` 和 `autoSave.save()`。
 
 ## 菜单协议与 MenuRegistry
 
@@ -335,10 +360,10 @@ export interface MenuContribution {
 src/editor/builtin/commands/default-menus.ts
 ```
 
-内置菜单归属：
+内置菜单当前归属必需插件：
 
 ```txt
-leafer-flow.builtin-menus
+leafer-flow.builtin-core
 ```
 
 默认右键菜单包含：
@@ -362,6 +387,91 @@ groups.value = props.editor.menus.getContextMenuGroups();
 emit("action", item.command)
 ```
 
+## Action Button 协议与 ActionButtonRegistry
+
+协议文件：
+
+```txt
+src/editor/api/action-button.ts
+```
+
+注册表文件：
+
+```txt
+src/editor/core/action-button-registry.ts
+```
+
+核心类型：
+
+```ts
+export type ActionButtonKind = "button" | "dropdown" | "panel";
+
+export interface ActionButtonItemContribution {
+  id: string;
+  label: string;
+  command: string;
+  icon?: IconName;
+  order?: number;
+  danger?: boolean;
+}
+
+export interface ActionButtonGroupContribution {
+  id: string;
+  label: string;
+  icon: IconName;
+  pluginId?: string;
+  kind?: ActionButtonKind;
+  order?: number;
+  items: ActionButtonItemContribution[];
+}
+```
+
+`ActionButtonRegistry` 提供：
+
+- `register(group)`
+- `unregister(id)`
+- `unregisterByPlugin(pluginId)`
+- `list()`
+- `listByPlugin(pluginId)`
+
+默认 action button 注册文件：
+
+```txt
+src/editor/builtin/commands/default-action-buttons.ts
+```
+
+内置 action button 当前归属必需插件：
+
+```txt
+leafer-flow.builtin-core
+```
+
+当前已注册的默认按钮组包括：
+
+- 历史
+- 对齐与分布
+- 图层与状态
+- 连接线标签
+- 业务流程模板
+- 专业图模板
+- 文件
+- 导出
+- 危险操作
+
+`EditorButton.vue` 当前不再静态定义这些 action button/dropdown，而是通过 prop 接收 registry 分组：
+
+```ts
+groups: ActionButtonGroupContribution[];
+```
+
+点击按钮仍只 emit command：
+
+```ts
+emits("action", action)
+```
+
+注意：`EditorButton.vue` 内的“绘制设置”面板仍是本地静态 UI，直接调用 drawing settings getter/setter，尚未纳入 action button contribution 或插件配置协议。
+
 ## Editor 当前状态
 
 文件：
@@ -377,15 +487,12 @@ public pluginManager: PluginManager;
 public toolRegistry: ToolRegistry;
 public commands: CommandRegistry;
 public menus: MenuRegistry;
+public actionButtons: ActionButtonRegistry;
 ```
 
 工具注册入口：
 
 ```ts
-register(name: string, tool: IEditorTool) {
-  return this.toolRegistry.registerLegacy(name, tool);
-}
-
 registerTool(contribution: ToolContribution) {
   return this.toolRegistry.register(contribution);
 }
@@ -404,6 +511,34 @@ unregisterToolsByPlugin(pluginId: string) {
 ```
 
 旧 `tools = new Map<string, IEditorTool>()` 已删除。
+
+## 内置核心插件
+
+文件：
+
+```txt
+src/editor/builtin/plugins/builtin-core/index.ts
+```
+
+插件 id：
+
+```txt
+leafer-flow.builtin-core
+```
+
+该插件是必需插件：
+
+```ts
+required: true
+```
+
+激活时注册：
+
+- 默认命令：`registerDefaultCommands(ctx.editor)`
+- 默认右键菜单：`registerDefaultMenus(ctx.editor)`
+- 默认顶部操作按钮：`registerDefaultActionButtons(ctx.editor)`
+
+默认命令、菜单、按钮的 `pluginId` 已统一为 `leafer-flow.builtin-core`。
 
 ## 内置工具插件
 
@@ -434,6 +569,14 @@ ctx.editor.registerTool(createToolContribution(...))
 ```
 
 并通过 `contributes.tools` 提供未启用状态的市场预览。
+
+工具贡献同时携带：
+
+- 图形库元数据：`library`
+- 工具栏元数据：`toolbar`
+- 分组标题：`groupTitle`
+- 搜索关键词：`keywords`
+- 快捷键：`toolbar.shortcut`
 
 ## Canvas 辅助插件
 
@@ -479,6 +622,7 @@ src/editor/builtin/plugins/index.ts
 
 ```ts
 export const builtinPlugins: EditorPluginModule[] = [
+  builtinCorePlugin,
   canvasRulerPlugin,
   canvasSnapPlugin,
   canvasDotMatrixPlugin,
@@ -535,10 +679,11 @@ leafer-flow.enabled-plugins
 
 - 展示内置插件列表。
 - 搜索插件 id、名称、描述、分类、capabilities。
-- 启用/禁用插件。
+- 启用/禁用非必需插件。
+- 必需插件展示“必需”标记，开关禁用。
 - 展示启用状态。
-- 展示工具、命令、菜单贡献数量。
-- 展示工具、命令、菜单贡献标签预览。
+- 展示工具、命令、菜单、按钮贡献数量。
+- 展示工具、命令、菜单、按钮贡献标签预览。
 - 未启用插件通过 `plugin.contributes` 展示预览。
 
 用户已在浏览器体验，反馈效果很好。
@@ -554,21 +699,41 @@ src/editor/index.ts
 当前职责：
 
 1. 创建 `Editor`。
-2. 注册默认 commands。
-3. 注册默认 menus。
-4. 读取启用插件 id。
-5. 激活对应内置插件。
+2. 读取启用插件 id。
+3. 激活启用的内置插件。
+4. 无条件激活必需内置插件。
 
 核心流程：
 
 ```ts
 const editor = new Editor(...);
-
-registerDefaultCommands(editor);
-registerDefaultMenus(editor);
 activateEnabledPlugins(editor);
-
 return editor;
+```
+
+`activateEnabledPlugins(editor)` 当前逻辑：
+
+```ts
+const enabledIds = new Set(getEnabledPluginIds());
+builtinPlugins.forEach((plugin) => {
+  if (plugin.manifest.required || enabledIds.has(plugin.manifest.id)) {
+    void editor.pluginManager.activate(plugin);
+  }
+});
+```
+
+`initEditor()` 不再直接调用：
+
+- `registerDefaultCommands(editor)`
+- `registerDefaultMenus(editor)`
+- `registerDefaultActionButtons(editor)`
+
+这些默认贡献由 `builtin-core` 插件激活。
+
+`src/editor/index.ts` 当前只保留较小 public surface：
+
+```ts
+export { Editor, getZoomPercent };
 ```
 
 ## UI 注册表驱动状态
@@ -581,15 +746,20 @@ return editor;
 src/components/ShapeLibrary.vue
 ```
 
-已支持 prop：
+接收 prop：
 
 ```ts
-groups?: ShapeLibraryGroup[];
+groups: ShapeLibraryGroup[];
 ```
 
-优先使用运行时注册表分组，fallback 到静态 `shapeLibraryGroups`。
+当前状态：
 
-最近使用工具已从 `ToolName[]` 放宽为 `string[]`。
+- 图形库分组来自 `currentEditor.toolRegistry.getShapeLibraryGroups()`。
+- 已移除静态 `shapeLibraryGroups` fallback。
+- 最近使用工具使用 `string[]`。
+- 折叠快捷入口不再使用静态默认工具表，而是优先使用最近工具，再回退到运行时分组中的首批工具。
+- 搜索只使用 `item.label`、`item.tool`、`item.keywords`。
+- 旧静态 `shapeSearchAliases` 已移除，别名已合并到工具贡献的 `keywords`。
 
 ### EditorToolbar
 
@@ -599,22 +769,86 @@ groups?: ShapeLibraryGroup[];
 src/components/EditorToolbar.vue
 ```
 
-已支持 prop：
+接收 prop：
 
 ```ts
-groups?: ToolToolbarGroup[];
+groups: ToolToolbarGroup[];
 ```
 
-优先使用运行时注册表分组，fallback 到本地静态分组。
+当前状态：
 
-当前展示逻辑仍沿用原 UI：
+- 工具栏分组来自 `currentEditor.toolRegistry.getToolbarGroups()`。
+- 已移除本地静态 fallback。
+- 不再硬编码 `flow`、`bpmn`、`architecture`、`shapes` 等分组布局。
+- 选择工具仍是宿主固定入口。
+- 小分组直接显示按钮。
+- 工具数大于 4 的分组显示为 dropdown。
+- 新插件贡献的 toolbar group 可直接显示，无需改组件。
 
-- core：选择 + 连接线 + 文本
-- flow 前 4 个直接展示
-- flow 后续 dropdown
-- bpmn dropdown
-- architecture dropdown
-- shapes dropdown
+### EditorButton
+
+文件：
+
+```txt
+src/components/EditorButton.vue
+```
+
+接收 prop：
+
+```ts
+groups: ActionButtonGroupContribution[];
+```
+
+当前按钮/下拉分组来自：
+
+```ts
+currentEditor.actionButtons.list()
+```
+
+`EditorButton.vue` 已不再静态定义历史、对齐、图层、模板、文件、导出、清空等 action UI；这些默认项迁移到：
+
+```txt
+src/editor/builtin/commands/default-action-buttons.ts
+```
+
+残留：绘制设置面板仍在 `EditorButton.vue` 内部静态维护，直接调用：
+
+```ts
+getConnectorRouteType()
+getFreehandSmoothness()
+getSnapEnabled()
+setConnectorRouteType(...)
+setFreehandSmoothness(...)
+setSnapEnabled(...)
+```
+
+后续更适合通过“插件配置能力”或 settings panel contribution 处理。
+
+### LayerPanel
+
+文件：
+
+```txt
+src/components/LayerTree/LayerPanel.vue
+```
+
+图层面板的锁定、显隐、上下移动、置顶/置底、拖拽排序操作已经从直接 import action 改为：
+
+```ts
+await props.editor.commands.execute(action, payload?)
+```
+
+拖拽排序当前调用：
+
+```ts
+await props.editor.commands.execute(ACTION_NAME.MOVE_LAYER, {
+  dragId,
+  dropId,
+  dropPosition,
+})
+```
+
+`LayerPanel.vue` 不再直接移动 Leafer tree，也不再手动保存 history/autosave。
 
 ### ContextMenu
 
@@ -631,6 +865,60 @@ groups.value = props.editor.menus.getContextMenuGroups();
 ```
 
 不再直接 import `do-*` action。
+
+### StatusBar
+
+文件：
+
+```txt
+src/components/StatusBar.vue
+```
+
+当前工具名称不再使用组件内硬编码表，而是由 `App.vue` 从运行时工具贡献生成：
+
+```ts
+runtimeToolLabels.value = {
+  [TOOL_NAME.SELECT]: "选择",
+  ...Object.fromEntries(
+    currentEditor.toolRegistry.list().map((contribution) => [contribution.id, contribution.label]),
+  ),
+};
+```
+
+`StatusBar.vue` 通过 prop 接收：
+
+```ts
+toolLabels: Record<string, string>;
+```
+
+### Shortcuts
+
+文件：
+
+```txt
+src/editor/shortcuts.ts
+```
+
+工具快捷键不再硬编码具体工具 id。
+
+`useEditorShortcuts()` 支持：
+
+```ts
+resolveToolShortcut?: (key: string) => string | undefined;
+```
+
+`App.vue` 从 toolbar contribution 生成运行时映射：
+
+```ts
+runtimeToolShortcuts.value = Object.fromEntries(
+  currentEditor.toolRegistry.listToolbarTools().flatMap((contribution) => {
+    const shortcut = contribution.toolbar?.shortcut?.toLowerCase();
+    return shortcut ? [[shortcut, contribution.id]] : [];
+  }),
+);
+```
+
+宿主级非工具快捷键仍保留在 `shortcuts.ts` 中，作为核心编辑器行为。
 
 ### App.vue
 
@@ -657,8 +945,11 @@ async function handleAction(action: string) {
 运行时 UI 数据：
 
 ```ts
-const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>(shapeLibraryGroups);
+const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>([]);
 const runtimeToolbarGroups = ref<ToolToolbarGroup[]>([]);
+const runtimeActionButtonGroups = ref<ActionButtonGroupContribution[]>([]);
+const runtimeToolLabels = ref<Record<string, string>>({ [TOOL_NAME.SELECT]: "选择" });
+const runtimeToolShortcuts = ref<Record<string, string>>({});
 const pluginMarketOpen = ref(false);
 ```
 
@@ -666,24 +957,15 @@ const pluginMarketOpen = ref(false);
 
 - 刷新工具栏分组。
 - 刷新图形库分组。
+- 刷新 action button 分组。
+- 刷新状态栏工具名称。
+- 刷新工具快捷键映射。
 - 重置当前工具为 `select`。
 - 写日志。
 
-## 已验证
+## 手动体验反馈
 
-最近多次运行：
-
-```sh
-pnpm run build
-```
-
-最近一次构建通过：
-
-```txt
-✓ built in 1.12s
-```
-
-用户也已手动体验插件市场，反馈可用且效果很好。
+用户已在浏览器体验插件市场，反馈可用且效果很好。
 
 ## 当前仍然存在的历史包袱
 
@@ -695,7 +977,7 @@ pnpm run build
 - autosave 恢复日志
 - shape drop
 - marquee selection
-- toolbar/library runtime 刷新
+- toolbar/library/action button/status/shortcut runtime 刷新
 - 插件市场打开与变更回调
 - 日志展示协调
 
@@ -708,7 +990,7 @@ src/composables/useSelectionMarquee.ts
 src/composables/usePluginMarketRuntime.ts
 ```
 
-### EditorButton.vue 仍是静态 action UI
+### EditorButton.vue 绘制设置仍是静态本地 UI
 
 文件：
 
@@ -716,38 +998,25 @@ src/composables/usePluginMarketRuntime.ts
 src/components/EditorButton.vue
 ```
 
-仍静态定义大量 action button/dropdown，例如：
+历史、对齐、图层、模板、文件、导出、清空等 action button/dropdown 已迁移到 `ActionButtonRegistry`。
 
-- 对齐
-- 图层
-- 绘制设置
-- 模板
-- 保存/加载/导出
-- 清空
+当前仍未 contribution 化的是“绘制设置”面板：
 
-下一步可以考虑建立 toolbar/action button contribution，或先把配置项抽到 editor 层。
+- 连线样式
+- 自由绘制平滑度
+- 吸附开关
 
-### LayerPanel.vue 仍直接调用 action
-
-文件：
-
-```txt
-src/components/LayerTree/LayerPanel.vue
-```
-
-仍直接 import：
-
-```ts
-doLayer, doToggleLock, doToggleVisible
-```
-
-后续应改为执行 `editor.commands.execute(...)`。
+这部分更像插件配置/编辑器设置能力，后续可结合插件 settings/schema 或 settings panel contribution 统一处理。
 
 ### 属性面板仍未插件化
 
 `EditorPanel.vue` 仍然较重，包含选择解析、属性状态和属性更新逻辑。
 
 后续若做插件属性面板，应先抽 selection/property composables。
+
+### ViewControls.vue 仍是静态宿主 UI
+
+`ViewControls.vue` 仍是静态缩放/视图控制组件。它已经 emit command id，不直接调用底层 action，但尚未 contribution 化。
 
 ### 高风险 action 尚未收口副作用
 
@@ -758,74 +1027,8 @@ doLayer, doToggleLock, doToggleVisible
 - connector label sync
 - selection refresh
 
-暂未建立统一 mutation commit path。
+暂未建立统一 mutation apply path。
 
-## 下一步推荐
+### EditorPanel.vue 仍有既有类型诊断
 
-### 优先级 1：保存当前后续进度
-
-因为 `ba8b56a` 之后又做了 MenuRegistry 和移除旧 tools Map，建议下一步先确认工作区并提交：
-
-```sh
-git status --short
-pnpm run build
-git add src docs
-git commit -m "Add menu registry"
-```
-
-提交信息可根据实际 diff 调整。
-
-### 优先级 2：LayerPanel command 化
-
-将 `LayerPanel.vue` 从直接调用 action 改为走 `editor.commands.execute(...)`。
-
-这是当前最明显的 UI/action 耦合残留之一，风险相对可控。
-
-### 优先级 3：EditorButton contribution 化
-
-`EditorButton.vue` 仍是静态 action hub。可以考虑新增：
-
-```txt
-src/editor/api/action-button.ts
-src/editor/core/action-button-registry.ts
-```
-
-但也可以先不做，避免 UI 配置复杂化过快。
-
-### 优先级 4：App.vue 拆 composables
-
-把以下逻辑拆出去：
-
-- shape drop
-- marquee selection
-- runtime registry refresh
-- plugin market changed handling
-
-### 优先级 5：插件配置能力
-
-为插件协议增加配置入口，例如：
-
-```ts
-settings?: PluginSettingContribution[]
-```
-
-或：
-
-```ts
-configure?(ctx: PluginContext): PluginConfigSchema
-```
-
-优先适合：
-
-- 点阵背景配置
-- 标尺配置
-- 吸附配置
-- 默认连线样式
-
-## 注意事项
-
-- `doLoad()` 是异步行为，CommandRegistry 已支持 Promise。
-- 命令 id 目前复用 `ACTION_NAME` 的值，减少 UI 改动面。
-- 不要轻易动 `flow-serialization.ts`、`do-clipboard.ts`、`do-group.ts`、`do-ungroup.ts`、`do-file.ts`。
-- 新插件如果贡献工具/命令/菜单，必须设置 `pluginId`，否则市场和停用清理无法正确归属。
-- 新 canvas overlay 插件必须实现可靠 `deactivate(ctx)`。
+`EditorPanel.vue` 目前仍存在 Leafer / Connector 类型兼容相关诊断。这是既有问题，和本轮注册表/插件市场重构不是同一条链路。

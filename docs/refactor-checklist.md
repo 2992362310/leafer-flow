@@ -1,92 +1,115 @@
 # Leafer Flow 重构清单
 
+本文用于记录本轮插件化/解耦重构中哪些事项已经落地，哪些仍需继续推进。
+
 ## 1. 项目 skill 结论
 
-当前仓库内的自定义 skill 只有一个：`.agents/skills/leafer-ai/SKILL.md`。
+当前仓库已有两个自定义 skill：
 
-它的定位不是仓库专属工作流，而是一个通用的 LeaferJS 场景知识包，核心特点如下：
+- `.agents/skills/leafer-ai/SKILL.md`
+  - 面向 LeaferJS / Leafer AI / 无限画布 / 图形编辑器场景。
+  - 偏通用 Leafer 技术知识和示例生成。
+- `.agents/skills/leafer-flow-engineering/SKILL.md`
+  - 面向本仓库 Vue + TypeScript + Leafer Flow 工程重构。
+  - 记录了工具注册、action 边界、history/autosave、序列化、高风险模块和验证顺序等仓库约束。
 
-- 面向 LeaferJS / Leafer AI / 无限画布 / 图形编辑器场景。
-- 优先使用官方 `ai-docs` 中的示例、指南和参考资料。
-- 倾向输出最小可运行示例，避免过度抽象。
-- 在具备 MCP 图形工具时，优先走工具调用而不是直接生成大段代码。
-
-这意味着当前项目的“skill 能力”主要解决的是 Leafer 技术选型和画布代码生成问题，并没有沉淀出这个仓库自己的工程约束，例如：
-
-- 工具定义如何组织
-- action 如何统一提交历史记录
-- UI 与 editor core 如何解耦
-- 哪些链路必须优先回归验证
-
-后续重构应优先把这些“仓库内知识”沉淀成结构，而不是继续堆功能点。
+仓库专属工程约束已开始沉淀，后续仍应随架构变化持续更新。
 
 ## 2. 重构目标
 
-本轮重构建议先解决 4 个问题：
+本轮重构聚焦 4 个问题：
 
 1. 降低新增图形/工具时的修改面。
 2. 降低 UI 组件直接操作编辑器内核的耦合度。
 3. 给高风险编辑链路补上最小测试切口。
 4. 统一历史记录、自动保存、序列化这些跨模块副作用。
 
+当前进度：
+
+- 第 1 项已基本完成：工具元数据、图形库、工具栏已由统一工具贡献派生。
+- 第 2 项已完成主要交互入口：App、ContextMenu、EditorButton、LayerPanel 已走 command/registry 边界。
+- 第 3 项尚未完成：当前仍没有自动化测试切口。
+- 第 4 项尚未完成：高风险 mutation side effects 仍分散在各 action 中。
+
 ## 3. P0 清单
 
 ### 3.1 工具元数据单一化
 
-现状：工具名称、注册逻辑、图形库展示信息分散在多个位置。
+原现状：工具名称、注册逻辑、图形库展示信息分散在多个位置。
 
 - `src/editor/constants.ts`
 - `src/editor/index.ts`
 - `src/editor/shape-library.ts`
 
-问题：新增一个图形往往要同时修改常量、注册逻辑、面板展示配置，容易漏改。
+当前状态：已基本完成。
 
-重构项：
+已落地：
 
-- [ ] 建立统一的 tool schema，例如 `tool-definitions.ts`。
-- [ ] 把 `label`、`icon`、`keywords`、`默认尺寸`、`注册参数` 放在同一份定义中。
-- [ ] `index.ts` 只负责按 schema 批量注册。
-- [ ] `shape-library.ts` 改为从 schema 派生，避免重复维护。
+- [x] 建立统一的 tool schema：`src/editor/tool-definitions.ts`。
+- [x] 把 `label`、`icon`、`keywords`、默认尺寸、注册参数放到工具定义和工具贡献中。
+- [x] `src/editor/builtin/tools/create-tool-contribution.ts` 负责从定义创建贡献。
+- [x] `ShapeLibrary` 从 `ToolRegistry.getShapeLibraryGroups()` 派生。
+- [x] `EditorToolbar` 从 `ToolRegistry.getToolbarGroups()` 派生。
+- [x] 图形库搜索别名合并到 `keywords`，移除静态 `shapeSearchAliases`。
+- [x] 图形库和工具栏分组标题由贡献中的 `groupTitle` 提供。
 
-验收标准：新增一个流程图节点时，只需要改一处主配置。
+仍保留：
+
+- `src/editor/constants.ts` 仍保留 `TOOL_NAME` 作为内置工具 id catalog。
+- `tool-definitions.ts` 仍是内置工具集中定义源；这对内置插件是可接受的。
+
+验收状态：新增内置图形节点主要修改 `tool-definitions.ts` 和所属内置插件清单，UI 展示不需要额外维护静态图形库或工具栏配置。
 
 ### 3.2 工具注册流程去重复
 
-现状：`src/editor/index.ts` 里有 `registerBasicTools`、`registerFlowTools`、`registerBpmnTools`、`registerArchitectureTools`，大量重复 `editor.register(...)`。
+原现状：`src/editor/index.ts` 里有 `registerBasicTools`、`registerFlowTools`、`registerBpmnTools`、`registerArchitectureTools`，大量重复 `editor.register(...)`。
 
-问题：代码可读性还可以，但扩展性差，注册规则和工具分类绑定过死。
+当前状态：已完成。
 
-重构项：
+已落地：
 
-- [ ] 改为“分类配置 + 通用注册器”模式。
-- [ ] 把 `DrawFlowNode` 的重复实例化参数收敛到工厂函数。
-- [ ] 明确哪些工具是 `DrawFlowNode`，哪些工具是独立 tool class。
+- [x] 工具注册从 `src/editor/index.ts` 移到内置插件。
+- [x] `src/editor/index.ts` 变成初始化入口，不再维护图形清单。
+- [x] 内置插件通过 `ctx.editor.registerTool(createToolContribution(...))` 注册工具。
+- [x] `DrawFlowNode` 的重复实例化参数通过 `createToolContribution` 和工具定义收敛。
+- [x] 旧 `Editor.register(name, tool)` 已移除。
+- [x] 旧 `ToolRegistry.registerLegacy(...)` 已移除。
+- [x] 旧 `editor.tools` Map 已移除。
 
-验收标准：`src/editor/index.ts` 变成初始化入口，而不是图形清单本体。
+验收状态：`src/editor/index.ts` 已是初始化入口，而不是图形清单本体。
 
 ### 3.3 建立 action 执行边界
 
-现状：Vue 组件直接 import 并调用 `doCopy`、`doDelete`、`doGroup` 等 action，典型位置：
+原现状：Vue 组件直接 import 并调用 `doCopy`、`doDelete`、`doGroup` 等 action。
 
-- `src/components/ContextMenu.vue`
-- `src/components/EditorPanel.vue`
+当前状态：主要入口已完成，属性面板仍需后续处理。
 
-问题：UI 层知道太多 editor 细节，后续要改 action 返回值、埋点、权限或异步行为时，影响面会扩散到组件层。
+已落地：
 
-重构项：
+- [x] 引入 `CommandRegistry`。
+- [x] 统一 `CommandResult`。
+- [x] 支持同步/异步 command 的一致执行方式。
+- [x] `App.vue` action 分发统一走 `editor.commands.execute(action)`。
+- [x] `ContextMenu.vue` 不再直接 import `do-*`，只 emit command。
+- [x] `EditorButton.vue` 默认 action button/dropdown 从 `ActionButtonRegistry` 派生，只 emit command。
+- [x] `LayerPanel.vue` 锁定、显隐、层级移动、拖拽排序走 command。
+- [x] 新增 `ACTION_NAME.MOVE_LAYER` 和 `src/editor/action/do-move-layer.ts`。
+- [x] 右键菜单由 `MenuRegistry` 派生。
+- [x] 默认 commands / menus / action buttons 包装进必需插件 `leafer-flow.builtin-core`。
 
-- [ ] 引入 command dispatcher，例如 `executeEditorAction(editor, actionName, payload)`。
-- [ ] UI 层只发动作名和参数，不直接拼业务逻辑。
-- [ ] 统一 action 结果结构和错误处理。
-- [ ] 为异步 action 和同步 action 建立一致调用方式。
+仍保留：
 
-验收标准：组件层不再直接依赖一组分散的 `do-*.ts` 实现细节。
+- [ ] `EditorPanel.vue` 仍包含较多选择解析、属性读取和属性写入逻辑。
+- [ ] `ViewControls.vue` 仍是静态宿主 UI，虽然已通过 command id 分发。
+- [ ] `EditorButton.vue` 的“绘制设置”面板仍直接调用 drawing settings getter/setter。
+
+验收状态：大部分通用编辑动作已建立 command 边界，但属性面板和 settings panel 还未 contribution 化。
 
 ### 3.4 补最小自动化测试切口
 
-现状：仓库里没有检测到测试文件，当前属于纯手工回归。
+当前状态：未完成。
 
-问题：连接线、编组、剪贴板、保存加载等链路一旦调整，几乎没有低成本防回归手段。
+现状：仓库里没有检测到测试文件，当前属于纯手工回归。
 
 重构项：
 
@@ -101,7 +124,9 @@
 
 ### 4.1 收敛 Editor 核心副作用
 
-现状：`src/editor/editor.ts` 同时负责 app 初始化、plugin 挂载、tool 管理、history 监听、autosave 启动、连接线标签同步。
+当前状态：未完成。
+
+现状：`src/editor/editor.ts` 仍同时负责 app 初始化、plugin 挂载、tool 执行、history 监听、autosave 启动、连接线标签同步等。
 
 问题：生命周期和副作用耦合在一个类里，后续定位“谁在保存历史、谁在同步标签、谁在触发 autosave”不够直接。
 
@@ -115,6 +140,8 @@
 
 ### 4.2 属性面板状态收敛
 
+当前状态：未完成。
+
 现状：`src/components/EditorPanel.vue` 里维护了大量独立 ref 和事件同步逻辑。
 
 问题：选择态、连接线态、文本态、组合图形态混在一个组件里，后续增加属性会继续膨胀。
@@ -124,14 +151,15 @@
 - [ ] 抽出 `useSelectionInspector` 或类似 composable。
 - [ ] 拆分几类属性分组：几何、外观、文本、连接线。
 - [ ] 统一选中元素解析逻辑，避免组件里散落 `instanceof` 和 group children 推导。
+- [ ] 后续再考虑属性面板 contribution。
 
 验收标准：属性读取、属性写入、视图渲染三层职责分开。
 
 ### 4.3 编组/选择判断逻辑复用
 
-现状：是否选中 group、是否可取消编组、是否存在连接线等判断散落在 action 和组件里。
+当前状态：未完成。
 
-问题：同一业务规则多处实现，容易出现 UI 可点但 action 不可执行，或者反过来。
+现状：是否选中 group、是否可取消编组、是否存在连接线等判断仍散落在 action 和组件里。
 
 重构项：
 
@@ -143,9 +171,9 @@
 
 ### 4.4 文件与序列化链路分层
 
-现状：保存、加载、自动恢复、连接线自定义数据、标签偏移等逻辑分散在 action 和 core 中。
+当前状态：未完成。
 
-问题：数据结构演进时，容易出现“保存能写、加载没还原”或者“画布状态恢复不完整”。
+现状：保存、加载、自动恢复、连接线自定义数据、标签偏移等逻辑分散在 action 和 core 中。
 
 重构项：
 
@@ -159,9 +187,17 @@
 
 ### 5.1 文档收敛
 
-现状：仓库内 docs 数量较多，部分分析文档与当前代码状态已经偏离。
+当前状态：进行中。
 
-重构项：
+已落地：
+
+- [x] `docs/plugin-architecture.md` 更新为当前插件架构事实。
+- [x] `docs/plugin-market-plan.md` 更新为当前市场实现状态。
+- [x] `docs/refactor-context-summary.md` 更新为当前接力上下文。
+- [x] `docs/refactor-checklist.md` 标记已实现/未实现项。
+- [x] `docs/todo.md` 更新项目功能完成状态。
+
+仍可继续：
 
 - [ ] 保留 1 份“当前架构事实文档”。
 - [ ] 保留 1 份“高风险链路验收清单”。
@@ -170,6 +206,8 @@
 验收标准：新同学进入项目时，不需要在多份历史文档里交叉比对事实。
 
 ### 5.2 命名和目录职责再整理
+
+当前状态：未完成。
 
 现状：`core`、`action`、`utils`、`tools` 的边界基本可用，但部分模块职责已经出现交叉。
 
@@ -184,36 +222,39 @@
 
 ### 5.3 仓库专属 skill / 规范沉淀
 
-现状：现有 skill 偏 Leafer 通识，不包含本仓库工程约束。
+当前状态：已完成首版。
 
-重构项：
+已落地：
 
-- [ ] 新增仓库级 skill 或维护文档，明确工具注册模式、action 设计原则、history 提交方式。
-- [ ] 记录常见高风险模块与验证命令。
-- [ ] 给后续 AI 协作提供仓库内约束，而不是只提供 Leafer 知识。
+- [x] 新增仓库级 skill：`.agents/skills/leafer-flow-engineering/SKILL.md`。
+- [x] 记录工具注册模式、action 设计原则、history/autosave 注意事项。
+- [x] 记录高风险模块。
+- [x] 记录验证顺序和低成本验证策略。
 
-验收标准：后续无论是人还是 AI 进入仓库，都能快速知道“应该按什么方式改”。
+仍可继续：
 
-## 6. 建议执行顺序
+- [ ] 随后续架构变化继续更新 skill。
+- [ ] 如果建立自动化测试，再把测试命令和覆盖边界补进去。
 
-建议按下面顺序推进：
+验收状态：后续无论是人还是 AI 进入仓库，都能快速知道“应该按什么方式改”。
 
-1. 工具元数据单一化
-2. 工具注册流程去重复
-3. action 执行边界
-4. 最小自动化测试切口
-5. Editor 核心副作用收敛
-6. 属性面板状态收敛
-7. 序列化与文档收敛
+## 6. 当前建议执行顺序
 
-原因：前 4 项会先建立“可持续改”的骨架，后 3 项再逐步把高耦合和高风险模块拆开。
+当前前置插件化骨架已经基本完成，建议后续按下面顺序推进：
+
+1. 属性面板状态收敛：先拆 `EditorPanel.vue` selection/property composables。
+2. 收敛 settings panel：把 `EditorButton.vue` 的绘制设置迁出静态 UI。
+3. 文件/导出/模板插件化：从 `builtin-core` 拆出可独立启停的功能域插件。
+4. 高风险 action 副作用收敛：逐步建立 mutation pipeline。
+5. 最小自动化测试切口：优先覆盖 serialization / connector / clipboard / group。
+6. 文档归档：把 docs 收敛成事实文档 + 验收清单。
 
 ## 7. 首轮重构完成标准
 
-如果要定义“第一轮重构已完成”，建议至少满足以下条件：
+当前状态：部分完成。
 
-- [ ] 新增一个图形节点只改一处主配置。
-- [ ] UI 组件不再直接依赖大批 `do-*.ts`。
+- [x] 新增一个图形节点不再需要维护静态图形库和静态工具栏配置。
+- [x] UI 组件不再直接依赖大批通用编辑 `do-*.ts`。
 - [ ] 至少 3 条核心编辑链路有自动化测试。
-- [ ] 历史记录与自动保存提交路径可追踪。
-- [ ] 文档能明确反映当前真实架构，而不是历史方案。
+- [ ] 历史记录与自动保存提交路径可从单一 mutation pipeline 追踪。
+- [x] 文档已更新以反映当前主要架构事实。

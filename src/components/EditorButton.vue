@@ -6,7 +6,7 @@ import {
   setConnectorRouteType,
   setFreehandSmoothness,
   setSnapEnabled,
-} from "../editor";
+} from "../editor/core/drawing-settings";
 import type { ActionButtonGroupContribution } from "../editor/api/action-button";
 import Icon from "./Icon.vue";
 

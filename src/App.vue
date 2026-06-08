@@ -18,7 +18,7 @@ import SelectionMarquee from "./components/SelectionMarquee.vue";
 import ShapeLibrary from "./components/ShapeLibrary.vue";
 import PluginMarketDrawer from "./components/PluginMarket/PluginMarketDrawer.vue";
 import type { ShapeLibraryGroup, ShapeLibraryItem } from "./editor/shape-library";
-import { shapeLibraryGroups, SHAPE_DROP_MIME } from "./editor/shape-library";
+import { SHAPE_DROP_MIME } from "./editor/shape-library";
 import type { ToolToolbarGroup } from "./editor/api/tool";
 import type { ActionButtonGroupContribution } from "./editor/api/action-button";
 import type { CommandResult } from "./editor/api/command";
@@ -32,9 +32,11 @@ const editor = shallowRef<Editor>();
 const elementCount = ref(0);
 const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
-const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>(shapeLibraryGroups);
+const runtimeShapeLibraryGroups = ref<ShapeLibraryGroup[]>([]);
 const runtimeToolbarGroups = ref<ToolToolbarGroup[]>([]);
 const runtimeActionButtonGroups = ref<ActionButtonGroupContribution[]>([]);
+const runtimeToolLabels = ref<Record<string, string>>({ [TOOL_NAME.SELECT]: "选择" });
+const runtimeToolShortcuts = ref<Record<string, string>>({});
 const pluginMarketOpen = ref(false);
 const marquee = ref({ active: false, x: 0, y: 0, width: 0, height: 0 });
 let marqueeStart = { x: 0, y: 0 };
@@ -48,6 +50,7 @@ const MARQUEE_MIN_SIZE = 6;
 const { syncCurrentTool } = useEditorShortcuts({
   onTool: handleTool,
   onAction: handleAction,
+  resolveToolShortcut: (key) => runtimeToolShortcuts.value[key],
 });
 
 onMounted(() => {
@@ -96,11 +99,12 @@ function refreshRuntimeToolContributions(currentEditor: Editor) {
   refreshShapeLibraryGroups(currentEditor);
   refreshToolbarGroups(currentEditor);
   refreshActionButtonGroups(currentEditor);
+  refreshToolLabels(currentEditor);
+  refreshToolShortcuts(currentEditor);
 }
 
 function refreshShapeLibraryGroups(currentEditor: Editor) {
-  const groups = currentEditor.toolRegistry.getShapeLibraryGroups();
-  runtimeShapeLibraryGroups.value = groups.length > 0 ? groups : shapeLibraryGroups;
+  runtimeShapeLibraryGroups.value = currentEditor.toolRegistry.getShapeLibraryGroups();
 }
 
 function refreshToolbarGroups(currentEditor: Editor) {
@@ -109,6 +113,26 @@ function refreshToolbarGroups(currentEditor: Editor) {
 
 function refreshActionButtonGroups(currentEditor: Editor) {
   runtimeActionButtonGroups.value = currentEditor.actionButtons.list();
+}
+
+function refreshToolLabels(currentEditor: Editor) {
+  runtimeToolLabels.value = {
+    [TOOL_NAME.SELECT]: "选择",
+    ...Object.fromEntries(
+      currentEditor.toolRegistry
+        .list()
+        .map((contribution) => [contribution.id, contribution.label]),
+    ),
+  };
+}
+
+function refreshToolShortcuts(currentEditor: Editor) {
+  runtimeToolShortcuts.value = Object.fromEntries(
+    currentEditor.toolRegistry.listToolbarTools().flatMap((contribution) => {
+      const shortcut = contribution.toolbar?.shortcut?.toLowerCase();
+      return shortcut ? [[shortcut, contribution.id]] : [];
+    }),
+  );
 }
 
 function addCleanup(cleanup: () => void) {
@@ -343,7 +367,11 @@ function handlePluginMarketChanged() {
   <EditorPanel :editor="editor" class="z-10" />
 
   <div class="absolute bottom-2 left-8 w-fit">
-    <StatusBar :selected-tool="toolbarRef?.selectedTool" :element-count="elementCount" />
+    <StatusBar
+      :selected-tool="toolbarRef?.selectedTool"
+      :tool-labels="runtimeToolLabels"
+      :element-count="elementCount"
+    />
   </div>
 
   <div class="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
