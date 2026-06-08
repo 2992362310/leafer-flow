@@ -1,5 +1,6 @@
 import { Group, Rect, Text, type IPointData, type IUI } from "leafer";
 import type { IDrawOptions, IDrawResult, TCallback } from "../types";
+import { makeGroupSelectionAtomic } from "../core/group-selection";
 import { DrawBase } from "./draw-base";
 
 export class DrawRect extends DrawBase {
@@ -26,13 +27,15 @@ export class DrawRect extends DrawBase {
       opacity: this.options.opacity,
     });
 
-    return new Group({
+    const group = new Group({
       editable: true,
       x: startPoint.x,
       y: startPoint.y,
       name: "矩形",
       children: [rect, this.createText("矩形")],
     });
+    makeGroupSelectionAtomic(group);
+    return group;
   }
 
   protected updateElement(element: IUI, endPoint: IPointData) {

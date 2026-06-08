@@ -20,6 +20,11 @@ const INIT_CONFIG = {
   tree: {},
 };
 
+function getDrawResultElement(result: unknown): IUI | null {
+  if (!result || typeof result !== "object" || !("element" in result)) return null;
+  return (result as { element?: IUI | null }).element ?? null;
+}
+
 export default class Editor {
   app: App;
   plugins: IEditorPlugin[] = [];
@@ -167,8 +172,12 @@ export default class Editor {
     this.setCursor(cursorType);
 
     // 3. 执行工具逻辑
-    tool.execute(() => {
+    tool.execute((result) => {
       // 工具执行完毕后的回调 (例如画完了一个矩形)
+      const element = getDrawResultElement(result);
+      if (element) {
+        app.editor.select(element);
+      }
 
       // 保存历史记录
       this.commitMutation({ syncConnectorLabels: true });

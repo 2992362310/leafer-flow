@@ -13,6 +13,7 @@ import {
   resolveNodeById,
   type ConnectorStateLike,
 } from "../core/flow-serialization";
+import { normalizeAtomicGroups } from "../core/group-selection";
 
 interface ClipboardItem {
   kind: "node" | "connector" | "label";
@@ -119,6 +120,12 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
       if (added && item.originalId !== undefined) {
         idMap.set(item.originalId, added);
       }
+      if (added?.id !== undefined) {
+        idMap.set(added.id, added);
+      }
+      if (added) {
+        idMap.set(added.innerId, added);
+      }
       count++;
     });
 
@@ -163,6 +170,7 @@ export function doPaste(editor: Editor): { success: boolean; message: string } {
       count++;
     });
 
+    normalizeAtomicGroups(editor.app.tree.children as IUI[] | undefined);
     editor.commitMutation({ syncConnectorLabels: true });
 
     return { success: true, message: `已粘贴 ${count} 个元素` };

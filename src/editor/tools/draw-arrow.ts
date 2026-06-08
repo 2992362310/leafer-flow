@@ -13,7 +13,7 @@ export class DrawArrow extends DrawBase {
   private options: IDrawOptions;
   private startNode: IUI | null = null;
   private startAnchorPoint: IPointData | null = null;
-  private readonly BASE_SNAP_DISTANCE = 18;
+  private readonly BASE_SNAP_DISTANCE = 64;
 
   private getSnapDistance(): number {
     const zoom = this.editor?.app.tree.scaleX;
@@ -62,7 +62,7 @@ export class DrawArrow extends DrawBase {
     const startPoint = this.startAnchorPoint || this.points[0];
     if (startPoint) {
       const connector = element as Connector;
-      const endTarget = this.pickConnectableNode(endPoint, startPoint);
+      const endTarget = this.pickConnectableNode(endPoint, startPoint, { ignoredNode: connector });
       connector.setPoints(startPoint, endTarget.point);
     }
   }
@@ -82,28 +82,19 @@ export class DrawArrow extends DrawBase {
         : connector.getPoints()?.to || this.points[1] || { x: 0, y: 0 };
     const startPoint =
       this.startAnchorPoint || this.points[0] || connector.getPoints()?.from || rawEndPoint;
-    const endTarget = this.pickConnectableNode(rawEndPoint, startPoint);
+    const endTarget = this.pickConnectableNode(rawEndPoint, startPoint, {
+      ignoredNode: connector,
+      ignoredNodes: this.startNode ? [this.startNode] : [],
+    });
     const endNode = endTarget.node;
 
     (connector as EditableConnector).routeType = getConnectorRouteType();
 
     if (this.startNode && endNode && this.startNode !== endNode) {
-      connector.switchToNodeMode(this.startNode, endNode, {
-        updateMode: "event",
+      bindConnectorToNodes(connector, this.startNode, endNode, {
+        opt1: this.getTargetOption(this.startNode, rawEndPoint),
+        opt2: this.getTargetOption(endNode, startPoint),
       });
-      const state = connector.getState();
-      connector.setState(
-        {
-          ...state,
-          opt1: this.getTargetOption(this.startNode, rawEndPoint),
-          opt2: this.getTargetOption(endNode, startPoint),
-        } as never,
-        (id: string | number) => {
-          if (this.startNode?.innerId === id) return this.startNode;
-          if (endNode.innerId === id) return endNode;
-          return undefined;
-        },
-      );
     } else {
       const fromPoint =
         this.startAnchorPoint ||
@@ -136,16 +127,29 @@ export class DrawArrow extends DrawBase {
   private pickConnectableNode(
     point: IPointData,
     toward?: IPointData,
+    options: { ignoredNode?: IUI; ignoredNodes?: IUI[] } = {},
   ): { node: IUI | null; point: IPointData; side?: ConnectorSide } {
     if (!this.editor) return { node: null, point };
 
     const picked = this.editor.app.pick(point)?.target as IUI | undefined;
-    if (picked && !(picked instanceof Connector)) {
-      const anchor = getNearestSideAnchor(picked, toward || point);
-      return { node: picked, point: anchor.point, side: anchor.side };
+    const pickedNode = picked
+      ? getConnectableNode(picked, this.editor.app.tree as unknown as IUI)
+      : null;
+    if (
+      pickedNode &&
+      pickedNode !== options.ignoredNode &&
+      !options.ignoredNodes?.includes(pickedNode) &&
+      !(pickedNode instanceof Connector)
+    ) {
+      const anchor = getNearestSideAnchor(pickedNode, toward || point);
+      return { node: pickedNode, point: anchor.point, side: anchor.side };
     }
 
-    const nearby = findNearestNode(this.editor.app.tree.children || [], point);
+    const nearby = findNearestNode(
+      this.editor.app.tree.children || [],
+      point,
+      [options.ignoredNode, ...(options.ignoredNodes || [])].filter(Boolean) as IUI[],
+    );
     if (nearby && nearby.distance <= this.getSnapDistance()) {
       const anchor = getNearestSideAnchor(nearby.node, toward || point);
       return { node: nearby.node, point: anchor.point, side: anchor.side };
@@ -162,11 +166,53 @@ export class DrawArrow extends DrawBase {
   }
 }
 
-function findNearestNode(nodes: IUI[], point: IPointData): { node: IUI; distance: number } | null {
+function bindConnectorToNodes(
+  connector: Connector,
+  from: IUI,
+  to: IUI,
+  options: {
+    opt1: ReturnType<DrawArrow["getTargetOption"]>;
+    opt2: ReturnType<DrawArrow["getTargetOption"]>;
+  },
+) {
+  connector.switchToNodeMode(from, to, { updateMode: "event" });
+  const state = connector.getState();
+  connector.setState(
+    {
+      ...state,
+      opt1: options.opt1,
+      opt2: options.opt2,
+    } as never,
+    (id: string | number) => {
+      if (String(from.innerId) === String(id) || String(from.id) === String(id)) return from;
+      if (String(to.innerId) === String(id) || String(to.id) === String(id)) return to;
+      return undefined;
+    },
+  );
+}
+
+function getConnectableNode(picked: IUI, root: IUI): IUI | null {
+  if (picked === root || picked instanceof Connector) return null;
+
+  let node: IUI = picked;
+  while (node.parent && node.parent !== root) {
+    node = node.parent as IUI;
+  }
+
+  if (node === root || node instanceof Connector) return null;
+  return node;
+}
+
+function findNearestNode(
+  nodes: IUI[],
+  point: IPointData,
+  ignoredNodes: IUI[] = [],
+): { node: IUI; distance: number } | null {
   let nearest: { node: IUI; distance: number } | null = null;
 
   for (const node of nodes) {
-    if (node instanceof Connector) continue;
+    if (ignoredNodes.includes(node) || node instanceof Connector || node.visible === false)
+      continue;
 
     const bounds = node.getBounds("box", "page");
     const distance = distanceToBounds(point, bounds);

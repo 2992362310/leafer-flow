@@ -6,6 +6,7 @@ import {
   restoreConnectorLabelRuntimeProps,
   syncConnectorLabels,
 } from "./connector-labels";
+import { normalizeAtomicGroups } from "./group-selection";
 
 export interface SerializedChild {
   __connectorState?: Record<string, unknown>;
@@ -123,6 +124,10 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
     if (child.__flowNodeId !== undefined) {
       idMap.set(child.__flowNodeId, added);
     }
+    if (added.id !== undefined) {
+      idMap.set(added.id, added);
+    }
+    idMap.set(added.innerId, added);
     if (child[CUSTOM_DATA_PROP]) {
       (added as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
     }
@@ -157,6 +162,7 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
   });
 
   remapConnectorLabels(app, connectorMap);
+  normalizeAtomicGroups(app.tree.children as IUI[] | undefined);
   syncConnectorLabels(app);
   return { failedConnectors };
 }
@@ -202,7 +208,7 @@ export function resolveNodeById(app: App, id: string | number): IUI | undefined 
   if (!children) return undefined;
 
   for (const child of children) {
-    if (child.innerId === id) return child;
+    if (matchesNodeId(child, id)) return child;
     if ("children" in child && Array.isArray((child as { children?: unknown }).children)) {
       const found = findNodeInGroup(child as IUI, id);
       if (found) return found;
@@ -230,12 +236,16 @@ function remapConnectorLabels(app: App, connectorMap: Map<string | number, Conne
   });
 }
 
+function matchesNodeId(node: IUI, id: string | number) {
+  return String(node.innerId) === String(id) || String(node.id) === String(id);
+}
+
 function findNodeInGroup(group: IUI, id: string | number): IUI | undefined {
   const children = (group as unknown as { children?: IUI[] }).children;
   if (!children) return undefined;
 
   for (const child of children) {
-    if (child.innerId === id) return child;
+    if (matchesNodeId(child, id)) return child;
     if ("children" in child && Array.isArray((child as unknown as { children?: IUI[] }).children)) {
       const found = findNodeInGroup(child, id);
       if (found) return found;

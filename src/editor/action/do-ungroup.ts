@@ -1,6 +1,7 @@
 import { Group } from "leafer";
 import type { IUI, IGroup } from "@leafer-ui/interface";
 import type Editor from "../editor";
+import { restoreSelectionForUngroupedNodes } from "../core/group-selection";
 
 export function doUnGroup(editor: Editor): { success: boolean; message: string } {
   const { app } = editor;
@@ -69,6 +70,7 @@ export function doUnGroup(editor: Editor): { success: boolean; message: string }
 
   // 4. 选中解散出来的所有元素
   if (newSelection.length > 0) {
+    restoreSelectionForUngroupedNodes(newSelection);
     app.editor.select(newSelection);
   }
 

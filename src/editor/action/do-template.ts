@@ -3,6 +3,7 @@ import { Connector } from "leafer-connector";
 import type { ConnectorSide, ConnectorState } from "leafer-connector";
 import type Editor from "../editor";
 import { createConnectorLabel } from "../core/connector-labels";
+import { makeGroupSelectionAtomic } from "../core/group-selection";
 
 export type TemplateKind =
   | "approval"
@@ -121,13 +122,15 @@ function createFlowNode(node: TemplateNode) {
     verticalAlign: "middle",
   });
 
-  return new Group({
+  const group = new Group({
     x: node.x,
     y: node.y,
     editable: true,
     name: node.text,
     children: [shape, text],
   });
+  makeGroupSelectionAtomic(group);
+  return group;
 }
 
 function createShape(node: TemplateNode) {

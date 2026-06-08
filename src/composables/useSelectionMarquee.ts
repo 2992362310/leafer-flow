@@ -62,6 +62,8 @@ export function useSelectionMarquee({
     if (evt.target !== container) return;
 
     const point = getCanvasPoint(evt, container);
+    if (isPointOnSelectableItem(point)) return;
+
     marqueeStart = point;
     marqueeDragging = true;
     marquee.value = { active: true, x: point.x, y: point.y, width: 0, height: 0 };
@@ -90,6 +92,21 @@ export function useSelectionMarquee({
 
     if (width < MARQUEE_MIN_SIZE && height < MARQUEE_MIN_SIZE) return;
     selectWithinBounds({ x, y, width, height });
+  }
+
+  function isPointOnSelectableItem(point: { x: number; y: number }) {
+    if (!editor.value) return false;
+
+    const items = collectSelectableItems((editor.value.app.tree.children || []) as IUI[]);
+    return items.some((item) => {
+      const box = item.getBounds("box", "page");
+      return (
+        point.x >= box.x &&
+        point.x <= box.x + box.width &&
+        point.y >= box.y &&
+        point.y <= box.y + box.height
+      );
+    });
   }
 
   function selectWithinBounds(bounds: { x: number; y: number; width: number; height: number }) {
