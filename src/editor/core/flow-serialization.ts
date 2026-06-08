@@ -80,6 +80,10 @@ export function serializeChildrenWithConnectors(app: App): SerializedChild[] {
     }
 
     children[i].__flowNodeId = child.innerId;
+    const customData = (child as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP];
+    if (customData) {
+      children[i][CUSTOM_DATA_PROP] = customData;
+    }
     persistConnectorLabel(child, children[i]);
   }
 
@@ -118,6 +122,9 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
 
     if (child.__flowNodeId !== undefined) {
       idMap.set(child.__flowNodeId, added);
+    }
+    if (child[CUSTOM_DATA_PROP]) {
+      (added as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = child[CUSTOM_DATA_PROP];
     }
     restoreConnectorLabelRuntimeProps(added, child);
   });

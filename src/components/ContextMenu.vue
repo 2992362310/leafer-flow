@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
-import type { Editor } from "../editor";
-import type { MenuGroupContribution } from "../editor/api/menu";
+import type { Editor } from "@/editor";
+import type { MenuGroupContribution } from "@/editor/api/menu";
 
 const props = defineProps<{
   editor: Editor | undefined;

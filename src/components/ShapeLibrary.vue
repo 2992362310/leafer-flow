@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { ShapeLibraryGroup, ShapeLibraryItem } from "../editor/shape-library";
-import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "../editor/shape-library";
-import Icon from "./Icon.vue";
+import type { ShapeLibraryGroup, ShapeLibraryItem } from "@/editor/shape-library";
+import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "@/editor/shape-library";
+import ShapeLibraryGroupView from "@/components/ShapeLibraryGroup.vue";
+import ShapeLibraryItemView from "@/components/ShapeLibraryItem.vue";
 
 const props = defineProps<{
   activeTool?: string;
@@ -106,14 +107,6 @@ onBeforeUnmount(() => {
   stopPanelDrag();
   window.removeEventListener("resize", clampPanelToViewport);
 });
-
-function getItemButtonClass(item: ShapeLibraryItem, compact = false) {
-  return [
-    "btn",
-    compact ? "btn-xs h-8 w-8 p-0" : "h-16 flex-col gap-1 px-1 text-xs",
-    props.activeTool === item.tool ? "btn-primary" : "btn-ghost",
-  ];
-}
 
 function handleSelect(item: ShapeLibraryItem) {
   rememberShape(item.tool);
@@ -304,17 +297,15 @@ function rememberShape(tool: string) {
         v-if="collapsedShortcutItems.length > 0"
         class="mt-2 flex flex-col gap-1 border-t border-base-200 pt-2"
       >
-        <button
+        <ShapeLibraryItemView
           v-for="item in collapsedShortcutItems"
           :key="item.tool"
-          draggable="true"
-          :class="getItemButtonClass(item, true)"
-          :title="`${item.label}：拖拽到画布或点击选择工具`"
-          @click="handleSelect(item)"
-          @dragstart="handleDragStart($event, item)"
-        >
-          <Icon :name="item.icon" class="h-4 w-4" />
-        </button>
+          compact
+          :item="item"
+          :active="activeTool === item.tool"
+          @select="handleSelect"
+          @drag-start="handleDragStart"
+        />
       </div>
     </div>
 
@@ -333,27 +324,14 @@ function rememberShape(tool: string) {
       </p>
 
       <div class="flex-1 overflow-y-auto px-2 pb-3">
-        <section v-for="group in filteredGroups" :key="group.id" class="mb-3">
-          <div
-            class="sticky top-0 z-10 bg-base-100/95 py-1 text-[11px] font-semibold text-base-content/60"
-          >
-            {{ group.title }}
-          </div>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button
-              v-for="item in group.items"
-              :key="`${group.id}-${item.tool}`"
-              draggable="true"
-              :class="getItemButtonClass(item)"
-              :title="`${item.label}：拖拽到画布或点击选择工具`"
-              @click="handleSelect(item)"
-              @dragstart="handleDragStart($event, item)"
-            >
-              <Icon :name="item.icon" class="h-5 w-5" />
-              <span class="max-w-full truncate">{{ item.label }}</span>
-            </button>
-          </div>
-        </section>
+        <ShapeLibraryGroupView
+          v-for="group in filteredGroups"
+          :key="group.id"
+          :group="group"
+          :active-tool="activeTool"
+          @select="handleSelect"
+          @drag-start="handleDragStart"
+        />
 
         <div
           v-if="filteredGroups.length === 0"

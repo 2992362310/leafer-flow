@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActionButtonGroupContribution } from "../editor/api/action-button";
+import type { ActionButtonGroupContribution } from "@/editor/api/action-button";
 import Icon from "./Icon.vue";
 
 const props = defineProps<{

@@ -7,17 +7,24 @@ import {
   saveEnabledPluginIds,
 } from "./builtin-registry";
 
+export type PluginContributionKind =
+  | "tool"
+  | "command"
+  | "menu"
+  | "action-button"
+  | "view-control"
+  | "property-panel";
+
+export interface PluginContributionGroupSummary {
+  kind: PluginContributionKind;
+  label: string;
+  count: number;
+  items: string[];
+}
+
 export interface PluginMarketContributionSummary {
-  tools: number;
-  commands: number;
-  menus: number;
-  buttons: number;
-  viewControls: number;
-  toolLabels: string[];
-  commandLabels: string[];
-  menuLabels: string[];
-  buttonLabels: string[];
-  viewControlLabels: string[];
+  total: number;
+  groups: PluginContributionGroupSummary[];
 }
 
 export interface PluginMarketViewItem {
@@ -62,16 +69,8 @@ export async function disablePlugin(editor: Editor, pluginId: string): Promise<b
 function getPluginContributionSummary(editor: Editor | undefined, pluginId: string) {
   if (!editor) {
     return {
-      tools: 0,
-      commands: 0,
-      menus: 0,
-      buttons: 0,
-      viewControls: 0,
-      toolLabels: [],
-      commandLabels: [],
-      menuLabels: [],
-      buttonLabels: [],
-      viewControlLabels: [],
+      total: 0,
+      groups: [],
     };
   }
 
@@ -80,6 +79,7 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
   const activeMenus = editor.menus.listByPlugin(pluginId);
   const activeButtons = editor.actionButtons.listByPlugin(pluginId);
   const activeViewControls = editor.viewControls.listByPlugin(pluginId);
+  const activePropertyPanels = editor.propertyPanels.listByPlugin(pluginId);
   const plugin = getBuiltinPluginById(pluginId);
   const toolLabels = activeTools.length
     ? activeTools.map((tool) => tool.label)
@@ -101,16 +101,34 @@ function getPluginContributionSummary(editor: Editor | undefined, pluginId: stri
     ? activeViewControls.map((control) => control.label)
     : (plugin?.contributes?.viewControls ?? []);
 
+  const propertyPanelLabels = activePropertyPanels.length
+    ? activePropertyPanels.map((panel) => panel.title)
+    : (plugin?.contributes?.propertyPanels ?? []);
+
+  const groups = [
+    createContributionGroup("tool", "工具贡献", toolLabels),
+    createContributionGroup("command", "命令贡献", commandLabels),
+    createContributionGroup("menu", "菜单贡献", menuLabels),
+    createContributionGroup("action-button", "按钮贡献", buttonLabels),
+    createContributionGroup("view-control", "视图控件贡献", viewControlLabels),
+    createContributionGroup("property-panel", "属性面板贡献", propertyPanelLabels),
+  ].filter((group) => group.count > 0);
+
   return {
-    tools: toolLabels.length,
-    commands: commandLabels.length,
-    menus: menuLabels.length,
-    buttons: buttonLabels.length,
-    viewControls: viewControlLabels.length,
-    toolLabels,
-    commandLabels,
-    menuLabels,
-    buttonLabels,
-    viewControlLabels,
+    total: groups.reduce((sum, group) => sum + group.count, 0),
+    groups,
+  };
+}
+
+function createContributionGroup(
+  kind: PluginContributionKind,
+  label: string,
+  items: string[],
+): PluginContributionGroupSummary {
+  return {
+    kind,
+    label,
+    count: items.length,
+    items,
   };
 }

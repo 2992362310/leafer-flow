@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ViewControlContribution } from "../editor/api/view-control";
+import type { ViewControlContribution } from "@/editor/api/view-control";
 import Icon from "./Icon.vue";
 
 defineProps<{

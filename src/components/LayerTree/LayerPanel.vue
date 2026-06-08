@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onUnmounted, shallowRef, watch, provide } from "vue";
 import type { IUI } from "@leafer-ui/interface";
-import type { Editor } from "../../editor";
-import { ACTION_NAME } from "../../editor/constants";
+import type { Editor } from "@/editor";
+import { ACTION_NAME } from "@/editor/constants";
 import LayerItem from "./LayerItem.vue";
-import { useDraggable, useCollapsible } from "../../composables/useDraggable";
+import { useDraggable, useCollapsible } from "@/composables/useDraggable";
 
 const props = defineProps<{
   editor?: Editor;

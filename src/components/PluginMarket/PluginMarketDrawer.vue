@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { Editor } from "../../editor";
+import type { Editor } from "@/editor";
 import {
   disablePlugin,
   enablePlugin,
   listInstalledPlugins,
   type PluginMarketViewItem,
-} from "../../editor/plugins/market/plugin-market-service";
+} from "@/editor/plugins/market/plugin-market-service";
+import PluginMarketCard from "./PluginMarketCard.vue";
+import PluginMarketStats from "./PluginMarketStats.vue";
 
 const props = defineProps<{
   editor?: Editor;
@@ -19,26 +21,57 @@ const emits = defineEmits<{
 }>();
 
 const query = ref("");
+const selectedCategory = ref("all");
+const selectedStatus = ref("all");
+const selectedCapability = ref("all");
+const expandedPluginIds = ref<Set<string>>(new Set());
 const items = ref<PluginMarketViewItem[]>([]);
 const pendingPluginId = ref<string | null>(null);
 
 const filteredItems = computed(() => {
   const keyword = query.value.trim().toLowerCase();
-  if (!keyword) return items.value;
 
   return items.value.filter((item) => {
+    if (!matchesCategory(item)) return false;
+    if (!matchesStatus(item)) return false;
+    if (!matchesCapability(item)) return false;
+    if (!keyword) return true;
+
     const manifest = item.manifest;
+    const contributionText = item.contributions.groups.flatMap((group) => [
+      group.label,
+      ...group.items,
+    ]);
     return [
       manifest.id,
       manifest.name,
       manifest.description,
       manifest.category,
       ...(manifest.capabilities ?? []),
+      ...contributionText,
     ]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(keyword));
   });
 });
+
+const categoryOptions = computed(() => {
+  const categories = new Set(items.value.map((item) => item.manifest.category).filter(Boolean));
+  return ["all", ...categories] as string[];
+});
+
+const capabilityOptions = computed(() => {
+  const capabilities = new Set(items.value.flatMap((item) => item.manifest.capabilities ?? []));
+  return ["all", ...capabilities] as string[];
+});
+
+const marketStats = computed(() => ({
+  total: items.value.length,
+  active: items.value.filter((item) => item.active).length,
+  required: items.value.filter((item) => item.manifest.required).length,
+  propertyPanel: items.value.filter((item) => hasPropertyPanelContribution(item)).length,
+  filtered: filteredItems.value.length,
+}));
 
 watch(
   () => [props.editor, props.open] as const,
@@ -65,12 +98,71 @@ async function handleToggle(item: PluginMarketViewItem) {
   if (ok) emits("changed", nextItem);
 }
 
-function previewLabels(labels: string[], limit = 6) {
-  return labels.slice(0, limit);
+function matchesCategory(item: PluginMarketViewItem) {
+  return selectedCategory.value === "all" || item.manifest.category === selectedCategory.value;
 }
 
-function hiddenLabelCount(labels: string[], limit = 6) {
-  return Math.max(labels.length - limit, 0);
+function matchesStatus(item: PluginMarketViewItem) {
+  switch (selectedStatus.value) {
+    case "active":
+      return item.active;
+    case "inactive":
+      return !item.active;
+    case "required":
+      return Boolean(item.manifest.required);
+    case "property-panel":
+      return hasPropertyPanelContribution(item);
+    default:
+      return true;
+  }
+}
+
+function matchesCapability(item: PluginMarketViewItem) {
+  return (
+    selectedCapability.value === "all" ||
+    item.manifest.capabilities?.includes(selectedCapability.value)
+  );
+}
+
+function hasPropertyPanelContribution(item: PluginMarketViewItem) {
+  return (
+    item.contributions.groups.some((group) => group.kind === "property-panel") ||
+    item.manifest.capabilities?.some((capability) =>
+      ["property-panel", "property-field"].includes(capability),
+    )
+  );
+}
+
+function toggleExpanded(pluginId: string) {
+  const next = new Set(expandedPluginIds.value);
+  if (next.has(pluginId)) next.delete(pluginId);
+  else next.add(pluginId);
+  expandedPluginIds.value = next;
+}
+
+function isExpanded(pluginId: string) {
+  return expandedPluginIds.value.has(pluginId);
+}
+
+function capabilityLabel(capability: string) {
+  const labels: Record<string, string> = {
+    tool: "工具",
+    shape: "图形",
+    command: "命令",
+    menu: "菜单",
+    "action-button": "按钮",
+    "view-control": "视图控件",
+    "property-panel": "属性面板",
+    "property-field": "字段面板",
+    "canvas-overlay": "画布辅助",
+    settings: "设置",
+    template: "模板",
+    export: "导出",
+    file: "文件",
+    serialization: "序列化",
+  };
+
+  return labels[capability] ?? capability;
 }
 
 function categoryLabel(category?: string) {
@@ -78,9 +170,14 @@ function categoryLabel(category?: string) {
     tool: "工具",
     shape: "图形",
     panel: "面板",
+    property: "属性",
+    view: "视图",
     export: "导出",
     layout: "布局",
+    settings: "设置",
+    template: "模板",
     utility: "辅助",
+    experimental: "实验性",
   };
 
   return category ? (labels[category] ?? category) : "插件";
@@ -97,7 +194,7 @@ function categoryLabel(category?: string) {
       ></button>
 
       <aside
-        class="absolute right-0 top-0 h-full w-[24rem] max-w-[calc(100vw-1rem)] bg-base-100 shadow-2xl border-l border-base-200 pointer-events-auto flex flex-col"
+        class="absolute right-0 top-0 h-full w-lg max-w-[calc(100vw-1rem)] bg-base-100 shadow-2xl border-l border-base-200 pointer-events-auto flex flex-col"
       >
         <header class="px-4 py-3 border-b border-base-200 flex items-start justify-between gap-3">
           <div>
@@ -109,188 +206,76 @@ function categoryLabel(category?: string) {
           <button class="btn btn-ghost btn-sm" @click="emits('close')">✕</button>
         </header>
 
-        <div class="p-4 border-b border-base-200">
+        <div class="p-4 border-b border-base-200 space-y-3">
+          <PluginMarketStats
+            :total="marketStats.total"
+            :active="marketStats.active"
+            :required="marketStats.required"
+            :property-panel="marketStats.propertyPanel"
+            :filtered="marketStats.filtered"
+          />
+
           <input
             v-model="query"
             class="input input-sm input-bordered w-full"
-            placeholder="搜索插件、分类或能力..."
+            placeholder="搜索插件、分类、能力或贡献项..."
           />
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2 text-[11px] text-base-content/50">
+              <span>能力筛选</span>
+              <button
+                v-if="selectedCapability !== 'all'"
+                class="btn btn-ghost btn-xs h-auto min-h-0 px-1 py-0"
+                @click="selectedCapability = 'all'"
+              >
+                清除
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="capability in capabilityOptions"
+                :key="capability"
+                class="btn btn-xs h-6 min-h-0 rounded-full"
+                :class="selectedCapability === capability ? 'btn-primary' : 'btn-ghost'"
+                @click="selectedCapability = capability"
+              >
+                {{ capability === "all" ? "全部能力" : capabilityLabel(capability) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <select v-model="selectedCategory" class="select select-bordered select-xs w-full">
+              <option value="all">全部分类</option>
+              <option
+                v-for="category in categoryOptions.filter((item) => item !== 'all')"
+                :key="category"
+                :value="category"
+              >
+                {{ categoryLabel(category) }}
+              </option>
+            </select>
+            <select v-model="selectedStatus" class="select select-bordered select-xs w-full">
+              <option value="all">全部状态</option>
+              <option value="active">已启用</option>
+              <option value="inactive">未启用</option>
+              <option value="required">必需</option>
+              <option value="property-panel">属性面板</option>
+            </select>
+          </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <article
+          <PluginMarketCard
             v-for="item in filteredItems"
             :key="item.manifest.id"
-            class="card bg-base-100 border border-base-200 shadow-sm"
-          >
-            <div class="card-body p-4 gap-3">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="font-semibold text-sm truncate">{{ item.manifest.name }}</h3>
-                    <span
-                      class="badge badge-xs"
-                      :class="item.active ? 'badge-success' : 'badge-ghost'"
-                    >
-                      {{ item.active ? "已启用" : "未启用" }}
-                    </span>
-                    <span v-if="item.builtin" class="badge badge-xs badge-outline">内置</span>
-                    <span v-if="item.manifest.required" class="badge badge-xs badge-primary"
-                      >必需</span
-                    >
-                  </div>
-                  <p class="text-[11px] text-base-content/50 mt-1 font-mono truncate">
-                    {{ item.manifest.id }} · v{{ item.manifest.version }}
-                  </p>
-                </div>
-
-                <input
-                  type="checkbox"
-                  class="toggle toggle-sm toggle-primary"
-                  :checked="item.active"
-                  :disabled="
-                    pendingPluginId === item.manifest.id || !editor || item.manifest.required
-                  "
-                  @change="handleToggle(item)"
-                />
-              </div>
-
-              <p class="text-xs text-base-content/70 leading-relaxed">
-                {{ item.manifest.description || "暂无描述" }}
-              </p>
-
-              <div class="flex items-center gap-2 flex-wrap text-[11px]">
-                <span class="badge badge-sm badge-outline">{{
-                  categoryLabel(item.manifest.category)
-                }}</span>
-                <span
-                  v-for="capability in item.manifest.capabilities ?? []"
-                  :key="capability"
-                  class="badge badge-sm badge-ghost"
-                >
-                  {{ capability }}
-                </span>
-              </div>
-
-              <div
-                v-if="
-                  item.contributions.toolLabels.length ||
-                  item.contributions.commandLabels.length ||
-                  item.contributions.menuLabels.length ||
-                  item.contributions.buttonLabels.length ||
-                  item.contributions.viewControlLabels.length
-                "
-                class="space-y-2"
-              >
-                <div v-if="item.contributions.toolLabels.length" class="space-y-1">
-                  <div class="text-[11px] font-medium text-base-content/60">工具贡献</div>
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="label in previewLabels(item.contributions.toolLabels)"
-                      :key="`tool-${label}`"
-                      class="badge badge-xs badge-outline"
-                    >
-                      {{ label }}
-                    </span>
-                    <span
-                      v-if="hiddenLabelCount(item.contributions.toolLabels)"
-                      class="badge badge-xs badge-ghost"
-                    >
-                      +{{ hiddenLabelCount(item.contributions.toolLabels) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="item.contributions.commandLabels.length" class="space-y-1">
-                  <div class="text-[11px] font-medium text-base-content/60">命令贡献</div>
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="label in previewLabels(item.contributions.commandLabels)"
-                      :key="`command-${label}`"
-                      class="badge badge-xs badge-outline"
-                    >
-                      {{ label }}
-                    </span>
-                    <span
-                      v-if="hiddenLabelCount(item.contributions.commandLabels)"
-                      class="badge badge-xs badge-ghost"
-                    >
-                      +{{ hiddenLabelCount(item.contributions.commandLabels) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="item.contributions.menuLabels.length" class="space-y-1">
-                  <div class="text-[11px] font-medium text-base-content/60">菜单贡献</div>
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="label in previewLabels(item.contributions.menuLabels)"
-                      :key="`menu-${label}`"
-                      class="badge badge-xs badge-outline"
-                    >
-                      {{ label }}
-                    </span>
-                    <span
-                      v-if="hiddenLabelCount(item.contributions.menuLabels)"
-                      class="badge badge-xs badge-ghost"
-                    >
-                      +{{ hiddenLabelCount(item.contributions.menuLabels) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="item.contributions.buttonLabels.length" class="space-y-1">
-                  <div class="text-[11px] font-medium text-base-content/60">按钮贡献</div>
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="label in previewLabels(item.contributions.buttonLabels)"
-                      :key="`button-${label}`"
-                      class="badge badge-xs badge-outline"
-                    >
-                      {{ label }}
-                    </span>
-                    <span
-                      v-if="hiddenLabelCount(item.contributions.buttonLabels)"
-                      class="badge badge-xs badge-ghost"
-                    >
-                      +{{ hiddenLabelCount(item.contributions.buttonLabels) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="item.contributions.viewControlLabels.length" class="space-y-1">
-                  <div class="text-[11px] font-medium text-base-content/60">视图控件贡献</div>
-                  <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="label in previewLabels(item.contributions.viewControlLabels)"
-                      :key="`view-control-${label}`"
-                      class="badge badge-xs badge-outline"
-                    >
-                      {{ label }}
-                    </span>
-                    <span
-                      v-if="hiddenLabelCount(item.contributions.viewControlLabels)"
-                      class="badge badge-xs badge-ghost"
-                    >
-                      +{{ hiddenLabelCount(item.contributions.viewControlLabels) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between text-[11px] text-base-content/60">
-                <span
-                  >工具 {{ item.contributions.tools }} · 命令 {{ item.contributions.commands }} ·
-                  菜单 {{ item.contributions.menus }} · 按钮 {{ item.contributions.buttons }} · 视图
-                  {{ item.contributions.viewControls }}</span
-                >
-                <span
-                  v-if="pendingPluginId === item.manifest.id"
-                  class="loading loading-spinner loading-xs"
-                ></span>
-              </div>
-            </div>
-          </article>
+            :item="item"
+            :editor-ready="Boolean(editor)"
+            :pending="pendingPluginId === item.manifest.id"
+            :expanded="isExpanded(item.manifest.id)"
+            @toggle="handleToggle"
+            @toggle-expanded="toggleExpanded"
+          />
 
           <div
             v-if="filteredItems.length === 0"

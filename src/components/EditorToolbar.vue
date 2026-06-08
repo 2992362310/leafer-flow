@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed, ref, unref } from "vue";
-import type { IconName } from "../assets/icons";
-import { TOOL_NAME } from "../editor/constants";
-import type { ToolToolbarGroup, ToolToolbarItem } from "../editor/api/tool";
+import { computed } from "vue";
+import type { IconName } from "@/assets/icons";
+import { TOOL_NAME } from "@/editor/constants";
+import type { ToolToolbarGroup, ToolToolbarItem } from "@/editor/api/tool";
 import Icon from "./Icon.vue";
 
 const props = defineProps<{
   groups?: ToolToolbarGroup[];
+  selectedTool?: string;
 }>();
 
-const emits = defineEmits(["tool", "operation"]);
-const selectedTool = ref<string>(TOOL_NAME.SELECT);
+const emit = defineEmits<{
+  tool: [evt: { command: string; pre: string }];
+  "update:selectedTool": [tool: string];
+}>();
+
+const currentTool = computed(() => props.selectedTool ?? TOOL_NAME.SELECT);
 
 interface ToolItem {
   tool: string;
@@ -43,15 +48,15 @@ function toToolItems(items: ToolToolbarItem[]): ToolItem[] {
 }
 
 function handleClick(tool: string) {
-  emits("tool", {
+  emit("tool", {
     command: tool,
-    pre: unref(selectedTool),
+    pre: currentTool.value,
   });
   changeTool(tool);
 }
 
 function changeTool(tool: string) {
-  selectedTool.value = tool;
+  emit("update:selectedTool", tool);
 }
 
 function shouldCollapseGroup(items: ToolItem[]) {
@@ -59,12 +64,12 @@ function shouldCollapseGroup(items: ToolItem[]) {
 }
 
 function getGroupIcon(items: ToolItem[]) {
-  const activeItem = items.find((item) => item.tool === selectedTool.value);
+  const activeItem = items.find((item) => item.tool === currentTool.value);
   return activeItem?.icon ?? items[0]?.icon;
 }
 
 function isGroupActive(items: ToolItem[]) {
-  return items.some((item) => item.tool === selectedTool.value);
+  return items.some((item) => item.tool === currentTool.value);
 }
 
 function getGroupButtonClass(items: ToolItem[]) {
@@ -89,12 +94,12 @@ function getButtonClass(tool: string) {
     "h-9",
     "w-9",
     "px-0",
-    { "btn-active": selectedTool.value === tool },
+    { "btn-active": currentTool.value === tool },
   ];
 }
 
 defineExpose({
-  selectedTool,
+  selectedTool: currentTool,
   changeTool,
 });
 </script>

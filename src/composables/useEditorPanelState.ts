@@ -3,11 +3,11 @@ import { Text, type IUI } from "leafer";
 import { Connector } from "leafer-connector";
 import type { ConnectorRouteType, ConnectorSide, ConnectorState } from "leafer-connector";
 import { EditorEvent } from "leafer-editor";
-import type { Editor } from "../editor";
-import { applyStylePreset } from "../editor/core/style-presets";
-import type { StylePresetId } from "../editor/core/style-presets";
-import { getConnectorLabelTarget } from "../editor/core/connector-labels";
-import { resolveNodeById, CUSTOM_DATA_PROP } from "../editor/core/flow-serialization";
+import type { Editor } from "@/editor";
+import { applyStylePreset } from "@/editor/core/style-presets";
+import type { StylePresetId } from "@/editor/core/style-presets";
+import { getConnectorLabelTarget } from "@/editor/core/connector-labels";
+import { resolveNodeById, CUSTOM_DATA_PROP } from "@/editor/core/flow-serialization";
 
 interface EditorPanelStateOptions {
   editor: Ref<Editor | undefined>;
@@ -465,6 +465,8 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     applyTextPreset,
   };
 }
+
+export type EditorPanelState = ReturnType<typeof useEditorPanelState>;
 
 function getChildren(element: IUI) {
   return (element as unknown as { children?: IUI[] }).children;
