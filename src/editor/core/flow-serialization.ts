@@ -32,33 +32,48 @@ export interface DeserializeResult {
 }
 
 export const CUSTOM_DATA_PROP = "__flowCustomData";
-export const FLOW_SERIALIZATION_SCHEMA = "leafer-flow";
+export const FLOW_SERIALIZATION_SCHEMA = "leafer-flow.document";
 export const FLOW_SERIALIZATION_VERSION = 1;
+
+export type FlowDocumentType = "file" | "autosave";
+
+export interface SerializedTree extends Record<string, unknown> {
+  children: SerializedChild[];
+}
 
 export interface SerializedFlowDocument extends Record<string, unknown> {
   schema: typeof FLOW_SERIALIZATION_SCHEMA;
-  version: typeof FLOW_SERIALIZATION_VERSION;
-  children: SerializedChild[];
+  schemaVersion: typeof FLOW_SERIALIZATION_VERSION;
+  documentType: FlowDocumentType;
+  savedAt: string;
+  tree: SerializedTree;
 }
 
 export function isSerializedFlowDocument(
   json: Record<string, unknown>,
 ): json is SerializedFlowDocument {
-  const version = json.version;
   return (
-    (!json.schema || json.schema === FLOW_SERIALIZATION_SCHEMA) &&
-    (!version || version === FLOW_SERIALIZATION_VERSION) &&
-    Array.isArray(json.children)
+    json.schema === FLOW_SERIALIZATION_SCHEMA &&
+    json.schemaVersion === FLOW_SERIALIZATION_VERSION &&
+    (json.documentType === "file" || json.documentType === "autosave") &&
+    isSerializedTree(json.tree)
   );
 }
 
-export function serializeTreeWithConnectors(app: App): SerializedFlowDocument {
-  const json = app.tree.toJSON() as Record<string, unknown>;
+export function serializeTreeWithConnectors(
+  app: App,
+  documentType: FlowDocumentType = "file",
+): SerializedFlowDocument {
+  const tree = app.tree.toJSON() as SerializedTree;
   return {
-    ...json,
     schema: FLOW_SERIALIZATION_SCHEMA,
-    version: FLOW_SERIALIZATION_VERSION,
-    children: serializeChildrenWithConnectors(app),
+    schemaVersion: FLOW_SERIALIZATION_VERSION,
+    documentType,
+    savedAt: new Date().toISOString(),
+    tree: {
+      ...tree,
+      children: serializeChildrenWithConnectors(app),
+    },
   };
 }
 
@@ -99,7 +114,13 @@ export function deserializeTreeWithConnectors(
     throw new Error("不支持的 Leafer Flow 文件格式或版本");
   }
 
-  return applySerializedChildren(app, json.children);
+  return applySerializedChildren(app, json.tree.children);
+}
+
+function isSerializedTree(value: unknown): value is SerializedTree {
+  return Boolean(
+    value && typeof value === "object" && Array.isArray((value as SerializedTree).children),
+  );
 }
 
 export function applySerializedChildren(app: App, children: SerializedChild[]): DeserializeResult {

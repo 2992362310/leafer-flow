@@ -145,15 +145,8 @@ function collectConnectorLabels(app: App) {
 }
 
 function getConnectorCenter(connector: Connector) {
-  try {
-    const wirePath = connector.wire?.path;
-    if (typeof wirePath === "string" && wirePath) {
-      const mid = sampleSvgPathMid(wirePath);
-      if (mid) return mid;
-    }
-  } catch {
-    // wire.path not available, fall through to getPoints
-  }
+  const routeCenter = getPolylineMidpoint(connector.getRoutePoints());
+  if (routeCenter) return routeCenter;
 
   const points = connector.getPoints();
   if (points?.from && points?.to) {
@@ -161,6 +154,16 @@ function getConnectorCenter(connector: Connector) {
       x: (points.from.x + points.to.x) / 2,
       y: (points.from.y + points.to.y) / 2,
     };
+  }
+
+  try {
+    const wirePath = connector.wire?.path;
+    if (typeof wirePath === "string" && wirePath) {
+      const mid = sampleSvgPathMid(wirePath);
+      if (mid) return mid;
+    }
+  } catch {
+    // wire.path not available, fall through to bounds
   }
 
   const bounds = connector.getBounds("box", "page");
@@ -171,6 +174,36 @@ function getConnectorCenter(connector: Connector) {
 }
 
 type IPoint = { x: number; y: number };
+
+function getPolylineMidpoint(points: IPoint[]): IPoint | null {
+  if (points.length < 2) return null;
+
+  let totalLength = 0;
+  const segmentLengths: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const length = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    segmentLengths.push(length);
+    totalLength += length;
+  }
+
+  if (totalLength === 0) return points[Math.floor(points.length / 2)];
+
+  const halfLength = totalLength / 2;
+  let accumulated = 0;
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segmentLength = segmentLengths[i];
+    if (accumulated + segmentLength >= halfLength) {
+      const t = segmentLength > 0 ? (halfLength - accumulated) / segmentLength : 0;
+      return {
+        x: points[i].x + t * (points[i + 1].x - points[i].x),
+        y: points[i].y + t * (points[i + 1].y - points[i].y),
+      };
+    }
+    accumulated += segmentLength;
+  }
+
+  return points[points.length - 1];
+}
 
 function cubicBezierPoint(p0: IPoint, p1: IPoint, p2: IPoint, p3: IPoint, t: number): IPoint {
   const mt = 1 - t;

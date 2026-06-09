@@ -17,6 +17,8 @@
 - ✅ history 基础服务。
 - ✅ autosave 基础服务。
 - ✅ 序列化 / 自动恢复基础链路。
+- ✅ serialization schema 与版本号。
+- ✅ 保存文件结构与自动恢复结构通过 `documentType` 区分。
 - ✅ 连接线标签运行时同步与持久化辅助。
 - ✅ 插件宿主与插件协议。
 
@@ -211,8 +213,8 @@ flowchart TD
 ### 高优先级
 
 - [ ] 收敛 history / autosave / connector label sync 等 mutation side effects。
-- [ ] 建立 serialization schema 与版本号。
-- [ ] 明确保存文件结构与自动恢复结构的边界。
+- [x] 建立 serialization schema 与版本号。
+- [x] 明确保存文件结构与自动恢复结构的边界。
 - [ ] 为 connector label / custom data / group 建立 round-trip 验收。
 - [ ] 为 clipboard / group / ungroup / file 建立最小自动化测试。
 

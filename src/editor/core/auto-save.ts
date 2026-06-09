@@ -40,7 +40,7 @@ export class AutoSave {
 
   save(): boolean {
     try {
-      const data = serializeTreeWithConnectors(this.app);
+      const data = serializeTreeWithConnectors(this.app, "autosave");
       const json = JSON.stringify(data);
 
       // Estimate size in MB (2 bytes per char for UTF-16)
@@ -79,8 +79,7 @@ export class AutoSave {
       if (!data) return { loaded: false, failedConnectors: 0 };
 
       const json = JSON.parse(data) as Record<string, unknown>;
-      const children = json.children;
-      if (!children || !Array.isArray(children) || children.length === 0) {
+      if (!hasSavedChildren(json)) {
         return { loaded: false, failedConnectors: 0 };
       }
 
@@ -104,4 +103,9 @@ export class AutoSave {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.save(), DEBOUNCE_MS);
   }
+}
+
+function hasSavedChildren(json: Record<string, unknown>) {
+  const tree = json.tree as { children?: unknown } | undefined;
+  return Array.isArray(tree?.children) && tree.children.length > 0;
 }

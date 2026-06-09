@@ -10,6 +10,8 @@
 - 图形库、工具栏、状态栏工具名称、快捷键、右键菜单、顶部按钮都从 registry 派生。
 - 插件市场当前只管理内置插件源。
 - `leafer-flow.builtin-core` 是必需插件，负责默认命令、右键菜单和顶部操作按钮。
+- 序列化文档结构已使用 `schema: "leafer-flow.document"` 与 `schemaVersion: 1`。
+- 手动保存文件与自动保存数据通过 `documentType: "file" | "autosave"` 区分。
 
 ## P0：高风险链路验收
 
@@ -23,6 +25,11 @@
 - `src/editor/core/connector-labels.ts`
 - `src/editor/core/flow-serialization.ts`
 
+实现说明：
+
+- 连接线标签位置由 `src/editor/core/connector-labels.ts` 同步。
+- 标签中心点优先基于 `Connector.getRoutePoints()` 的实际路由中点计算；路由点不可用时再回退到连接线端点、`wire.path` 和 bounds 中心。
+
 验收项：
 
 - [ ] 新建连接线后可添加标签。
@@ -30,6 +37,21 @@
 - [ ] 手动拖动标签后偏移量保持。
 - [ ] 保存后重新加载，连接线绑定与标签偏移保持。
 - [ ] 复制/粘贴带标签连接线后，标签关联到新连接线。
+
+### 序列化契约
+
+涉及文件：
+
+- `src/editor/core/flow-serialization.ts`
+- `src/editor/core/auto-save.ts`
+- `src/editor/action/do-file.ts`
+
+当前事实：
+
+- [x] 建立 document schema：`leafer-flow.document`。
+- [x] 建立 schema version：`schemaVersion: 1`。
+- [x] 保存文件结构与自动恢复结构通过 `documentType` 区分。
+- [ ] 为 connector label / custom data / group 建立 round-trip 验收。
 
 ### 剪贴板
 

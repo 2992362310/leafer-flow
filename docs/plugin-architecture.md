@@ -270,17 +270,33 @@ leafer-flow.enabled-plugins.default-migrations
 
 序列化入口：`src/editor/core/flow-serialization.ts`。
 
-当前导出的文件包含：
+当前导出的文件和自动保存数据都使用同一份 document schema，通过 `documentType` 区分来源：
 
 ```json
 {
-  "schema": "leafer-flow",
-  "version": 1,
-  "children": []
+  "schema": "leafer-flow.document",
+  "schemaVersion": 1,
+  "documentType": "file",
+  "savedAt": "2026-06-09T00:00:00.000Z",
+  "tree": {
+    "children": []
+  }
 }
 ```
 
-`deserializeTreeWithConnectors()` 会校验 schema / version，并兼容旧文件中缺失 schema / version 的情况。连接线状态、节点 id remap、连接线标签 remap 仍在该模块集中处理。
+字段约定：
+
+- `schema`：固定为 `leafer-flow.document`。
+- `schemaVersion`：当前为 `1`。
+- `documentType`：`file` 表示手动保存文件，`autosave` 表示自动保存恢复数据。
+- `savedAt`：序列化时间。
+- `tree`：Leafer tree JSON，`tree.children` 由 `serializeChildrenWithConnectors()` 写入连接线、节点 id、custom data 和连接线标签运行时字段。
+
+`deserializeTreeWithConnectors()` 只接受当前 schema / version 的文档结构。连接线状态、节点 id remap、连接线标签 remap 仍在该模块集中处理。
+
+连接线标签位置同步入口：`src/editor/core/connector-labels.ts`。
+
+当前标签中心点优先基于 `Connector.getRoutePoints()` 计算实际路由中点，避免依赖 `wire.path` 字符串解析导致标签被同步到错误坐标。若路由点不可用，再依次回退到连接线端点、`wire.path` 和 bounds 中心。
 
 ## 高风险链路
 
@@ -307,4 +323,4 @@ leafer-flow.enabled-plugins.default-migrations
 - `ViewControls.vue` 已改为 `ViewControlRegistry` 驱动，并由 `leafer-flow.view-controls` 插件贡献命令和控件。
 - 文件、导出、模板能力已从 `builtin-core` 拆为 `leafer-flow.file-actions`、`leafer-flow.export-actions`、`leafer-flow.template-actions`。
 - mutation side effects 已收敛到 `Editor.commitMutation()`。
-- serialization schema 与版本号已建立，当前版本为 `leafer-flow` / `1`。
+- serialization schema 与版本号已建立，当前版本为 `leafer-flow.document` / `1`，并通过 `documentType` 区分 `file` 与 `autosave`。
