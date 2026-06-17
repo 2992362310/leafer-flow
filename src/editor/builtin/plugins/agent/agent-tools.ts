@@ -563,6 +563,36 @@ export function getAgentTools(): AgentTool[] {
         return `画布上有 ${elementCount} 个元素，当前缩放 ${zoomPercent}%`;
       },
     },
+    {
+      name: "get_selection_info",
+      description: "获取当前选中元素的详细信息（类型、位置、大小、样式等）",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+      execute: (editor) => {
+        const selected = editor.app.editor.list;
+        if (!selected || selected.length === 0) {
+          return "当前没有选中任何元素";
+        }
+
+        const info = selected.map((el, index) => {
+          const tag = el.tag || "Unknown";
+          const name = el.name || "";
+          const x = Math.round(el.x || 0);
+          const y = Math.round(el.y || 0);
+          const width = Math.round(el.width || 0);
+          const height = Math.round(el.height || 0);
+          const fill = el.fill || "none";
+          const stroke = el.stroke || "none";
+
+          return `${index + 1}. ${tag}${name ? ` (${name})` : ""} - 位置: (${x}, ${y}), 大小: ${width}x${height}, 填充: ${fill}, 边框: ${stroke}`;
+        });
+
+        return `已选中 ${selected.length} 个元素:\n${info.join("\n")}`;
+      },
+    },
   ];
 }
 

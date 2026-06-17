@@ -39,6 +39,7 @@ interface DisplayMessage {
   role: "user" | "assistant";
   content: string;
   toolCalls?: ToolCallResult[];
+  isStreaming?: boolean;
 }
 
 // 从 localStorage 加载历史
@@ -57,7 +58,9 @@ function loadHistory(): DisplayMessage[] {
 // 保存历史到 localStorage
 function saveHistory(messages: DisplayMessage[]) {
   try {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(messages));
+    // 不保存正在流式传输的消息
+    const toSave = messages.filter((msg) => !msg.isStreaming);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(toSave));
   } catch (error) {
     console.warn("保存对话历史失败", error);
   }
@@ -82,7 +85,7 @@ const historyCount = computed(() => agentService.getHistoryLength());
 const maxHistory = computed(() => agentService.getMaxHistory());
 const shouldCompress = computed(() => agentService.shouldCompress());
 
-// 发送消息
+// 发送消息（流式）
 async function handleSend() {
   const message = inputMessage.value.trim();
   if (!message || isLoading.value) return;
@@ -95,26 +98,65 @@ async function handleSend() {
   inputMessage.value = "";
   isLoading.value = true;
 
+  // 添加一个空的 AI 消息用于流式更新
+  const aiMessageIndex = displayMessages.value.length;
+  displayMessages.value.push({
+    role: "assistant",
+    content: "",
+    isStreaming: true,
+  });
+
   // 滚动到底部
   await nextTick();
   scrollToBottom();
 
   try {
-    // 调用 Agent 服务
-    const response = await agentService.processMessage(message);
+    await agentService.processMessageStream(message, {
+      onToken: (token) => {
+        // 流式更新消息内容
+        displayMessages.value[aiMessageIndex].content += token;
+        scrollToBottom();
+      },
+      onToolCall: (toolCall) => {
+        // 显示工具调用状态
+        const currentContent = displayMessages.value[aiMessageIndex].content;
+        displayMessages.value[aiMessageIndex].content =
+          currentContent + (currentContent ? "\n" : "") + `🔧 调用 ${toolCall.name}...`;
+        scrollToBottom();
+      },
+      onToolResult: (result) => {
+        // 显示工具执行结果
+        const currentContent = displayMessages.value[aiMessageIndex].content;
+        const toolCallText = `🔧 调用 ${result.name}...`;
+        const resultText = result.result.length > 50
+          ? result.result.substring(0, 50) + "..."
+          : result.result;
 
-    // 添加 AI 响应到显示列表
-    displayMessages.value.push({
-      role: "assistant",
-      content: response.content,
-      toolCalls: response.toolCalls.length > 0 ? response.toolCalls : undefined,
+        // 替换最后的工具调用文本为结果
+        displayMessages.value[aiMessageIndex].content =
+          currentContent.replace(toolCallText, `✅ ${result.name}: ${resultText}`);
+        scrollToBottom();
+      },
+      onComplete: (response) => {
+        // 流式完成，更新最终内容
+        displayMessages.value[aiMessageIndex].content = response.content;
+        displayMessages.value[aiMessageIndex].isStreaming = false;
+        if (response.toolCalls.length > 0) {
+          displayMessages.value[aiMessageIndex].toolCalls = response.toolCalls;
+        }
+        scrollToBottom();
+      },
+      onError: (error) => {
+        // 错误处理
+        displayMessages.value[aiMessageIndex].content = `错误: ${error}`;
+        displayMessages.value[aiMessageIndex].isStreaming = false;
+        scrollToBottom();
+      },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "未知错误";
-    displayMessages.value.push({
-      role: "assistant",
-      content: `错误: ${errorMessage}`,
-    });
+    displayMessages.value[aiMessageIndex].content = `错误: ${errorMessage}`;
+    displayMessages.value[aiMessageIndex].isStreaming = false;
   } finally {
     isLoading.value = false;
     await nextTick();
@@ -132,7 +174,6 @@ async function handleCompressHistory() {
     const result = await agentService.compressHistory();
 
     if (result.success && result.summary) {
-      // 更新显示消息，添加摘要消息
       const keepCount = Math.floor(maxHistory.value / 2);
       displayMessages.value = [
         {
@@ -338,10 +379,11 @@ function handleKeydown(e: KeyboardEvent) {
           :role="msg.role"
           :content="msg.content"
           :tool-calls="msg.toolCalls"
+          :is-loading="msg.isStreaming && !msg.content"
         />
 
         <!-- 加载状态 -->
-        <AgentMessage v-if="isLoading" role="assistant" content="" :is-loading="true" />
+        <AgentMessage v-if="isLoading && !displayMessages.some(m => m.isStreaming)" role="assistant" content="" :is-loading="true" />
       </div>
 
       <!-- 输入区域 -->

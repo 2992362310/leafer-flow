@@ -9,6 +9,7 @@ const DEFAULT_PLUGIN_MIGRATIONS = [
   "leafer-flow.file-actions",
   "leafer-flow.export-actions",
   "leafer-flow.template-actions",
+  "leafer-flow.agent",
 ];
 
 export interface PluginMarketItem {
