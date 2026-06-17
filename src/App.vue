@@ -13,6 +13,8 @@ import SelectionMarquee from "@/components/SelectionMarquee.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
 import PluginMarketDrawer from "@/components/PluginMarket/PluginMarketDrawer.vue";
 import AgentChatPanel from "@/editor/builtin/plugins/agent/AgentChatPanel.vue";
+import MinimapPanel from "@/editor/builtin/plugins/minimap/MinimapPanel.vue";
+import MultiLayerPanel from "@/editor/builtin/plugins/multi-layer/LayerPanel.vue";
 import { useRuntimeContributions } from "@/composables/useRuntimeContributions";
 import { useSelectionMarquee } from "@/composables/useSelectionMarquee";
 import { useShapeDrop } from "@/composables/useShapeDrop";
@@ -28,6 +30,8 @@ const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
 const pluginMarketOpen = ref(false);
 const agentOpen = ref(false);
+const minimapOpen = ref(true);
+const multiLayerOpen = ref(false);
 const cleanupCallbacks: Array<() => void> = [];
 
 const {
@@ -86,6 +90,24 @@ onMounted(() => {
   window.addEventListener("leafer-flow:toggle-agent", handleToggleAgent);
   addCleanup(() => {
     window.removeEventListener("leafer-flow:toggle-agent", handleToggleAgent);
+  });
+
+  // 监听缩略图切换事件
+  const handleToggleMinimap = () => {
+    minimapOpen.value = !minimapOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-minimap", handleToggleMinimap);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-minimap", handleToggleMinimap);
+  });
+
+  // 监听多层画布切换事件
+  const handleToggleLayerPanel = () => {
+    multiLayerOpen.value = !multiLayerOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-layer-panel", handleToggleLayerPanel);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-layer-panel", handleToggleLayerPanel);
   });
 
   // 监听快捷键 Ctrl+Shift+A 打开 AI 助手
@@ -194,6 +216,14 @@ function handlePluginMarketChanged() {
   />
   <AgentChatPanel
     v-if="editor && agentOpen"
+    :editor="editor"
+  />
+  <MinimapPanel
+    v-if="editor && minimapOpen"
+    :editor="editor"
+  />
+  <MultiLayerPanel
+    v-if="editor && multiLayerOpen"
     :editor="editor"
   />
 </template>

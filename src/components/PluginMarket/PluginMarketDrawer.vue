@@ -4,11 +4,13 @@ import type { Editor } from "@/editor";
 import {
   disablePlugin,
   enablePlugin,
+  getPluginConfig,
   listInstalledPlugins,
   type PluginMarketViewItem,
 } from "@/editor/plugins/market/plugin-market-service";
 import PluginMarketCard from "./PluginMarketCard.vue";
 import PluginMarketStats from "./PluginMarketStats.vue";
+import PluginConfigDialog from "./PluginConfigDialog.vue";
 
 const props = defineProps<{
   editor?: Editor;
@@ -27,6 +29,8 @@ const selectedCapability = ref("all");
 const expandedPluginIds = ref<Set<string>>(new Set());
 const items = ref<PluginMarketViewItem[]>([]);
 const pendingPluginId = ref<string | null>(null);
+const configuringPluginId = ref<string | null>(null);
+const configuringPluginConfig = ref<any>(null);
 
 const filteredItems = computed(() => {
   const keyword = query.value.trim().toLowerCase();
@@ -182,6 +186,21 @@ function categoryLabel(category?: string) {
 
   return category ? (labels[category] ?? category) : "插件";
 }
+
+function handleConfigure(pluginId: string) {
+  if (!props.editor) return;
+
+  const config = getPluginConfig(props.editor, pluginId);
+  if (config) {
+    configuringPluginId.value = pluginId;
+    configuringPluginConfig.value = config;
+  }
+}
+
+function handleConfigClose() {
+  configuringPluginId.value = null;
+  configuringPluginConfig.value = null;
+}
 </script>
 
 <template>
@@ -275,6 +294,7 @@ function categoryLabel(category?: string) {
             :expanded="isExpanded(item.manifest.id)"
             @toggle="handleToggle"
             @toggle-expanded="toggleExpanded"
+            @configure="handleConfigure"
           />
 
           <div
@@ -286,5 +306,14 @@ function categoryLabel(category?: string) {
         </div>
       </aside>
     </div>
+
+    <!-- 配置对话框 -->
+    <PluginConfigDialog
+      v-if="configuringPluginId && configuringPluginConfig"
+      :plugin-id="configuringPluginId"
+      :config="configuringPluginConfig"
+      :editor="editor"
+      @close="handleConfigClose"
+    />
   </Teleport>
 </template>

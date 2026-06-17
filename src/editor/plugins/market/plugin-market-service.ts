@@ -1,5 +1,6 @@
+import type { Component } from "vue";
 import type Editor from "../../editor";
-import type { EditorPluginManifest } from "../../api/plugin";
+import type { EditorPluginManifest, PluginConfigSchema } from "../../api/plugin";
 import {
   getBuiltinPluginById,
   getEnabledPluginIds,
@@ -33,6 +34,7 @@ export interface PluginMarketViewItem {
   enabled: boolean;
   active: boolean;
   contributions: PluginMarketContributionSummary;
+  configurable: boolean;
 }
 
 export function listInstalledPlugins(editor?: Editor): PluginMarketViewItem[] {
@@ -40,7 +42,44 @@ export function listInstalledPlugins(editor?: Editor): PluginMarketViewItem[] {
     ...item,
     active: editor?.pluginManager.isActive(item.manifest.id) ?? item.enabled,
     contributions: getPluginContributionSummary(editor, item.manifest.id),
+    configurable: Boolean(item.manifest.configurable),
   }));
+}
+
+export function getPluginConfig(
+  editor: Editor,
+  pluginId: string,
+): PluginConfigSchema | Component | null {
+  const plugin = getBuiltinPluginById(pluginId);
+  if (!plugin?.configure) return null;
+
+  const ctx = {
+    pluginId,
+    editor,
+    logger: {
+      info: (msg: string) => console.info(`[plugin:${pluginId}] ${msg}`),
+      warn: (msg: string) => console.warn(`[plugin:${pluginId}] ${msg}`),
+      error: (msg: string, err?: unknown) => console.error(`[plugin:${pluginId}] ${msg}`, err),
+    },
+    storage: {
+      get: <T>(key: string): T | null => {
+        try {
+          const raw = localStorage.getItem(`leafer-flow.plugin.${pluginId}.${key}`);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      },
+      set: <T>(key: string, value: T): void => {
+        localStorage.setItem(`leafer-flow.plugin.${pluginId}.${key}`, JSON.stringify(value));
+      },
+      remove: (key: string): void => {
+        localStorage.removeItem(`leafer-flow.plugin.${pluginId}.${key}`);
+      },
+    },
+  };
+
+  return plugin.configure(ctx);
 }
 
 export async function enablePlugin(editor: Editor, pluginId: string): Promise<boolean> {

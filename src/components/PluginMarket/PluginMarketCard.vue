@@ -12,6 +12,7 @@ const props = defineProps<{
 const emits = defineEmits<{
   toggle: [item: PluginMarketViewItem];
   toggleExpanded: [pluginId: string];
+  configure: [pluginId: string];
 }>();
 
 function contributionSummary(item: PluginMarketViewItem) {
@@ -112,12 +113,21 @@ function categoryLabel(category?: string) {
           <span>{{ contributionSummary(item) }}</span>
           <span v-if="pending" class="loading loading-spinner loading-xs"></span>
         </div>
-        <button
-          class="btn btn-ghost btn-xs h-auto min-h-0 px-1 py-0"
-          @click="emits('toggleExpanded', item.manifest.id)"
-        >
-          {{ expanded ? "收起详情" : "查看详情" }}
-        </button>
+        <div class="flex gap-2">
+          <button
+            class="btn btn-ghost btn-xs h-auto min-h-0 px-1 py-0"
+            @click="emits('toggleExpanded', item.manifest.id)"
+          >
+            {{ expanded ? "收起详情" : "查看详情" }}
+          </button>
+          <button
+            v-if="item.configurable && item.active"
+            class="btn btn-primary btn-xs h-auto min-h-0 px-2 py-0"
+            @click="emits('configure', item.manifest.id)"
+          >
+            配置
+          </button>
+        </div>
       </div>
 
       <div v-if="expanded" class="rounded-lg bg-base-200/40 p-3 text-xs space-y-2">

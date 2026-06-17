@@ -1,3 +1,4 @@
+import type { Component } from "vue";
 import type Editor from "../editor";
 
 export interface PluginLogger {
@@ -19,6 +20,22 @@ export interface PluginContext {
   storage: PluginStorage;
 }
 
+export interface PluginConfigSchema {
+  fields: PluginConfigField[];
+}
+
+export interface PluginConfigField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "boolean" | "select" | "color";
+  default?: unknown;
+  placeholder?: string;
+  options?: { label: string; value: unknown }[];
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
 export interface EditorPluginManifest {
   id: string;
   name: string;
@@ -29,6 +46,7 @@ export interface EditorPluginManifest {
   capabilities?: string[];
   enabledByDefault?: boolean;
   required?: boolean;
+  configurable?: boolean;
 }
 
 export interface PluginContributionPreview {
@@ -45,4 +63,5 @@ export interface EditorPluginModule {
   contributes?: PluginContributionPreview;
   activate(ctx: PluginContext): void | Promise<void>;
   deactivate?(ctx: PluginContext): void | Promise<void>;
+  configure?(ctx: PluginContext): PluginConfigSchema | Component;
 }

@@ -14,6 +14,9 @@ import { flowShapesPlugin } from "../plugins/flow-shapes";
 import { templateActionsPlugin } from "../plugins/template-actions";
 import { viewControlsPlugin } from "../plugins/view-controls";
 import { agentPlugin } from "./agent";
+import { autoLayoutPlugin } from "./auto-layout";
+import { minimapPlugin } from "./minimap";
+import { multiLayerPlugin } from "./multi-layer";
 
 export const builtinPlugins: EditorPluginModule[] = [
   builtinCorePlugin,
@@ -31,4 +34,7 @@ export const builtinPlugins: EditorPluginModule[] = [
   bpmnShapesPlugin,
   architectureShapesPlugin,
   agentPlugin,
+  autoLayoutPlugin,
+  minimapPlugin,
+  multiLayerPlugin,
 ];
