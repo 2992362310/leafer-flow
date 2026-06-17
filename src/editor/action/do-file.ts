@@ -1,6 +1,7 @@
 import type Editor from "../editor";
 import {
   deserializeTreeWithConnectors,
+  migrateLegacyFormat,
   serializeTreeWithConnectors,
 } from "../core/flow-serialization";
 
@@ -45,9 +46,10 @@ export function doLoad(editor: Editor): Promise<{ success: boolean; message: str
       try {
         const text = await file.text();
         const json = JSON.parse(text) as Record<string, unknown>;
+        const migrated = migrateLegacyFormat(json);
 
         editor.app.editor.cancel();
-        const result = deserializeTreeWithConnectors(editor.app, json);
+        const result = deserializeTreeWithConnectors(editor.app, migrated);
         editor.commitMutation();
 
         let message = "文件已加载";

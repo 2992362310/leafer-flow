@@ -1,5 +1,5 @@
 import { App } from "leafer";
-import { deserializeTreeWithConnectors, serializeTreeWithConnectors } from "./flow-serialization";
+import { deserializeTreeWithConnectors, migrateLegacyFormat, serializeTreeWithConnectors } from "./flow-serialization";
 
 const STORAGE_KEY = "leafer-flow-autosave";
 const DEBOUNCE_MS = 1000;
@@ -79,11 +79,12 @@ export class AutoSave {
       if (!data) return { loaded: false, failedConnectors: 0 };
 
       const json = JSON.parse(data) as Record<string, unknown>;
-      if (!hasSavedChildren(json)) {
+      const migrated = migrateLegacyFormat(json);
+      if (!hasSavedChildren(migrated)) {
         return { loaded: false, failedConnectors: 0 };
       }
 
-      const result = deserializeTreeWithConnectors(this.app, json);
+      const result = deserializeTreeWithConnectors(this.app, migrated);
       return { loaded: true, failedConnectors: result.failedConnectors };
     } catch (error) {
       console.warn("自动加载失败:", error);

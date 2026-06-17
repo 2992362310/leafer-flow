@@ -13,6 +13,7 @@ import { fileActionsPlugin } from "../plugins/file-actions";
 import { flowShapesPlugin } from "../plugins/flow-shapes";
 import { templateActionsPlugin } from "../plugins/template-actions";
 import { viewControlsPlugin } from "../plugins/view-controls";
+import { agentPlugin } from "./agent";
 
 export const builtinPlugins: EditorPluginModule[] = [
   builtinCorePlugin,
@@ -29,4 +30,5 @@ export const builtinPlugins: EditorPluginModule[] = [
   flowShapesPlugin,
   bpmnShapesPlugin,
   architectureShapesPlugin,
+  agentPlugin,
 ];

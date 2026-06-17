@@ -17,6 +17,7 @@
 - 模板能力：业务流程、BPMN、系统架构、泳道协作等图形模板。
 - 绘制体验：画布标尺、智能吸附、点阵背景、自由绘制平滑度、事件日志、右键菜单和状态栏。
 - 插件市场：支持内置插件列表、启用 / 禁用非必需插件、查看插件贡献摘要。
+- **AI 助手**：通过自然语言指令快速编辑流程图，支持 OpenAI 兼容 API。
 
 ## 快速开始
 
@@ -48,6 +49,38 @@ pnpm run build
 - `Delete`：删除选中元素
 - `Arrow`：微移选中元素
 - `Shift+Arrow`：快速微移选中元素
+- `Ctrl+Shift+A`：打开 / 关闭 AI 助手
+
+## AI 助手
+
+AI 助手是一个内置插件，允许通过自然语言指令操作编辑器。
+
+### 配置
+
+1. 点击顶部工具栏的 AI 助手图标，或按 `Ctrl+Shift+A` 打开面板
+2. 点击设置按钮，配置 API 信息：
+   - **API URL**：OpenAI 兼容 API 地址（如 `https://api.openai.com/v1`）
+   - **API Key**：API 密钥
+   - **模型**：模型名称（如 `gpt-4o-mini`、`deepseek-chat`）
+3. 点击"测试连接"验证配置
+
+### 支持的指令
+
+| 类别 | 示例指令 |
+|------|----------|
+| 创建图形 | "画一个矩形"、"创建开始节点" |
+| 编辑操作 | "删除选中的"、"复制这些元素"、"撤销" |
+| 布局调整 | "左对齐"、"水平分布"、"编组" |
+| 样式修改 | "改成红色"、"边框加粗" |
+| 模板插入 | "插入审批流程"、"创建 BPMN 图" |
+| 文件操作 | "保存"、"导出 PNG" |
+| 视图控制 | "放大"、"适应画布" |
+
+### 上下文管理
+
+- 默认保留最近 20 条消息（可在设置中调整）
+- 历史消息自动持久化，关闭重开面板不会丢失
+- 当消息过多时，可点击"压缩历史"让 AI 生成对话摘要
 
 ## 使用建议
 
@@ -73,6 +106,25 @@ pnpm run build
 - `docs/plugin-market-plan.md`
 - `docs/refactor-checklist.md`
 - `docs/todo.md`
+
+## 内置插件
+
+| 插件 | 说明 |
+|------|------|
+| `builtin-core` | 核心命令、右键菜单、属性面板（必需） |
+| `canvas-ruler` | 画布标尺 |
+| `canvas-snap` | 智能吸附 |
+| `canvas-dot-matrix` | 点阵背景 |
+| `drawing-settings` | 绘制设置面板 |
+| `view-controls` | 视图控件 |
+| `file-actions` | 文件操作 |
+| `export-actions` | 导出操作 |
+| `template-actions` | 模板插入 |
+| `basic-tools` | 基础绘制工具 |
+| `flow-shapes` | 流程图节点 |
+| `bpmn-shapes` | BPMN 节点 |
+| `architecture-shapes` | 架构图节点 |
+| `agent` | AI 助手 |
 
 ## 数据与保存
 

@@ -64,4 +64,5 @@ export const toolbarIcons = {
   save: { path: "M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z", viewBox: "0 0 24 24", title: "保存" },
   load: { path: "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z", viewBox: "0 0 24 24", title: "打开文件" },
   export: { path: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4m4-5l5 5 5-5m-5 5V3", viewBox: "0 0 24 24", title: "导出" },
+  agent: { path: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", viewBox: "0 0 24 24", title: "AI 助手" },
 };

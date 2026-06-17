@@ -60,6 +60,30 @@ export function isSerializedFlowDocument(
   );
 }
 
+/**
+ * Migrate legacy serialization format (schema: "leafer-flow", children at root level)
+ * to the current format (schema: "leafer-flow.document", children under tree).
+ */
+export function migrateLegacyFormat(
+  json: Record<string, unknown>,
+): Record<string, unknown> {
+  if (json.schema === FLOW_SERIALIZATION_SCHEMA) return json;
+
+  if (Array.isArray(json.children)) {
+    return {
+      schema: FLOW_SERIALIZATION_SCHEMA,
+      schemaVersion: FLOW_SERIALIZATION_VERSION,
+      documentType: "autosave",
+      savedAt: new Date().toISOString(),
+      tree: {
+        children: json.children,
+      },
+    };
+  }
+
+  return json;
+}
+
 export function serializeTreeWithConnectors(
   app: App,
   documentType: FlowDocumentType = "file",

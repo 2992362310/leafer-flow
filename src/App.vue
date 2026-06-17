@@ -12,6 +12,7 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import SelectionMarquee from "@/components/SelectionMarquee.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
 import PluginMarketDrawer from "@/components/PluginMarket/PluginMarketDrawer.vue";
+import AgentChatPanel from "@/editor/builtin/plugins/agent/AgentChatPanel.vue";
 import { useRuntimeContributions } from "@/composables/useRuntimeContributions";
 import { useSelectionMarquee } from "@/composables/useSelectionMarquee";
 import { useShapeDrop } from "@/composables/useShapeDrop";
@@ -26,6 +27,7 @@ const elementCount = ref(0);
 const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
 const pluginMarketOpen = ref(false);
+const agentOpen = ref(false);
 const cleanupCallbacks: Array<() => void> = [];
 
 const {
@@ -76,6 +78,35 @@ const { initializeApp } = useEditorAppInit({
 
 onMounted(() => {
   initializeApp();
+
+  // 监听 AI 助手切换事件
+  const handleToggleAgent = () => {
+    agentOpen.value = !agentOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-agent", handleToggleAgent);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-agent", handleToggleAgent);
+  });
+
+  // 监听快捷键 Ctrl+Shift+A 打开 AI 助手
+  const handleKeydown = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      return;
+    }
+
+    const { ctrlKey, metaKey, shiftKey, key } = e;
+    const isCmd = ctrlKey || metaKey;
+
+    if (isCmd && shiftKey && key.toLowerCase() === "a") {
+      e.preventDefault();
+      agentOpen.value = !agentOpen.value;
+    }
+  };
+  window.addEventListener("keydown", handleKeydown);
+  addCleanup(() => {
+    window.removeEventListener("keydown", handleKeydown);
+  });
 });
 
 onUnmounted(() => {
@@ -160,5 +191,9 @@ function handlePluginMarketChanged() {
     :open="pluginMarketOpen"
     @close="pluginMarketOpen = false"
     @changed="handlePluginMarketChanged"
+  />
+  <AgentChatPanel
+    v-if="editor && agentOpen"
+    :editor="editor"
   />
 </template>
