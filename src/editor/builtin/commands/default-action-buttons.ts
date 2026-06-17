@@ -1,15 +1,13 @@
-import { ACTION_NAME } from "../../constants";
+import { ACTION_NAME, BUILTIN_PLUGIN_ID } from "../../constants";
 import type { ActionButtonGroupContribution } from "../../api/action-button";
 import type Editor from "../../editor";
-
-export const BUILTIN_ACTION_BUTTONS_PLUGIN_ID = "leafer-flow.builtin-core";
 
 const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
   {
     id: "history",
     label: "历史",
     icon: "undo",
-    pluginId: BUILTIN_ACTION_BUTTONS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
     order: 10,
     items: [
@@ -27,7 +25,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     id: "align",
     label: "对齐与分布",
     icon: "align_center",
-    pluginId: BUILTIN_ACTION_BUTTONS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     kind: "dropdown",
     order: 20,
     items: [
@@ -70,7 +68,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     id: "layer",
     label: "图层与状态",
     icon: "layer",
-    pluginId: BUILTIN_ACTION_BUTTONS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     kind: "dropdown",
     order: 30,
     items: [
@@ -123,7 +121,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     id: "connector-label",
     label: "连接线标签",
     icon: "connector_label",
-    pluginId: BUILTIN_ACTION_BUTTONS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
     order: 50,
     items: [
@@ -139,7 +137,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     id: "danger",
     label: "危险操作",
     icon: "clear",
-    pluginId: BUILTIN_ACTION_BUTTONS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
     order: 100,
     items: [

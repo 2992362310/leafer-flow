@@ -183,22 +183,7 @@ const { isCollapsed, toggleCollapse } = useCollapsible(true);
     >
       <div class="flex items-center gap-2">
         <!-- Layers Icon -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="w-4 h-4 opacity-70"
-        >
-          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-          <polyline points="2 17 12 22 22 17"></polyline>
-          <polyline points="2 12 12 17 22 12"></polyline>
-        </svg>
+        <Icon name="layer" class="w-4 h-4 opacity-70" />
         <span class="text-xs font-bold">图层</span>
         <span class="text-[10px] font-normal opacity-50 ml-1">({{ treeData.length }})</span>
       </div>
@@ -209,34 +194,7 @@ const { isCollapsed, toggleCollapse } = useCollapsible(true);
         @click.stop="toggleCollapse(isDragging)"
         @mousedown.stop
       >
-        <svg
-          v-if="!isCollapsed"
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="18 15 12 9 6 15"></polyline>
-        </svg>
-        <svg
-          v-else
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+        <Icon :name="isCollapsed ? 'arrow-down' : 'arrow-up'" class="w-4 h-4" />
       </button>
     </div>
 

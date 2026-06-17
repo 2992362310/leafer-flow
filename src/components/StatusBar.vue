@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { TOOL_NAME } from "@/editor/constants";
-import Icon from "./Icon.vue";
 
 const props = defineProps<{
   selectedTool?: string | null;

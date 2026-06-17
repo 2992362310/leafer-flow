@@ -1,7 +1,21 @@
 import type { EditorPluginModule } from "../../../api/plugin";
+import type Editor from "../../../editor";
 import { autoLayout, LAYOUT_PRESETS, type LayoutOptions } from "./layout-engine";
 
 const PLUGIN_ID = "leafer-flow.auto-layout";
+
+function runAutoLayout(editor: Editor, direction?: "TB" | "LR") {
+  const selected = editor.app.editor.list;
+  if (!selected || selected.length === 0) {
+    return { success: false, message: "请先选中要布局的元素" };
+  }
+
+  const result = autoLayout([...selected] as any[], direction ? { direction } : undefined);
+  if (result.success) {
+    editor.commitMutation({ syncConnectorLabels: true });
+  }
+  return result;
+}
 
 export const autoLayoutPlugin: EditorPluginModule = {
   manifest: {
@@ -18,73 +32,27 @@ export const autoLayoutPlugin: EditorPluginModule = {
     buttons: ["自动布局"],
   },
   activate(ctx) {
-    // 注册自动布局命令
     ctx.editor.commands.register({
       id: "autoLayout",
       label: "自动布局",
       pluginId: PLUGIN_ID,
-      run: (editor) => {
-        const selected = editor.app.editor.list;
-        if (!selected || selected.length === 0) {
-          return {
-            success: false,
-            message: "请先选中要布局的元素",
-          };
-        }
-
-        const result = autoLayout([...selected] as any[]);
-        if (result.success) {
-          editor.commitMutation({ syncConnectorLabels: true });
-        }
-        return result;
-      },
+      run: (editor) => runAutoLayout(editor),
     });
 
-    // 注册从上到下布局命令
     ctx.editor.commands.register({
       id: "autoLayoutTB",
       label: "从上到下布局",
       pluginId: PLUGIN_ID,
-      run: (editor) => {
-        const selected = editor.app.editor.list;
-        if (!selected || selected.length === 0) {
-          return {
-            success: false,
-            message: "请先选中要布局的元素",
-          };
-        }
-
-        const result = autoLayout([...selected] as any[], { direction: "TB" });
-        if (result.success) {
-          editor.commitMutation({ syncConnectorLabels: true });
-        }
-        return result;
-      },
+      run: (editor) => runAutoLayout(editor, "TB"),
     });
 
-    // 注册从左到右布局命令
     ctx.editor.commands.register({
       id: "autoLayoutLR",
       label: "从左到右布局",
       pluginId: PLUGIN_ID,
-      run: (editor) => {
-        const selected = editor.app.editor.list;
-        if (!selected || selected.length === 0) {
-          return {
-            success: false,
-            message: "请先选中要布局的元素",
-          };
-        }
-
-        const result = autoLayout([...selected] as any[], { direction: "LR" });
-        if (result.success) {
-          editor.commitMutation({ syncConnectorLabels: true });
-        }
-        return result;
-      },
+      run: (editor) => runAutoLayout(editor, "LR"),
     });
 
-    // 注册操作按钮
     ctx.editor.actionButtons.register({
       id: "auto-layout",
       label: "自动布局",

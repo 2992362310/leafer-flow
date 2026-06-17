@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
-import Icon from "../Icon.vue";
 import type { IUI } from "@leafer-ui/interface";
 
 // 定义 Props

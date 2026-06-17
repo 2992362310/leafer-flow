@@ -1,8 +1,9 @@
 import type { Ruler } from "leafer-x-ruler";
 import type { EditorPluginModule } from "../../../api/plugin";
+import type Editor from "../../../editor";
 import { editorRuler } from "../../../plugins/ruler";
 
-let ruler: Ruler | undefined;
+const instances = new WeakMap<Editor, Ruler>();
 
 export const canvasRulerPlugin: EditorPluginModule = {
   manifest: {
@@ -14,11 +15,15 @@ export const canvasRulerPlugin: EditorPluginModule = {
     capabilities: ["canvas-overlay"],
     enabledByDefault: true,
   },
-  activate(ctx) {
-    ruler = ctx.editor.use<Ruler>(editorRuler);
+  contributes: {
+    canvasOverlays: ["标尺"],
   },
-  deactivate() {
-    ruler?.dispose();
-    ruler = undefined;
+  activate(ctx) {
+    const ruler = ctx.editor.use<Ruler>(editorRuler);
+    instances.set(ctx.editor, ruler);
+  },
+  deactivate(ctx) {
+    instances.get(ctx.editor)?.dispose();
+    instances.delete(ctx.editor);
   },
 };

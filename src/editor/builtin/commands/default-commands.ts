@@ -1,4 +1,4 @@
-import { ACTION_NAME } from "../../constants";
+import { ACTION_NAME, BUILTIN_PLUGIN_ID } from "../../constants";
 import type { CommandContribution } from "../../api/command";
 import type Editor from "../../editor";
 import { doAlign } from "../../action/do-align";
@@ -17,44 +17,42 @@ import { doUndo } from "../../action/do-undo";
 import { doUnGroup } from "../../action/do-ungroup";
 import { getSnapEnabled, setSnapEnabled } from "../../core/drawing-settings";
 
-export const BUILTIN_COMMANDS_PLUGIN_ID = "leafer-flow.builtin-core";
-
 const CORE_COMMANDS: CommandContribution[] = [
   {
     id: ACTION_NAME.CLEAR_CANVAS,
     label: "清空画布",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: doClear,
   },
-  { id: ACTION_NAME.UNDO, label: "撤销", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doUndo },
-  { id: ACTION_NAME.REDO, label: "重做", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doRedo },
-  { id: ACTION_NAME.DELETE, label: "删除", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doDelete },
-  { id: ACTION_NAME.GROUP, label: "组合", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doGroup },
+  { id: ACTION_NAME.UNDO, label: "撤销", pluginId: BUILTIN_PLUGIN_ID, run: doUndo },
+  { id: ACTION_NAME.REDO, label: "重做", pluginId: BUILTIN_PLUGIN_ID, run: doRedo },
+  { id: ACTION_NAME.DELETE, label: "删除", pluginId: BUILTIN_PLUGIN_ID, run: doDelete },
+  { id: ACTION_NAME.GROUP, label: "组合", pluginId: BUILTIN_PLUGIN_ID, run: doGroup },
   {
     id: ACTION_NAME.UNGROUP,
     label: "取消组合",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: doUnGroup,
   },
-  { id: ACTION_NAME.COPY, label: "复制", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doCopy },
-  { id: ACTION_NAME.PASTE, label: "粘贴", pluginId: BUILTIN_COMMANDS_PLUGIN_ID, run: doPaste },
+  { id: ACTION_NAME.COPY, label: "复制", pluginId: BUILTIN_PLUGIN_ID, run: doCopy },
+  { id: ACTION_NAME.PASTE, label: "粘贴", pluginId: BUILTIN_PLUGIN_ID, run: doPaste },
   {
     id: ACTION_NAME.ADD_CONNECTOR_LABEL,
     label: "添加连接线标签",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: doAddConnectorLabel,
   },
   {
     id: ACTION_NAME.SELECT_ALL,
     label: "全选",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: doSelectAll,
   },
   {
     id: ACTION_NAME.CONNECTORS_TO_FRONT,
     label: "连接线置顶",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: doConnectorToFront,
   },
 ];
@@ -89,7 +87,7 @@ export function registerDefaultCommands(editor: Editor) {
     editor.commands.register({
       id: action,
       label: action,
-      pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+      pluginId: BUILTIN_PLUGIN_ID,
       run: (currentEditor) => doAlign(currentEditor, action),
     });
   });
@@ -98,7 +96,7 @@ export function registerDefaultCommands(editor: Editor) {
     editor.commands.register({
       id,
       label: id,
-      pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+      pluginId: BUILTIN_PLUGIN_ID,
       run: (currentEditor) => doLayer(currentEditor, layerAction),
     });
   });
@@ -106,21 +104,21 @@ export function registerDefaultCommands(editor: Editor) {
   editor.commands.register({
     id: ACTION_NAME.LOCK_SELECTED,
     label: "锁定选中元素",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: (currentEditor) => doToggleLock(currentEditor, true),
   });
 
   editor.commands.register({
     id: ACTION_NAME.UNLOCK_SELECTED,
     label: "解锁选中元素",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: (currentEditor) => doToggleLock(currentEditor, false),
   });
 
   editor.commands.register({
     id: ACTION_NAME.TOGGLE_VISIBLE,
     label: "切换可见性",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: (currentEditor) => {
       const selected = currentEditor.app.editor.list || [];
       return doToggleVisible(
@@ -133,14 +131,14 @@ export function registerDefaultCommands(editor: Editor) {
   editor.commands.register<MoveLayerPayload>({
     id: ACTION_NAME.MOVE_LAYER,
     label: "移动图层",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     run: doMoveLayer,
   });
 
   editor.commands.register({
     id: ACTION_NAME.TOGGLE_SNAP,
     label: "切换吸附",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: (currentEditor) => {
       const next = !getSnapEnabled();
@@ -153,7 +151,7 @@ export function registerDefaultCommands(editor: Editor) {
   editor.commands.register<NudgePayload>({
     id: "nudge",
     label: "微移选中元素",
-    pluginId: BUILTIN_COMMANDS_PLUGIN_ID,
+    pluginId: BUILTIN_PLUGIN_ID,
     match: parseNudgeAction,
     run: (currentEditor, payload) => doNudge(currentEditor, payload?.x ?? 0, payload?.y ?? 0),
   });

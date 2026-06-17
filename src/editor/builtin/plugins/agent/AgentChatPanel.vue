@@ -416,11 +416,12 @@ function handleKeydown(e: KeyboardEvent) {
   <Transition name="slide-fade">
     <button
       v-if="isCollapsed"
-      class="btn btn-sm fixed z-20 shadow-lg"
+      class="btn btn-sm fixed z-20 shadow-lg cursor-move"
       :style="{
         left: `${position.x}px`,
         top: `${position.y}px`,
       }"
+      @mousedown="startDrag"
       @click="toggleCollapse(isDragging)"
     >
       <svg

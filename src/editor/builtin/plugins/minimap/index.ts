@@ -2,6 +2,11 @@ import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.minimap";
 
+function dispatchToggle(eventName: string) {
+  window.dispatchEvent(new CustomEvent(eventName));
+  return { success: true, message: "已执行" };
+}
+
 export const minimapPlugin: EditorPluginModule = {
   manifest: {
     id: PLUGIN_ID,
@@ -17,19 +22,13 @@ export const minimapPlugin: EditorPluginModule = {
     buttons: ["缩略图"],
   },
   activate(ctx) {
-    // 注册切换缩略图命令
     ctx.editor.commands.register({
       id: "toggleMinimap",
       label: "切换缩略图",
       pluginId: PLUGIN_ID,
-      run: () => {
-        // 通过自定义事件通知 App.vue 切换缩略图
-        window.dispatchEvent(new CustomEvent("leafer-flow:toggle-minimap"));
-        return { success: true, message: "已切换缩略图" };
-      },
+      run: () => dispatchToggle("leafer-flow:toggle-minimap"),
     });
 
-    // 注册操作按钮
     ctx.editor.actionButtons.register({
       id: "minimap",
       label: "缩略图",

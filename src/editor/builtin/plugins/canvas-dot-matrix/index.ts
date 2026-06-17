@@ -1,8 +1,9 @@
 import type { DotMatrix } from "leafer-x-dot-matrix";
 import type { EditorPluginModule } from "../../../api/plugin";
+import type Editor from "../../../editor";
 import { editorDotMatrix } from "../../../plugins/dot-matrix";
 
-let dotMatrix: DotMatrix | undefined;
+const instances = new WeakMap<Editor, DotMatrix>();
 
 export const canvasDotMatrixPlugin: EditorPluginModule = {
   manifest: {
@@ -14,11 +15,15 @@ export const canvasDotMatrixPlugin: EditorPluginModule = {
     capabilities: ["canvas-overlay"],
     enabledByDefault: true,
   },
-  activate(ctx) {
-    dotMatrix = ctx.editor.use<DotMatrix>(editorDotMatrix);
+  contributes: {
+    canvasOverlays: ["点阵背景"],
   },
-  deactivate() {
-    dotMatrix?.destroy();
-    dotMatrix = undefined;
+  activate(ctx) {
+    const dotMatrix = ctx.editor.use<DotMatrix>(editorDotMatrix);
+    instances.set(ctx.editor, dotMatrix);
+  },
+  deactivate(ctx) {
+    instances.get(ctx.editor)?.destroy();
+    instances.delete(ctx.editor);
   },
 };

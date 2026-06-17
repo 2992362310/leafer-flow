@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
-import Icon from "./Icon.vue";
 import { formatTime } from "@/editor/utils";
 import type { IconName } from "@/assets/icons";
 

@@ -2,6 +2,17 @@ import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.agent";
 
+/**
+ * 通过 CustomEvent 与 Vue 层通信。
+ * 这是一种松耦合模式：编辑器核心不依赖 Vue 组件树，
+ * Vue 层通过 addEventListener 监听这些事件来响应命令。
+ * 注意：命令始终返回 success，因为无法同步获知 Vue 层是否已响应。
+ */
+function dispatchToggle(eventName: string) {
+  window.dispatchEvent(new CustomEvent(eventName));
+  return { success: true, message: "已执行" };
+}
+
 export const agentPlugin: EditorPluginModule = {
   manifest: {
     id: PLUGIN_ID,
@@ -17,19 +28,13 @@ export const agentPlugin: EditorPluginModule = {
     buttons: ["AI 助手"],
   },
   activate(ctx) {
-    // 注册打开 AI 助手命令
     ctx.editor.commands.register({
       id: "openAgent",
       label: "打开 AI 助手",
       pluginId: PLUGIN_ID,
-      run: () => {
-        // 通过自定义事件通知 App.vue 打开面板
-        window.dispatchEvent(new CustomEvent("leafer-flow:toggle-agent"));
-        return { success: true, message: "已打开 AI 助手" };
-      },
+      run: () => dispatchToggle("leafer-flow:toggle-agent"),
     });
 
-    // 注册操作按钮
     ctx.editor.actionButtons.register({
       id: "agent",
       label: "AI 助手",

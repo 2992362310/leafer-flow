@@ -2,6 +2,18 @@ import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.multi-layer";
 
+const DEFAULT_CONFIG = {
+  defaultLayerCount: 3,
+  showOpacityControl: true,
+};
+
+function getConfig(ctx: { storage: { get: <T>(key: string) => T | null } }) {
+  return {
+    defaultLayerCount: ctx.storage.get<number>("defaultLayerCount") ?? DEFAULT_CONFIG.defaultLayerCount,
+    showOpacityControl: ctx.storage.get<boolean>("showOpacityControl") ?? DEFAULT_CONFIG.showOpacityControl,
+  };
+}
+
 export const multiLayerPlugin: EditorPluginModule = {
   manifest: {
     id: PLUGIN_ID,
@@ -18,18 +30,20 @@ export const multiLayerPlugin: EditorPluginModule = {
     buttons: ["图层"],
   },
   activate(ctx) {
-    // 注册切换图层面板命令
+    const config = getConfig(ctx);
+
     ctx.editor.commands.register({
       id: "toggleLayerPanel",
       label: "切换图层面板",
       pluginId: PLUGIN_ID,
       run: () => {
-        window.dispatchEvent(new CustomEvent("leafer-flow:toggle-layer-panel"));
+        window.dispatchEvent(
+          new CustomEvent("leafer-flow:toggle-layer-panel", { detail: config }),
+        );
         return { success: true, message: "已切换图层面板" };
       },
     });
 
-    // 注册操作按钮
     ctx.editor.actionButtons.register({
       id: "multi-layer",
       label: "图层",
@@ -55,7 +69,7 @@ export const multiLayerPlugin: EditorPluginModule = {
           key: "defaultLayerCount",
           label: "默认图层数量",
           type: "number" as const,
-          default: 3,
+          default: DEFAULT_CONFIG.defaultLayerCount,
           min: 1,
           max: 10,
           step: 1,
@@ -64,7 +78,7 @@ export const multiLayerPlugin: EditorPluginModule = {
           key: "showOpacityControl",
           label: "显示透明度控制",
           type: "boolean" as const,
-          default: true,
+          default: DEFAULT_CONFIG.showOpacityControl,
         },
       ],
     };

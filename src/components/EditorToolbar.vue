@@ -3,7 +3,6 @@ import { computed } from "vue";
 import type { IconName } from "@/assets/icons";
 import { TOOL_NAME } from "@/editor/constants";
 import type { ToolToolbarGroup, ToolToolbarItem } from "@/editor/api/tool";
-import Icon from "./Icon.vue";
 
 const props = defineProps<{
   groups?: ToolToolbarGroup[];

@@ -12,6 +12,9 @@ export const canvasSnapPlugin: EditorPluginModule = {
     capabilities: ["canvas-overlay"],
     enabledByDefault: true,
   },
+  contributes: {
+    canvasOverlays: ["智能吸附"],
+  },
   activate(ctx) {
     ctx.editor.snap = ctx.editor.use<Snap>(editorSnap);
   },

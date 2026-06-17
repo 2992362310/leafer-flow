@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Icon from "@/components/Icon.vue";
 import type { ShapeLibraryItem } from "@/editor/shape-library";
 
 const props = withDefaults(
