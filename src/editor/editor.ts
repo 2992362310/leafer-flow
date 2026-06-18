@@ -101,6 +101,16 @@ export default class Editor {
     }
   }
 
+  /** 开始事务：事务期间的 commitMutation 不会产生新的历史记录 */
+  beginTransaction() {
+    this.history.beginTransaction();
+  }
+
+  /** 结束事务：提交一次历史保存 */
+  endTransaction() {
+    this.history.endTransaction();
+  }
+
   use<T>(plugin: IEditorPlugin): T {
     const app = this.app;
     const uPlugin = plugin.init(app);

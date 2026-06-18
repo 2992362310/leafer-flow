@@ -19,6 +19,13 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         icon: "redo",
         order: 20,
       },
+      {
+        id: "history-panel",
+        label: "历史面板",
+        command: "toggleHistoryPanel",
+        icon: "undo",
+        order: 30,
+      },
     ],
   },
   {
@@ -130,6 +137,22 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         command: ACTION_NAME.ADD_CONNECTOR_LABEL,
         icon: "connector_label",
         label: "添加连线标签",
+      },
+    ],
+  },
+  {
+    id: "image",
+    label: "插入图片",
+    icon: "insert_image",
+    pluginId: BUILTIN_PLUGIN_ID,
+    kind: "button",
+    order: 60,
+    items: [
+      {
+        id: "insert-image",
+        label: "插入图片",
+        command: ACTION_NAME.INSERT_IMAGE,
+        icon: "insert_image",
       },
     ],
   },

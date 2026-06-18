@@ -111,9 +111,27 @@ export function useEditorShortcuts(options: ShortcutOptions) {
         return;
       }
 
+      if (key === "x" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.CUT);
+        return;
+      }
+
       if (key === "v" && !shiftKey) {
         e.preventDefault();
         onAction(ACTION_NAME.PASTE);
+        return;
+      }
+
+      if (key === "d" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.DUPLICATE);
+        return;
+      }
+
+      if (key === "f" && !shiftKey) {
+        e.preventDefault();
+        onAction(ACTION_NAME.FIND);
         return;
       }
 

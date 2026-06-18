@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { marked } from "marked";
 import type { ToolCallResult } from "./agent-service";
 
 interface Props {
@@ -10,6 +12,22 @@ interface Props {
 
 const props = defineProps<Props>();
 
+// 配置 marked
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
+// 渲染 Markdown
+const renderedContent = computed(() => {
+  if (!props.content) return "";
+  try {
+    return marked.parse(props.content);
+  } catch {
+    return props.content;
+  }
+});
+
 function formatToolName(name: string): string {
   const nameMap: Record<string, string> = {
     save_file: "保存文件",
@@ -20,7 +38,9 @@ function formatToolName(name: string): string {
     redo: "重做",
     delete: "删除",
     copy: "复制",
+    cut: "剪切",
     paste: "粘贴",
+    duplicate: "原位复制",
     select_all: "全选",
     align: "对齐",
     distribute: "分布",
@@ -32,13 +52,17 @@ function formatToolName(name: string): string {
     send_to_back: "置于底层",
     create_shape: "创建图形",
     insert_template: "插入模板",
-    set_style: "修改样式",
+    set_style: "修改属性",
+    modify_text: "修改文字",
     zoom_fit: "适应画布",
     zoom_in: "放大",
     zoom_out: "缩小",
     zoom_reset: "重置缩放",
     clear_canvas: "清空画布",
     get_canvas_info: "获取画布信息",
+    get_selection_info: "获取选中信息",
+    search_elements: "搜索元素",
+    connect_elements: "连接元素",
   };
   return nameMap[name] || name;
 }
@@ -50,7 +74,7 @@ function formatToolName(name: string): string {
       {{ role === "user" ? "你" : "AI 助手" }}
     </div>
     <div
-      class="chat-bubble text-xs"
+      class="chat-bubble text-xs max-w-[90%]"
       :class="{
         'chat-bubble-primary': role === 'user',
         'chat-bubble-neutral': role === 'assistant',
@@ -88,9 +112,115 @@ function formatToolName(name: string): string {
           </div>
         </div>
 
-        <!-- 普通文本 -->
-        <div v-else class="whitespace-pre-wrap">{{ content }}</div>
+        <!-- Markdown 内容 -->
+        <div v-else class="markdown-body" v-html="renderedContent"></div>
       </template>
     </div>
   </div>
 </template>
+
+<style scoped>
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  font-weight: 600;
+  margin-top: 0.5em;
+  margin-bottom: 0.25em;
+}
+
+.markdown-body :deep(h1) {
+  font-size: 1.1em;
+}
+
+.markdown-body :deep(h2) {
+  font-size: 1.05em;
+}
+
+.markdown-body :deep(h3) {
+  font-size: 1em;
+}
+
+.markdown-body :deep(p) {
+  margin-bottom: 0.5em;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  padding-left: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 0.15em;
+}
+
+.markdown-body :deep(code) {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: monospace;
+}
+
+.markdown-body :deep(pre) {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.5em;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  padding-left: 0.5em;
+  margin-left: 0;
+  margin-bottom: 0.5em;
+  opacity: 0.8;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  margin-bottom: 0.5em;
+  font-size: 0.85em;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.3em 0.5em;
+}
+
+.markdown-body :deep(th) {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.markdown-body :deep(a) {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 0.5em 0;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 600;
+}
+
+.markdown-body :deep(em) {
+  font-style: italic;
+}
+</style>

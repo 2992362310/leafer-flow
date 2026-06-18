@@ -27,7 +27,7 @@ export function useEditorAppInit({
   bindShapeDrop,
   refreshEditorStats,
 }: UseEditorAppInitOptions) {
-  function initializeApp() {
+  async function initializeApp() {
     if (!editorElement.value) return;
 
     editor.value = initEditor(editorElement.value);
@@ -40,12 +40,12 @@ export function useEditorAppInit({
       refreshEditorStats(editor.value);
     });
 
-    restoreAutosave(editor.value);
+    await restoreAutosave(editor.value);
     logRef.value?.addLog({ message: "应用初始化完成", level: "success" });
   }
 
-  function restoreAutosave(currentEditor: Editor) {
-    const loadResult = currentEditor.autoSave.load();
+  async function restoreAutosave(currentEditor: Editor) {
+    const loadResult = await currentEditor.autoSave.load();
     if (!loadResult.loaded) return;
 
     refreshEditorStats(currentEditor);

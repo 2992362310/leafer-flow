@@ -10,6 +10,8 @@ import StatusBar from "@/components/StatusBar.vue";
 import ViewControls from "@/components/ViewControls.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import SelectionMarquee from "@/components/SelectionMarquee.vue";
+import CanvasSearch from "@/components/CanvasSearch.vue";
+import HistoryPanel from "@/components/HistoryPanel.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
 import PluginMarketDrawer from "@/components/PluginMarket/PluginMarketDrawer.vue";
 import AgentChatPanel from "@/editor/builtin/plugins/agent/AgentChatPanel.vue";
@@ -32,6 +34,8 @@ const pluginMarketOpen = ref(false);
 const agentOpen = ref(false);
 const minimapOpen = ref(true);
 const multiLayerOpen = ref(false);
+const searchOpen = ref(false);
+const historyOpen = ref(false);
 const cleanupCallbacks: Array<() => void> = [];
 
 const {
@@ -110,6 +114,24 @@ onMounted(() => {
     window.removeEventListener("leafer-flow:toggle-layer-panel", handleToggleLayerPanel);
   });
 
+  // 监听搜索面板切换事件
+  const handleToggleSearch = () => {
+    searchOpen.value = !searchOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-search", handleToggleSearch);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-search", handleToggleSearch);
+  });
+
+  // 监听历史面板切换事件
+  const handleToggleHistory = () => {
+    historyOpen.value = !historyOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-history", handleToggleHistory);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-history", handleToggleHistory);
+  });
+
   // 监听快捷键 Ctrl+Shift+A 打开 AI 助手
   const handleKeydown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -171,6 +193,12 @@ function handlePluginMarketChanged() {
     :width="marquee.width"
     :height="marquee.height"
   />
+  <CanvasSearch
+    v-if="editor"
+    :editor="editor"
+    :open="searchOpen"
+    @close="searchOpen = false"
+  />
 
   <ShapeLibrary
     :active-tool="activeTool"
@@ -207,6 +235,12 @@ function handlePluginMarketChanged() {
   </div>
 
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
+  <HistoryPanel
+    v-if="editor"
+    :editor="editor"
+    :open="historyOpen"
+    @close="historyOpen = false"
+  />
   <ContextMenu :editor="editor" @action="handleAction" />
   <PluginMarketDrawer
     :editor="editor"

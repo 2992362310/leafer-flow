@@ -54,4 +54,9 @@ export const systemIcons = {
     viewBox: '0 0 24 24',
     title: '解锁',
   },
+  insert_image: {
+    path: 'M4 4h16v16H4V4zm4 12l3-4 2 2.5L16 11l4 5H8z',
+    viewBox: '0 0 24 24',
+    title: '插入图片',
+  },
 }

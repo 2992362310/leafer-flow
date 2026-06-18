@@ -2,26 +2,29 @@ import { App } from "leafer";
 import { deserializeTreeWithConnectors, migrateLegacyFormat, serializeTreeWithConnectors } from "./flow-serialization";
 
 const STORAGE_KEY = "leafer-flow-autosave";
+const IDB_DB_NAME = "leafer-flow";
+const IDB_STORE_NAME = "autosave";
+const IDB_KEY = "current";
 const DEBOUNCE_MS = 1000;
-const SIZE_WARNING_KEY = "leafer-flow-autosave-warning";
-const SIZE_WARNING_COOLDOWN_MS = 60_000; // Show warning at most once per minute
+const LOCALSTORAGE_SIZE_LIMIT = 3 * 1024 * 1024; // 3MB — localStorage 安全线
 
 export class AutoSave {
   private app: App;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private _lastSaveOk = true;
   private _saveError: string | null = null;
+  private db: IDBDatabase | null = null;
+  private dbReady: Promise<IDBDatabase | null>;
 
   constructor(app: App) {
     this.app = app;
+    this.dbReady = this.openDB();
   }
 
-  /** Whether the last save succeeded. */
   get lastSaveOk(): boolean {
     return this._lastSaveOk;
   }
 
-  /** Error message from the last save failure, if any. */
   get saveError(): string | null {
     return this._saveError;
   }
@@ -38,25 +41,32 @@ export class AutoSave {
     }
   }
 
-  save(): boolean {
+  async save(): Promise<boolean> {
     try {
       const data = serializeTreeWithConnectors(this.app, "autosave");
       const json = JSON.stringify(data);
+      const sizeBytes = json.length * 2; // UTF-16
 
-      // Estimate size in MB (2 bytes per char for UTF-16)
-      const sizeMB = (json.length * 2) / (1024 * 1024);
-      if (sizeMB > 4) {
-        const lastWarning = Number(localStorage.getItem(SIZE_WARNING_KEY) || "0");
-        if (Date.now() - lastWarning > SIZE_WARNING_COOLDOWN_MS) {
-          this._saveError = `自动保存数据较大（${sizeMB.toFixed(1)}MB），建议手动保存文件`;
-          this._lastSaveOk = false;
-          localStorage.setItem(SIZE_WARNING_KEY, String(Date.now()));
-          console.warn(this._saveError);
-          return false;
-        }
+      // 小数据直接存 localStorage（快）
+      if (sizeBytes <= LOCALSTORAGE_SIZE_LIMIT) {
+        localStorage.setItem(STORAGE_KEY, json);
+        this._lastSaveOk = true;
+        this._saveError = null;
+        return true;
       }
 
-      localStorage.setItem(STORAGE_KEY, json);
+      // 大数据用 IndexedDB
+      const db = await this.dbReady;
+      if (!db) {
+        this._saveError = "IndexedDB 不可用，数据过大无法自动保存";
+        this._lastSaveOk = false;
+        return false;
+      }
+
+      await this.idbPut(db, json);
+      // 同时清掉 localStorage 里的旧数据，避免 load 时读到过期内容
+      localStorage.removeItem(STORAGE_KEY);
+
       this._lastSaveOk = true;
       this._saveError = null;
       return true;
@@ -73,12 +83,22 @@ export class AutoSave {
     }
   }
 
-  load(): { loaded: boolean; failedConnectors: number } {
+  async load(): Promise<{ loaded: boolean; failedConnectors: number }> {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (!data) return { loaded: false, failedConnectors: 0 };
+      // 优先读 localStorage（快，且覆盖小文件场景）
+      let raw = localStorage.getItem(STORAGE_KEY);
 
-      const json = JSON.parse(data) as Record<string, unknown>;
+      // localStorage 没有则尝试 IndexedDB
+      if (!raw) {
+        const db = await this.dbReady;
+        if (db) {
+          raw = await this.idbGet(db);
+        }
+      }
+
+      if (!raw) return { loaded: false, failedConnectors: 0 };
+
+      const json = JSON.parse(raw) as Record<string, unknown>;
       const migrated = migrateLegacyFormat(json);
       if (!hasSavedChildren(migrated)) {
         return { loaded: false, failedConnectors: 0 };
@@ -94,15 +114,73 @@ export class AutoSave {
 
   clear() {
     localStorage.removeItem(STORAGE_KEY);
+    this.dbReady.then((db) => {
+      if (db) {
+        const tx = db.transaction(IDB_STORE_NAME, "readwrite");
+        tx.objectStore(IDB_STORE_NAME).delete(IDB_KEY);
+      }
+    });
   }
 
   destroy() {
     if (this.timer) clearTimeout(this.timer);
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
   }
 
   private scheduleSave() {
     if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.save(), DEBOUNCE_MS);
+    this.timer = setTimeout(() => void this.save(), DEBOUNCE_MS);
+  }
+
+  // ---- IndexedDB ----
+
+  private openDB(): Promise<IDBDatabase | null> {
+    return new Promise((resolve) => {
+      if (typeof indexedDB === "undefined") {
+        resolve(null);
+        return;
+      }
+
+      const request = indexedDB.open(IDB_DB_NAME, 1);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+          db.createObjectStore(IDB_STORE_NAME);
+        }
+      };
+
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve(this.db);
+      };
+
+      request.onerror = () => {
+        console.warn("IndexedDB 打开失败:", request.error);
+        resolve(null);
+      };
+    });
+  }
+
+  private idbPut(db: IDBDatabase, value: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE_NAME, "readwrite");
+      tx.objectStore(IDB_STORE_NAME).put(value, IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  private idbGet(db: IDBDatabase): Promise<string | null> {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE_NAME, "readonly");
+      const request = tx.objectStore(IDB_STORE_NAME).get(IDB_KEY);
+      request.onsuccess = () => resolve(request.result ?? null);
+      request.onerror = () => reject(request.error);
+    });
   }
 }
 

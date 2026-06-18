@@ -5,6 +5,12 @@ import {
   type SerializedChild,
 } from "./flow-serialization";
 
+export interface HistoryEntry {
+  index: number;
+  hash: string;
+  label: string;
+}
+
 export class HistoryManager {
   private app: App;
   private undoStack: { data: SerializedChild[]; hash: string }[] = [];
@@ -12,6 +18,7 @@ export class HistoryManager {
   private lastSavedHash = "";
   private limit = 30;
   private isExecuting = false;
+  private transactionDepth = 0;
 
   constructor(app: App) {
     this.app = app;
@@ -20,6 +27,7 @@ export class HistoryManager {
 
   public save() {
     if (this.isExecuting) return;
+    if (this.transactionDepth > 0) return; // 事务期间延迟保存
 
     const data = serializeChildrenWithConnectors(this.app);
     const hash = this.computeHash(data);
@@ -79,15 +87,82 @@ export class HistoryManager {
     return this.redoStack.length > 0;
   }
 
-  private computeHash(data: SerializedChild[]): string {
-    // Simple fast hash using JSON.stringify — avoids allocating a full string comparison
-    // by comparing length first (cheap short-circuit for most cases)
-    const str = JSON.stringify(data);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) | 0;
+  public get undoCount() {
+    return this.undoStack.length;
+  }
+
+  public get redoCount() {
+    return this.redoStack.length;
+  }
+
+  /** 获取历史条目列表，用于 UI 展示 */
+  public getEntries(): HistoryEntry[] {
+    const entries: HistoryEntry[] = [];
+    this.undoStack.forEach((item, i) => {
+      entries.push({ index: i, hash: item.hash, label: `状态 ${i + 1}` });
+    });
+    return entries;
+  }
+
+  /** 跳转到指定历史状态（通过撤销/重做到达） */
+  public jumpTo(targetIndex: number): boolean {
+    if (targetIndex < 0 || targetIndex >= this.undoStack.length) return false;
+    if (targetIndex === this.undoStack.length - 1) return true; // 已经在目标位置
+
+    this.isExecuting = true;
+
+    // 需要撤销到目标位置
+    while (this.undoStack.length - 1 > targetIndex) {
+      const current = this.undoStack.pop();
+      if (current) this.redoStack.push(current);
     }
-    return `${str.length}:${hash}`;
+
+    const target = this.undoStack[this.undoStack.length - 1];
+    if (target) {
+      this.lastSavedHash = target.hash;
+      applySerializedChildren(this.app, target.data);
+    }
+
+    this.isExecuting = false;
+    return true;
+  }
+
+  /** 开始事务：事务期间的 save() 调用会被延迟到 endTransaction() */
+  public beginTransaction() {
+    this.transactionDepth++;
+  }
+
+  /** 结束事务：提交一次 save() */
+  public endTransaction() {
+    if (this.transactionDepth > 0) {
+      this.transactionDepth--;
+      if (this.transactionDepth === 0) {
+        this.save();
+      }
+    }
+  }
+
+  private computeHash(data: SerializedChild[]): string {
+    // 快速结构化哈希：用元素数量 + 位置/尺寸累加 + 标签采样，避免完整 JSON.stringify
+    let posSum = 0;
+    let sizeSum = 0;
+    let tagHash = 0;
+    const len = data.length;
+
+    for (let i = 0; i < len; i++) {
+      const el = data[i] as Record<string, unknown>;
+      posSum += ((el.x as number) || 0) + ((el.y as number) || 0);
+      sizeSum += ((el.width as number) || 0) + ((el.height as number) || 0);
+
+      // 采样标签哈希（每隔几个元素）
+      if (i % 3 === 0) {
+        const tag = String(el.tag || "");
+        for (let j = 0; j < tag.length; j++) {
+          tagHash = ((tagHash << 5) - tagHash + tag.charCodeAt(j)) | 0;
+        }
+      }
+    }
+
+    return `${len}:${Math.round(posSum)}:${Math.round(sizeSum)}:${tagHash}`;
   }
 }

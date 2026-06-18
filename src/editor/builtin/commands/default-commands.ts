@@ -3,11 +3,12 @@ import type { CommandContribution } from "../../api/command";
 import type Editor from "../../editor";
 import { doAlign } from "../../action/do-align";
 import { doClear } from "../../action/do-clear";
-import { doCopy, doPaste } from "../../action/do-clipboard";
+import { doCopy, doCut, doPaste, doDuplicate } from "../../action/do-clipboard";
 import { doAddConnectorLabel } from "../../action/do-connector-label";
 import { doConnectorToFront } from "../../action/do-connector-layer";
 import { doDelete } from "../../action/do-delete";
 import { doGroup } from "../../action/do-group";
+import { doImage } from "../../action/do-image";
 import { doLayer, doToggleLock, doToggleVisible } from "../../action/do-layer";
 import { doMoveLayer, type MoveLayerPayload } from "../../action/do-move-layer";
 import { doNudge } from "../../action/do-nudge";
@@ -36,7 +37,9 @@ const CORE_COMMANDS: CommandContribution[] = [
     run: doUnGroup,
   },
   { id: ACTION_NAME.COPY, label: "复制", pluginId: BUILTIN_PLUGIN_ID, run: doCopy },
+  { id: ACTION_NAME.CUT, label: "剪切", pluginId: BUILTIN_PLUGIN_ID, run: doCut },
   { id: ACTION_NAME.PASTE, label: "粘贴", pluginId: BUILTIN_PLUGIN_ID, run: doPaste },
+  { id: ACTION_NAME.DUPLICATE, label: "原位复制", pluginId: BUILTIN_PLUGIN_ID, run: doDuplicate },
   {
     id: ACTION_NAME.ADD_CONNECTOR_LABEL,
     label: "添加连接线标签",
@@ -54,6 +57,33 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "连接线置顶",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doConnectorToFront,
+  },
+  {
+    id: ACTION_NAME.FIND,
+    label: "搜索",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      // 搜索 UI 由 CanvasSearch 组件处理，此命令仅触发打开
+      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-search"));
+      return { success: true, message: "已打开搜索" };
+    },
+  },
+  {
+    id: "toggleHistoryPanel",
+    label: "历史面板",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-history"));
+      return { success: true, message: "已切换历史面板" };
+    },
+  },
+  {
+    id: ACTION_NAME.INSERT_IMAGE,
+    label: "插入图片",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doImage,
   },
 ];
 

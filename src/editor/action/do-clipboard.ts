@@ -14,6 +14,7 @@ import {
   type ConnectorStateLike,
 } from "../core/flow-serialization";
 import { normalizeAtomicGroups } from "../core/group-selection";
+import { doDelete } from "./do-delete";
 
 interface ClipboardItem {
   kind: "node" | "connector" | "label";
@@ -210,4 +211,19 @@ function offsetJsonPosition(json: Record<string, unknown>) {
   if (typeof data.x === "number") data.x += PASTE_OFFSET;
   if (typeof data.y === "number") data.y += PASTE_OFFSET;
   return data;
+}
+
+export function doCut(editor: Editor): { success: boolean; message: string } {
+  const copyResult = doCopy(editor);
+  if (!copyResult.success) return copyResult;
+
+  const deleteResult = doDelete(editor);
+  return { success: deleteResult.success, message: "已剪切元素" };
+}
+
+export function doDuplicate(editor: Editor): { success: boolean; message: string } {
+  const copyResult = doCopy(editor);
+  if (!copyResult.success) return copyResult;
+
+  return doPaste(editor);
 }
