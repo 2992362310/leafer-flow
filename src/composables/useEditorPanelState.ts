@@ -48,6 +48,8 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   const fromSide = ref<ConnectorSide | "auto">("auto");
   const toSide = ref<ConnectorSide | "auto">("auto");
   const connectorDescription = ref("");
+  const connectorLabelText = ref("");
+  const hasConnectorLabel = ref(false);
 
   let cleanups: (() => void)[] = [];
 
@@ -166,6 +168,14 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       if (state.startArrow && state.endArrow) arrowMode.value = "both";
       else if (state.endArrow) arrowMode.value = "end";
       else arrowMode.value = "none";
+
+      // 查找连接线标签
+      const label = findConnectorLabel(connector);
+      hasConnectorLabel.value = !!label;
+      connectorLabelText.value = label ? String(label.text ?? "") : "";
+    } else {
+      hasConnectorLabel.value = false;
+      connectorLabelText.value = "";
     }
   }
 
@@ -325,6 +335,28 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     syncAfterChange();
   }
 
+  function findConnectorLabel(connector: Connector): Text | null {
+    const editor = options.editor.value;
+    if (!editor) return null;
+    const connectorId = connector.innerId;
+    const children = editor.app.tree.children as IUI[];
+    for (const child of children) {
+      if (child instanceof Text && getConnectorLabelTarget(child) === connectorId) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  function updateConnectorLabelText(value: string) {
+    connectorLabelText.value = value;
+    if (!selectedConnector.value) return;
+    const label = findConnectorLabel(selectedConnector.value);
+    if (!label) return;
+    label.text = value;
+    syncAfterChange();
+  }
+
   function applyTextPreset(value: string) {
     updateText(value);
   }
@@ -440,6 +472,8 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     fromSide,
     toSide,
     connectorDescription,
+    connectorLabelText,
+    hasConnectorLabel,
     isMultiSelection,
     hasSelection,
     hasSelectedConnector,
@@ -461,6 +495,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     updateLineCornerRadius,
     updateConnectorSide,
     updateConnectorDescription,
+    updateConnectorLabelText,
     applyTextPreset,
   };
 }

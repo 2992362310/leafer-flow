@@ -1,15 +1,19 @@
 import { ACTION_NAME, BUILTIN_PLUGIN_ID } from "../../constants";
 import type { CommandContribution } from "../../api/command";
 import type Editor from "../../editor";
+import { type IUI } from "leafer";
+import { Connector } from "../../core/connector";
 import { doAlign } from "../../action/do-align";
 import { doClear } from "../../action/do-clear";
 import { doCopy, doCut, doPaste, doDuplicate } from "../../action/do-clipboard";
 import { doAddConnectorLabel } from "../../action/do-connector-label";
 import { doConnectorToFront } from "../../action/do-connector-layer";
+import { doAddConnectorWaypoint, doRemoveConnectorWaypoints } from "../../action/do-connector-waypoint";
 import { doDelete } from "../../action/do-delete";
 import { doGroup } from "../../action/do-group";
 import { doImage } from "../../action/do-image";
-import { doLayer, doToggleLock, doToggleVisible } from "../../action/do-layer";
+import { doImportSVG } from "../../action/do-svg-import";
+import { doLayer, doToggleLock, doToggleVisible, doUnlockAll, doUnlockAtCursor } from "../../action/do-layer";
 import { doMoveLayer, type MoveLayerPayload } from "../../action/do-move-layer";
 import { doNudge } from "../../action/do-nudge";
 import { doRedo } from "../../action/do-redo";
@@ -47,6 +51,31 @@ const CORE_COMMANDS: CommandContribution[] = [
     run: doAddConnectorLabel,
   },
   {
+    id: ACTION_NAME.ADD_CONNECTOR_WAYPOINT,
+    label: "添加连接线中间点",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: (currentEditor) => {
+      // 默认在连接线中点添加 waypoint
+      const selected = currentEditor.app.editor.list as IUI[];
+      const connector = selected.find((el) => el instanceof Connector) as Connector | undefined;
+      if (!connector) return { success: false, message: "请先选择一条连接线" };
+      const points = connector.getPoints();
+      if (!points?.from || !points?.to) return { success: false, message: "无法获取连接线端点" };
+      const mid = { x: (points.from.x + points.to.x) / 2, y: (points.from.y + points.to.y) / 2 };
+      connector.addWaypoint(mid);
+      currentEditor.commitMutation({ syncConnectorLabels: true });
+      return { success: true, message: "已添加中间点" };
+    },
+  },
+  {
+    id: ACTION_NAME.REMOVE_CONNECTOR_WAYPOINTS,
+    label: "移除连接线中间点",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: doRemoveConnectorWaypoints,
+  },
+  {
     id: ACTION_NAME.SELECT_ALL,
     label: "全选",
     pluginId: BUILTIN_PLUGIN_ID,
@@ -80,10 +109,26 @@ const CORE_COMMANDS: CommandContribution[] = [
     },
   },
   {
+    id: "toggleShortcutHelp",
+    label: "快捷键帮助",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-shortcut-help"));
+      return { success: true, message: "" };
+    },
+  },
+  {
     id: ACTION_NAME.INSERT_IMAGE,
     label: "插入图片",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doImage,
+  },
+  {
+    id: ACTION_NAME.IMPORT_SVG,
+    label: "导入 SVG",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doImportSVG,
   },
 ];
 
@@ -106,6 +151,11 @@ const LAYER_ACTIONS = {
 } as const;
 
 type NudgePayload = {
+  x: number;
+  y: number;
+};
+
+type UnlockAtCursorPayload = {
   x: number;
   y: number;
 };
@@ -143,6 +193,22 @@ export function registerDefaultCommands(editor: Editor) {
     label: "解锁选中元素",
     pluginId: BUILTIN_PLUGIN_ID,
     run: (currentEditor) => doToggleLock(currentEditor, false),
+  });
+
+  editor.commands.register({
+    id: ACTION_NAME.UNLOCK_ALL,
+    label: "解锁所有元素",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doUnlockAll,
+  });
+
+  editor.commands.register<UnlockAtCursorPayload>({
+    id: ACTION_NAME.UNLOCK_AT_CURSOR,
+    label: "解锁此元素",
+    pluginId: BUILTIN_PLUGIN_ID,
+    match: parseUnlockAtCursor,
+    run: (currentEditor, payload) =>
+      doUnlockAtCursor(currentEditor, payload?.x ?? 0, payload?.y ?? 0),
   });
 
   editor.commands.register({
@@ -197,4 +263,10 @@ function parseNudgeAction(action: string): NudgePayload | null {
     x: direction === "nudgeLeft" ? -step : direction === "nudgeRight" ? step : 0,
     y: direction === "nudgeUp" ? -step : direction === "nudgeDown" ? step : 0,
   };
+}
+
+function parseUnlockAtCursor(action: string): UnlockAtCursorPayload | null {
+  const match = /^unlockAtCursor:(\d+),(\d+)$/.exec(action);
+  if (!match) return null;
+  return { x: Number(match[1]), y: Number(match[2]) };
 }

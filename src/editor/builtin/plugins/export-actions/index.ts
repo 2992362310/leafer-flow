@@ -2,7 +2,7 @@ import { ACTION_NAME } from "../../../constants";
 import type { ActionButtonGroupContribution } from "../../../api/action-button";
 import type { CommandContribution } from "../../../api/command";
 import type { EditorPluginModule } from "../../../api/plugin";
-import { doExportPNG, doExportSVG } from "../../../action/do-file";
+import { doExportPNG, doExportSVG, doExportPDF } from "../../../action/do-file";
 
 const PLUGIN_ID = "leafer-flow.export-actions";
 
@@ -21,6 +21,13 @@ const EXPORT_COMMANDS: CommandContribution[] = [
     warning: false,
     run: doExportSVG,
   },
+  {
+    id: ACTION_NAME.EXPORT_PDF,
+    label: "导出 PDF",
+    pluginId: PLUGIN_ID,
+    warning: false,
+    run: doExportPDF,
+  },
 ];
 
 const EXPORT_BUTTONS: ActionButtonGroupContribution = {
@@ -33,6 +40,7 @@ const EXPORT_BUTTONS: ActionButtonGroupContribution = {
   items: [
     { id: "export-png", command: ACTION_NAME.EXPORT_PNG, icon: "export", label: "导出 PNG" },
     { id: "export-svg", command: ACTION_NAME.EXPORT_SVG, icon: "export", label: "导出 SVG" },
+    { id: "export-pdf", command: ACTION_NAME.EXPORT_PDF, icon: "export", label: "导出 PDF" },
   ],
 };
 

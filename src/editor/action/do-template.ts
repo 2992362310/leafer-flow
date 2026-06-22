@@ -68,6 +68,9 @@ export function doInsertTemplate(
   editor: Editor,
   kind: TemplateKind,
 ): { success: boolean; message: string } {
+  // 用事务包裹整个模板插入，使其可一步撤销
+  editor.beginTransaction();
+
   const data = templateMap[kind]();
   const nodes = new Map<string, IUI>();
 
@@ -102,7 +105,7 @@ export function doInsertTemplate(
     }
   });
 
-  editor.commitMutation();
+  editor.endTransaction();
   return { success: true, message: data.message };
 }
 

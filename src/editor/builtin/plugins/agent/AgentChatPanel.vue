@@ -17,7 +17,7 @@ const props = defineProps<Props>();
 const HISTORY_STORAGE_KEY = "leafer-flow.plugin.agent.history";
 
 // UI 状态
-const { position, isDragging, startDrag } = useDraggable({
+const { position, isDragging, hasMoved, startDrag } = useDraggable({
   initialX: window.innerWidth - 380,
   initialY: 70,
 });
@@ -324,7 +324,7 @@ function handleKeydown(e: KeyboardEvent) {
           <button
             class="btn btn-ghost btn-xs btn-square"
             title="折叠"
-            @click.stop="toggleCollapse(isDragging)"
+            @click.stop="toggleCollapse(hasMoved)"
           >
             <span class="text-sm">∨</span>
           </button>
@@ -422,7 +422,7 @@ function handleKeydown(e: KeyboardEvent) {
         top: `${position.y}px`,
       }"
       @mousedown="startDrag"
-      @click="toggleCollapse(isDragging)"
+      @click="toggleCollapse(hasMoved)"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

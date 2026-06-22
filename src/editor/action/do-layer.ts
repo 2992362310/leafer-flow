@@ -81,6 +81,83 @@ export function doToggleVisible(
   return { success: true, message: visible ? "已显示选中元素" : "已隐藏选中元素" };
 }
 
+export function doUnlockAll(editor: Editor): { success: boolean; message: string } {
+  const children = editor.app.tree.children as IUI[];
+  let count = 0;
+
+  function unlockRecursive(items: IUI[]) {
+    for (const item of items) {
+      if (item.locked) {
+        item.locked = false;
+        count++;
+      }
+      const childChildren = (item as unknown as { children?: IUI[] }).children;
+      if (childChildren?.length) unlockRecursive(childChildren as IUI[]);
+    }
+  }
+
+  unlockRecursive(children);
+
+  if (count === 0) {
+    return { success: false, message: "没有锁定的元素" };
+  }
+
+  editor.commitMutation({ autoSave: false });
+  return { success: true, message: `已解锁 ${count} 个元素` };
+}
+
+export function doUnlockAtCursor(
+  editor: Editor,
+  x: number,
+  y: number,
+): { success: boolean; message: string } {
+  // 将屏幕坐标转换为画布坐标
+  const tree = editor.app.tree;
+  const scale = tree.scaleX || 1;
+  const canvasX = (x - tree.x) / scale;
+  const canvasY = (y - tree.y) / scale;
+
+  // 递归查找锁定的元素
+  function findLockedAtPoint(items: IUI[]): IUI | null {
+    for (const item of items) {
+      // 先检查子元素（后添加的在上面）
+      const childChildren = (item as unknown as { children?: IUI[] }).children;
+      if (childChildren?.length) {
+        const child = findLockedAtPoint(childChildren as IUI[]);
+        if (child) return child;
+      }
+
+      if (!item.locked) continue;
+
+      // 检查点是否在元素范围内
+      try {
+        const bounds = item.getBounds("box", "local");
+        const worldBounds = item.getBounds("box", "world");
+        const wx = worldBounds.x;
+        const wy = worldBounds.y;
+        const ww = worldBounds.width;
+        const wh = worldBounds.height;
+        if (x >= wx && x <= wx + ww && y >= wy && y <= wy + wh) {
+          return item;
+        }
+      } catch {
+        // 忽略获取 bounds 失败
+      }
+    }
+    return null;
+  }
+
+  const locked = findLockedAtPoint(tree.children as IUI[]);
+  if (!locked) {
+    return { success: false, message: "该位置没有锁定的元素" };
+  }
+
+  locked.locked = false;
+  editor.app.editor.select(locked);
+  editor.commitMutation({ autoSave: false });
+  return { success: true, message: "已解锁元素" };
+}
+
 function moveWithinParent(node: IUI, direction: 1 | -1, moved: Set<IUI>) {
   const parent = node.parent as IGroup | undefined;
   if (!parent?.children) return;

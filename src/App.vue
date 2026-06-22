@@ -12,6 +12,7 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import SelectionMarquee from "@/components/SelectionMarquee.vue";
 import CanvasSearch from "@/components/CanvasSearch.vue";
 import HistoryPanel from "@/components/HistoryPanel.vue";
+import ShortcutHelp from "@/components/ShortcutHelp.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
 import PluginMarketDrawer from "@/components/PluginMarket/PluginMarketDrawer.vue";
 import AgentChatPanel from "@/editor/builtin/plugins/agent/AgentChatPanel.vue";
@@ -36,6 +37,7 @@ const minimapOpen = ref(true);
 const multiLayerOpen = ref(false);
 const searchOpen = ref(false);
 const historyOpen = ref(false);
+const shortcutHelpOpen = ref(false);
 const cleanupCallbacks: Array<() => void> = [];
 
 const {
@@ -130,6 +132,15 @@ onMounted(() => {
   window.addEventListener("leafer-flow:toggle-history", handleToggleHistory);
   addCleanup(() => {
     window.removeEventListener("leafer-flow:toggle-history", handleToggleHistory);
+  });
+
+  // 监听快捷键帮助切换事件
+  const handleToggleShortcutHelp = () => {
+    shortcutHelpOpen.value = !shortcutHelpOpen.value;
+  };
+  window.addEventListener("leafer-flow:toggle-shortcut-help", handleToggleShortcutHelp);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:toggle-shortcut-help", handleToggleShortcutHelp);
   });
 
   // 监听快捷键 Ctrl+Shift+A 打开 AI 助手
@@ -240,6 +251,10 @@ function handlePluginMarketChanged() {
     :editor="editor"
     :open="historyOpen"
     @close="historyOpen = false"
+  />
+  <ShortcutHelp
+    :open="shortcutHelpOpen"
+    @close="shortcutHelpOpen = false"
   />
   <ContextMenu :editor="editor" @action="handleAction" />
   <PluginMarketDrawer

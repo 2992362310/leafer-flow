@@ -3,6 +3,8 @@ import type { EditorPanelState } from "@/composables/useEditorPanelState";
 import { stylePresets } from "@/editor/core/style-presets";
 import StylePresetPanel from "@/components/EditorPanel/StylePresetPanel.vue";
 
+defineOptions({ inheritAttrs: false });
+
 defineProps<{
   panelState: EditorPanelState;
 }>();

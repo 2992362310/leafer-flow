@@ -2,6 +2,8 @@
 import type { EditorPanelState } from "@/composables/useEditorPanelState";
 import GeometryPanel from "@/components/EditorPanel/GeometryPanel.vue";
 
+defineOptions({ inheritAttrs: false });
+
 defineProps<{
   panelState: EditorPanelState;
 }>();

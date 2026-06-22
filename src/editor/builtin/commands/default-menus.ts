@@ -1,6 +1,7 @@
 import { ACTION_NAME } from "../../constants";
 import type Editor from "../../editor";
 import type { MenuContribution } from "../../api/menu";
+import { Connector } from "../../core/connector";
 
 export const BUILTIN_MENUS_PLUGIN_ID = "leafer-flow.builtin-core";
 
@@ -103,6 +104,32 @@ const DEFAULT_CONTEXT_MENUS: MenuContribution[] = [
     when: hasSelection,
   },
   {
+    id: "context.unlock-all",
+    label: "解锁所有元素",
+    command: ACTION_NAME.UNLOCK_ALL,
+    pluginId: BUILTIN_MENUS_PLUGIN_ID,
+    group: "layer",
+    order: 67,
+  },
+  {
+    id: "context.add-waypoint",
+    label: "添加连接线中间点",
+    command: ACTION_NAME.ADD_CONNECTOR_WAYPOINT,
+    pluginId: BUILTIN_MENUS_PLUGIN_ID,
+    group: "connector",
+    order: 68,
+    when: hasSelectedConnector,
+  },
+  {
+    id: "context.remove-waypoints",
+    label: "移除连接线中间点",
+    command: ACTION_NAME.REMOVE_CONNECTOR_WAYPOINTS,
+    pluginId: BUILTIN_MENUS_PLUGIN_ID,
+    group: "connector",
+    order: 69,
+    when: hasSelectedConnector,
+  },
+  {
     id: "context.delete",
     label: "删除",
     command: ACTION_NAME.DELETE,
@@ -129,4 +156,9 @@ function hasGroup(editor: Editor) {
   return Boolean(
     list && list.some((el) => "children" in el && (el as { children?: unknown }).children),
   );
+}
+
+function hasSelectedConnector(editor: Editor) {
+  const list = editor.app.editor.list;
+  return Boolean(list && list.some((el) => el instanceof Connector));
 }

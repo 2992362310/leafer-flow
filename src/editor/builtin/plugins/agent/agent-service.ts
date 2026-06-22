@@ -205,6 +205,7 @@ export class AgentService {
 
     const allToolCalls: ToolCallResult[] = [];
     let toolCallCount = 0;
+    let inTransaction = false;
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -235,10 +236,20 @@ export class AgentService {
 
           toolCallCount++;
           if (toolCallCount > MAX_TOOL_CALLS) {
+            if (inTransaction) {
+              this.editor.endTransaction();
+              inTransaction = false;
+            }
             return {
               content: "工具调用次数过多，已停止执行。",
               toolCalls: allToolCalls,
             };
+          }
+
+          // 开始事务（整个 AI 响应的工具调用作为一步撤销）
+          if (!inTransaction) {
+            this.editor.beginTransaction();
+            inTransaction = true;
           }
 
           for (const toolCall of assistantMessage.tool_calls) {
@@ -252,6 +263,11 @@ export class AgentService {
             });
           }
         } else {
+          // 结束事务
+          if (inTransaction) {
+            this.editor.endTransaction();
+            inTransaction = false;
+          }
           return {
             content: "API 响应格式错误",
             toolCalls: allToolCalls,
@@ -259,6 +275,10 @@ export class AgentService {
         }
       }
     } catch (error) {
+      if (inTransaction) {
+        this.editor.endTransaction();
+        inTransaction = false;
+      }
       const errorMessage = error instanceof Error ? error.message : "未知错误";
       return {
         content: `处理消息时出错: ${errorMessage}`,
@@ -285,6 +305,7 @@ export class AgentService {
     const allToolCalls: ToolCallResult[] = [];
     let toolCallCount = 0;
     let fullContent = "";
+    let inTransaction = false;
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -307,12 +328,22 @@ export class AgentService {
 
           toolCallCount++;
           if (toolCallCount > MAX_TOOL_CALLS) {
+            if (inTransaction) {
+              this.editor.endTransaction();
+              inTransaction = false;
+            }
             const response: AgentResponse = {
               content: fullContent + "\n\n工具调用次数过多，已停止执行。",
               toolCalls: allToolCalls,
             };
             callbacks.onComplete?.(response);
             return;
+          }
+
+          // 开始事务
+          if (!inTransaction) {
+            this.editor.beginTransaction();
+            inTransaction = true;
           }
 
           for (const toolCall of toolCalls) {
@@ -332,6 +363,11 @@ export class AgentService {
 
           fullContent = "";
         } else {
+          // 结束事务
+          if (inTransaction) {
+            this.editor.endTransaction();
+            inTransaction = false;
+          }
           this.history.push({
             role: "assistant",
             content: fullContent,
@@ -346,6 +382,10 @@ export class AgentService {
         }
       }
     } catch (error) {
+      if (inTransaction) {
+        this.editor.endTransaction();
+        inTransaction = false;
+      }
       const errorMessage = error instanceof Error ? error.message : "未知错误";
       callbacks.onError?.(`处理消息时出错: ${errorMessage}`);
     }

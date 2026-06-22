@@ -117,6 +117,12 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         label: "解锁选中",
       },
       {
+        id: "unlock-all",
+        command: ACTION_NAME.UNLOCK_ALL,
+        icon: "unlock",
+        label: "解锁所有元素",
+      },
+      {
         id: "toggle-visible",
         command: ACTION_NAME.TOGGLE_VISIBLE,
         icon: "visible",
@@ -142,7 +148,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
   },
   {
     id: "image",
-    label: "插入图片",
+    label: "插入图片/SVG",
     icon: "insert_image",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
@@ -152,6 +158,12 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         id: "insert-image",
         label: "插入图片",
         command: ACTION_NAME.INSERT_IMAGE,
+        icon: "insert_image",
+      },
+      {
+        id: "import-svg",
+        label: "导入 SVG",
+        command: ACTION_NAME.IMPORT_SVG,
         icon: "insert_image",
       },
     ],

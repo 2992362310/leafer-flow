@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted } from "vue";
 import type { IExecuteCommand } from "./types";
 import { TOOL_NAME, ACTION_NAME } from "./constants";
+import { getShortcutConfig } from "./core/shortcut-config";
 
 type ToolHandler = (cmd: IExecuteCommand) => void;
 type ActionHandler = (action: string) => void;
@@ -14,6 +15,7 @@ interface ShortcutOptions {
 
 export function useEditorShortcuts(options: ShortcutOptions) {
   const { onTool, onAction, resolveToolShortcut } = options;
+  const config = getShortcutConfig();
   let currentTool: string = TOOL_NAME.SELECT;
 
   const handleKeydown = (e: KeyboardEvent) => {
@@ -22,148 +24,28 @@ export function useEditorShortcuts(options: ShortcutOptions) {
       return;
     }
 
-    const key = e.key.toLowerCase();
-    const { ctrlKey, metaKey, shiftKey } = e;
-    const isCmd = ctrlKey || metaKey;
+    const key = normalizeKey(e);
+    const entry = config.getByKey(key);
 
-    if (isCmd) {
-      if (key === "z" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.UNDO);
-        return;
-      }
-
-      if (key === "z" && shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.REDO);
-        return;
-      }
-
-      if (key === "g" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.GROUP);
-        return;
-      }
-
-      if (key === "g" && shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.UNGROUP);
-        return;
-      }
-
-      if (key === "s") {
-        e.preventDefault();
-        onAction(ACTION_NAME.SAVE);
-        return;
-      }
-
-      if (key === "a" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.SELECT_ALL);
-        return;
-      }
-
-      if (key === "]") {
-        e.preventDefault();
-        onAction(ACTION_NAME.BRING_FORWARD);
-        return;
-      }
-
-      if (key === "[") {
-        e.preventDefault();
-        onAction(ACTION_NAME.SEND_BACKWARD);
-        return;
-      }
-
-      if (key === "}" && shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.BRING_TO_FRONT);
-        return;
-      }
-
-      if (key === "{" && shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.SEND_TO_BACK);
-        return;
-      }
-
-      if (key === "l" && shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.LOCK_SELECTED);
-        return;
-      }
-
-      if (key === "l" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.UNLOCK_SELECTED);
-        return;
-      }
-
-      if (key === "h" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.TOGGLE_VISIBLE);
-        return;
-      }
-
-      if (key === "c" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.COPY);
-        return;
-      }
-
-      if (key === "x" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.CUT);
-        return;
-      }
-
-      if (key === "v" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.PASTE);
-        return;
-      }
-
-      if (key === "d" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.DUPLICATE);
-        return;
-      }
-
-      if (key === "f" && !shiftKey) {
-        e.preventDefault();
-        onAction(ACTION_NAME.FIND);
-        return;
-      }
-
-      return;
-    }
-
-    if (key === "arrowleft" || key === "arrowright" || key === "arrowup" || key === "arrowdown") {
+    if (entry) {
       e.preventDefault();
-      const delta = shiftKey ? 10 : 1;
-      if (key === "arrowleft") onAction(`nudgeLeft:${delta}`);
-      if (key === "arrowright") onAction(`nudgeRight:${delta}`);
-      if (key === "arrowup") onAction(`nudgeUp:${delta}`);
-      if (key === "arrowdown") onAction(`nudgeDown:${delta}`);
+      if (entry.type === "action") {
+        onAction(entry.action);
+      } else if (entry.type === "tool") {
+        switchTool(entry.action);
+      }
       return;
     }
 
-    if (!shiftKey) {
-      if (key === "v" || key === "escape") {
-        switchTool(TOOL_NAME.SELECT);
-        return;
-      }
-
-      const shortcutTool = resolveToolShortcut?.(key);
-      if (shortcutTool) {
-        switchTool(shortcutTool);
-        return;
-      }
-
-      if (key === "delete" || key === "backspace") {
-        e.preventDefault();
-        onAction(ACTION_NAME.DELETE);
-      }
+    // 方向键微移（不在快捷键配置中，保持硬编码）
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const delta = e.shiftKey ? 10 : 1;
+      if (e.key === "ArrowLeft") onAction(`nudgeLeft:${delta}`);
+      if (e.key === "ArrowRight") onAction(`nudgeRight:${delta}`);
+      if (e.key === "ArrowUp") onAction(`nudgeUp:${delta}`);
+      if (e.key === "ArrowDown") onAction(`nudgeDown:${delta}`);
+      return;
     }
   };
 
@@ -192,4 +74,31 @@ export function useEditorShortcuts(options: ShortcutOptions) {
   return {
     syncCurrentTool,
   };
+}
+
+/** 将 KeyboardEvent 规范化为快捷键配置中的 key 格式 */
+function normalizeKey(e: KeyboardEvent): string {
+  const parts: string[] = [];
+  if (e.ctrlKey || e.metaKey) parts.push("ctrl");
+  if (e.shiftKey) parts.push("shift");
+  if (e.altKey) parts.push("alt");
+
+  let key = e.key.toLowerCase();
+  // 特殊键名映射
+  if (key === "escape") key = "escape";
+  else if (key === "delete") key = "delete";
+  else if (key === "backspace") key = "backspace";
+  else if (key === "arrowleft") key = "arrowleft";
+  else if (key === "arrowright") key = "arrowright";
+  else if (key === "arrowup") key = "arrowup";
+  else if (key === "arrowdown") key = "arrowdown";
+
+  // 如果有修饰键，不重复添加
+  if (parts.length > 0 && !parts.includes(key)) {
+    parts.push(key);
+  } else if (parts.length === 0) {
+    parts.push(key);
+  }
+
+  return parts.join("+");
 }

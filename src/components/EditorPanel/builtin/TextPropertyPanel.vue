@@ -2,6 +2,8 @@
 import type { EditorPanelState } from "@/composables/useEditorPanelState";
 import TextPropertyPanel from "@/components/EditorPanel/TextPropertyPanel.vue";
 
+defineOptions({ inheritAttrs: false });
+
 defineProps<{
   panelState: EditorPanelState;
 }>();

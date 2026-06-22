@@ -10,6 +10,8 @@ defineProps<{
   toSide: ConnectorSide | "auto";
   connectorDescription: string;
   showDescription: boolean;
+  hasConnectorLabel: boolean;
+  connectorLabelText: string;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +21,7 @@ const emit = defineEmits<{
   updateLineCornerRadius: [value: number];
   updateConnectorSide: [which: "from" | "to", value: ConnectorSide | "auto"];
   updateConnectorDescription: [value: string];
+  updateConnectorLabelText: [value: string];
 }>();
 </script>
 
@@ -124,6 +127,17 @@ const emit = defineEmits<{
       </select>
     </label>
   </div>
+
+  <label v-if="hasConnectorLabel" class="form-control w-full">
+    <div class="label p-1"><span class="label-text text-xs">标签文字</span></div>
+    <input
+      type="text"
+      :value="connectorLabelText"
+      @input="emit('updateConnectorLabelText', ($event.target as HTMLInputElement).value)"
+      class="input input-bordered input-xs w-full"
+      placeholder="连接线标签..."
+    />
+  </label>
 
   <label v-if="showDescription" class="form-control w-full">
     <div class="label p-1"><span class="label-text text-xs">描述</span></div>

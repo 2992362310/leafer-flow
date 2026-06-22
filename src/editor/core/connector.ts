@@ -61,6 +61,7 @@ export interface ConnectorState {
     editable?: boolean;
     style?: Partial<ITextInputData>;
   };
+  waypoints?: IPointData[];
 }
 
 type ConnectorEndpoints =
@@ -117,6 +118,9 @@ export class Connector extends Group {
   private lastRoutePoints: IPointData[] = [];
   private cleanupEndpointListeners: (() => void)[] = [];
   private updateScheduled = false;
+  private isUpdating = false;
+  private waypoints: IPointData[] = [];
+  private waypointHandles: Rect[] = [];
 
   constructor(_app: App, options: ConnectorOptions) {
     super({
@@ -331,6 +335,7 @@ export class Connector extends Group {
       scaleMode: this.options.scaleMode,
       arrowBaseScale: this.options.arrowBaseScale,
       label: this.options.label ? structuredClone(this.options.label) : undefined,
+      waypoints: this.waypoints.length > 0 ? this.waypoints.map((p) => ({ ...p })) : undefined,
     };
   }
 
@@ -390,6 +395,12 @@ export class Connector extends Group {
       throw new Error("Invalid connector state");
     }
 
+    // 恢复中间点
+    if (state.waypoints && state.waypoints.length > 0) {
+      this.waypoints = state.waypoints.map((p) => ({ ...p }));
+      this.syncWaypointHandles();
+    }
+
     this.update();
   }
 
@@ -402,30 +413,124 @@ export class Connector extends Group {
   }
 
   update() {
-    syncConnectorStyle(this);
-    const endpoints = this.resolveEndpoints();
-    if (!endpoints) return;
+    if (this.isUpdating) return;
+    this.isUpdating = true;
+    try {
+      syncConnectorStyle(this);
+      const endpoints = this.resolveEndpoints();
+      if (!endpoints) return;
 
-    const defaultResult = buildRoute(
-      endpoints.from.linkPoint,
-      endpoints.from.paddingPoint,
-      endpoints.to.paddingPoint,
-      endpoints.to.linkPoint,
-      endpoints.from.side,
-      endpoints.to.side,
-      this.routeType,
-      this.getRouteCornerRadius(),
-      this.options.bezierCurvature ?? DEFAULT_BEZIER_CURVATURE,
-    );
-    const override = this.options.onDraw?.({ s: endpoints.from, e: endpoints.to, defaultResult });
-    const points = override?.points || defaultResult.points;
-    const path = override?.path || defaultResult.path;
+      let points: IPointData[];
+      let path: string;
 
-    this.lastRoutePoints = points.map(clonePoint);
-    this.hitArea.path = path;
-    this.hitArea.strokeWidth = Math.max(getNumericProperty(this.wire, "strokeWidth", 2) + 10, 12);
-    this.wire.path = path;
-    this.positionHandles(endpoints.from.linkPoint, endpoints.to.linkPoint);
+      if (this.waypoints.length > 0) {
+        // 有中间点时，路径经过所有中间点
+        const allPoints = [
+          endpoints.from.linkPoint,
+          ...this.waypoints,
+          endpoints.to.linkPoint,
+        ];
+        points = allPoints;
+        path = this.buildWaypointPath(allPoints);
+        // 更新中间点 handle 位置
+        this.waypoints.forEach((wp, i) => {
+          const handle = this.waypointHandles[i];
+          if (handle) {
+            handle.x = wp.x - HANDLE_SIZE / 2;
+            handle.y = wp.y - HANDLE_SIZE / 2;
+          }
+        });
+      } else {
+        const defaultResult = buildRoute(
+          endpoints.from.linkPoint,
+          endpoints.from.paddingPoint,
+          endpoints.to.paddingPoint,
+          endpoints.to.linkPoint,
+          endpoints.from.side,
+          endpoints.to.side,
+          this.routeType,
+          this.getRouteCornerRadius(),
+          this.options.bezierCurvature ?? DEFAULT_BEZIER_CURVATURE,
+        );
+        const override = this.options.onDraw?.({ s: endpoints.from, e: endpoints.to, defaultResult });
+        points = override?.points || defaultResult.points;
+        path = override?.path || defaultResult.path;
+      }
+
+      this.lastRoutePoints = points.map(clonePoint);
+      this.hitArea.path = path;
+      this.hitArea.strokeWidth = Math.max(getNumericProperty(this.wire, "strokeWidth", 2) + 10, 12);
+      this.wire.path = path;
+      this.positionHandles(endpoints.from.linkPoint, endpoints.to.linkPoint);
+    } finally {
+      this.isUpdating = false;
+    }
+  }
+
+  private buildWaypointPath(points: IPointData[]): string {
+    if (points.length < 2) return "";
+    const radius = this.getRouteCornerRadius();
+
+    if (this.routeType === "bezier" && points.length >= 2) {
+      // 贝塞尔曲线：使用二次贝塞尔连接各点
+      let d = `M${points[0].x},${points[0].y}`;
+      if (points.length === 2) {
+        const mx = (points[0].x + points[1].x) / 2;
+        d += ` Q${mx},${points[0].y} ${mx},${(points[0].y + points[1].y) / 2} Q${mx},${points[1].y} ${points[1].x},${points[1].y}`;
+      } else {
+        for (let i = 1; i < points.length; i++) {
+          const prev = points[i - 1];
+          const curr = points[i];
+          const mx = (prev.x + curr.x) / 2;
+          const my = (prev.y + curr.y) / 2;
+          if (i === 1) {
+            d += ` Q${mx},${prev.y} ${mx},${my}`;
+          } else if (i === points.length - 1) {
+            d += ` Q${mx},${curr.y} ${curr.x},${curr.y}`;
+          } else {
+            d += ` T${mx},${my}`;
+          }
+        }
+      }
+      return d;
+    }
+
+    // 直线/折线模式，带圆角
+    if (radius <= 0 || points.length < 3) {
+      let d = `M${points[0].x},${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        d += ` L${points[i].x},${points[i].y}`;
+      }
+      return d;
+    }
+
+    // 带圆角的折线
+    let d = `M${points[0].x},${points[0].y}`;
+    for (let i = 1; i < points.length - 1; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const next = points[i + 1];
+
+      const dx1 = curr.x - prev.x;
+      const dy1 = curr.y - prev.y;
+      const dx2 = next.x - curr.x;
+      const dy2 = next.y - curr.y;
+
+      const len1 = Math.hypot(dx1, dy1);
+      const len2 = Math.hypot(dx2, dy2);
+
+      const maxRadius = Math.min(len1 / 2, len2 / 2, radius);
+
+      const startX = curr.x - (dx1 / len1) * maxRadius;
+      const startY = curr.y - (dy1 / len1) * maxRadius;
+      const endX = curr.x + (dx2 / len2) * maxRadius;
+      const endY = curr.y + (dy2 / len2) * maxRadius;
+
+      d += ` L${startX},${startY}`;
+      d += ` Q${curr.x},${curr.y} ${endX},${endY}`;
+    }
+    d += ` L${points[points.length - 1].x},${points[points.length - 1].y}`;
+    return d;
   }
 
   getRoutePoints() {
@@ -561,6 +666,75 @@ export class Connector extends Group {
     this.fromHandle.y = from.y - HANDLE_SIZE / 2;
     this.toHandle.x = to.x - HANDLE_SIZE / 2;
     this.toHandle.y = to.y - HANDLE_SIZE / 2;
+  }
+
+  // ---- Waypoint 支持 ----
+
+  addWaypoint(point: IPointData) {
+    this.waypoints.push({ ...point });
+    this.syncWaypointHandles();
+    this.update();
+  }
+
+  removeWaypoint(index: number) {
+    if (index >= 0 && index < this.waypoints.length) {
+      this.waypoints.splice(index, 1);
+      this.syncWaypointHandles();
+      this.update();
+    }
+  }
+
+  getWaypoints(): IPointData[] {
+    return this.waypoints.map((p) => ({ ...p }));
+  }
+
+  setWaypoints(points: IPointData[]) {
+    this.waypoints = points.map((p) => ({ ...p }));
+    this.syncWaypointHandles();
+  }
+
+  private syncWaypointHandles() {
+    // 移除多余的 handle
+    while (this.waypointHandles.length > this.waypoints.length) {
+      const handle = this.waypointHandles.pop();
+      if (handle) handle.destroy();
+    }
+    // 添加不足的 handle
+    while (this.waypointHandles.length < this.waypoints.length) {
+      const handle = new Rect({
+        width: HANDLE_SIZE,
+        height: HANDLE_SIZE,
+        cornerRadius: HANDLE_SIZE / 2,
+        fill: "#ffffff",
+        stroke: "#ff6b35",
+        strokeWidth: 1.5,
+        draggable: true,
+        around: "center",
+        name: "waypoint-handle",
+      });
+      this.waypointHandles.push(handle);
+      this.add(handle);
+
+      // 拖拽 waypoint handle 更新位置
+      handle.on("drag", (e: { target: { x: number; y: number } }) => {
+        const idx = this.waypointHandles.indexOf(handle);
+        if (idx >= 0) {
+          this.waypoints[idx] = {
+            x: e.target.x + HANDLE_SIZE / 2,
+            y: e.target.y + HANDLE_SIZE / 2,
+          };
+          this.update();
+        }
+      });
+    }
+    // 更新 handle 位置
+    this.waypoints.forEach((wp, i) => {
+      const handle = this.waypointHandles[i];
+      if (handle) {
+        handle.x = wp.x - HANDLE_SIZE / 2;
+        handle.y = wp.y - HANDLE_SIZE / 2;
+      }
+    });
   }
 }
 

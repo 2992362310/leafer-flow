@@ -2,6 +2,8 @@
 import type { EditorPanelState } from "@/composables/useEditorPanelState";
 import ShapeStylePanel from "@/components/EditorPanel/ShapeStylePanel.vue";
 
+defineOptions({ inheritAttrs: false });
+
 defineProps<{
   panelState: EditorPanelState;
 }>();

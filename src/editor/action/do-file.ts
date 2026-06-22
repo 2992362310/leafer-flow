@@ -138,3 +138,50 @@ async function exportAsText(editor: Editor, format: "svg") {
   }
   throw new Error("无法识别导出结果");
 }
+
+export async function doExportPDF(editor: Editor): Promise<{ success: boolean; message: string }> {
+  try {
+    const svg = await exportAsText(editor, "svg");
+
+    // 解析 SVG 尺寸
+    const widthMatch = svg.match(/width="([^"]+)"/);
+    const heightMatch = svg.match(/height="([^"]+)"/);
+    const width = widthMatch ? parseFloat(widthMatch[1]) : 800;
+    const height = heightMatch ? parseFloat(heightMatch[1]) : 600;
+
+    // 创建打印页面，使用 SVG 内容
+    const printWindow = window.open("", "_blank", `width=${width},height=${height}`);
+    if (!printWindow) {
+      return { success: false, message: "无法打开打印窗口，请允许弹出窗口" };
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>流程图</title>
+  <style>
+    @page { size: landscape; margin: 10mm; }
+    body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    svg { max-width: 100%; max-height: 100vh; }
+  </style>
+</head>
+<body>
+  ${svg}
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); window.close(); }, 300);
+    };
+  <\/script>
+</body>
+</html>`);
+    printWindow.document.close();
+
+    return { success: true, message: '已打开打印窗口，选择"另存为 PDF"即可导出' };
+  } catch (error) {
+    console.error("导出 PDF 时发生错误", error);
+    return {
+      success: false,
+      message: "导出失败: " + (error instanceof Error ? error.message : "未知错误"),
+    };
+  }
+}
