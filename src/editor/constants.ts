@@ -108,6 +108,11 @@ export const ACTION_NAME = {
   TOGGLE_SNAP: "toggleSnap",
   CONNECTORS_TO_FRONT: "connectorsToFront",
   MOVE_LAYER: "moveLayer",
+  FLIP_HORIZONTAL: "flipHorizontal",
+  FLIP_VERTICAL: "flipVertical",
+  SELECT_BY_TYPE: "selectByType",
+  FORMAT_PAINTER_COPY: "formatPainterCopy",
+  FORMAT_PAINTER_APPLY: "formatPainterApply",
 } as const;
 
 export type ActionName = (typeof ACTION_NAME)[keyof typeof ACTION_NAME];

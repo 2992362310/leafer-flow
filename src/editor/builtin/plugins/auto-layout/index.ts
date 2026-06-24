@@ -4,7 +4,7 @@ import { autoLayout, LAYOUT_PRESETS, type LayoutOptions } from "./layout-engine"
 
 const PLUGIN_ID = "leafer-flow.auto-layout";
 
-function runAutoLayout(editor: Editor, direction?: "TB" | "LR") {
+function runAutoLayout(editor: Editor, direction?: "TB" | "LR" | "BT" | "RL") {
   const selected = editor.app.editor.list;
   if (!selected || selected.length === 0) {
     return { success: false, message: "请先选中要布局的元素" };
@@ -28,7 +28,7 @@ export const autoLayoutPlugin: EditorPluginModule = {
     enabledByDefault: true,
   },
   contributes: {
-    commands: ["自动布局", "从上到下布局", "从左到右布局"],
+    commands: ["自动布局", "从上到下布局", "从左到右布局", "从下到上布局", "从右到左布局"],
     buttons: ["自动布局"],
   },
   activate(ctx) {
@@ -53,6 +53,20 @@ export const autoLayoutPlugin: EditorPluginModule = {
       run: (editor) => runAutoLayout(editor, "LR"),
     });
 
+    ctx.editor.commands.register({
+      id: "autoLayoutBT",
+      label: "从下到上布局",
+      pluginId: PLUGIN_ID,
+      run: (editor) => runAutoLayout(editor, "BT"),
+    });
+
+    ctx.editor.commands.register({
+      id: "autoLayoutRL",
+      label: "从右到左布局",
+      pluginId: PLUGIN_ID,
+      run: (editor) => runAutoLayout(editor, "RL"),
+    });
+
     ctx.editor.actionButtons.register({
       id: "auto-layout",
       label: "自动布局",
@@ -74,6 +88,20 @@ export const autoLayoutPlugin: EditorPluginModule = {
           command: "autoLayoutLR",
           icon: "template",
           order: 20,
+        },
+        {
+          id: "auto-layout-bt",
+          label: "从下到上",
+          command: "autoLayoutBT",
+          icon: "template",
+          order: 30,
+        },
+        {
+          id: "auto-layout-rl",
+          label: "从右到左",
+          command: "autoLayoutRL",
+          icon: "template",
+          order: 40,
         },
       ],
     });

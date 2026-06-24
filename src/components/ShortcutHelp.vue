@@ -39,6 +39,8 @@ const groups: ShortcutGroup[] = [
       { action: "cut", label: "剪切" },
       { action: "paste", label: "粘贴" },
       { action: "duplicate", label: "原位复制" },
+      { action: "formatPainterCopy", label: "复制样式" },
+      { action: "formatPainterApply", label: "应用样式" },
     ],
   },
   {

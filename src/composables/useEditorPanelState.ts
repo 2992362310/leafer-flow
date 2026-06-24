@@ -41,6 +41,11 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   const textContent = ref("");
   const fontSize = ref(14);
   const textColor = ref("#1f2937");
+  const fontWeight = ref("normal");
+  const fontStyle = ref("normal");
+  const textAlign = ref("center");
+  const cornerRadius = ref(0);
+  const lockAspectRatio = ref(false);
   const lineDashed = ref(false);
   const arrowMode = ref<"none" | "end" | "both">("end");
   const routeType = ref<ConnectorRouteType>("orthogonal");
@@ -145,6 +150,10 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       strokeWidth.value =
         typeof shape.strokeWidth === "number" ? shape.strokeWidth : strokeWidth.value;
       opacity.value = typeof shape.opacity === "number" ? shape.opacity : 1;
+      cornerRadius.value =
+        typeof (shape as unknown as { cornerRadius?: number }).cornerRadius === "number"
+          ? (shape as unknown as { cornerRadius: number }).cornerRadius
+          : 0;
     }
 
     const text = selectedText.value;
@@ -152,6 +161,9 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       textContent.value = String(text.text ?? "");
       fontSize.value = typeof text.fontSize === "number" ? text.fontSize : 14;
       textColor.value = toHex(text.fill, textColor.value);
+      fontWeight.value = String((text as unknown as { fontWeight?: string }).fontWeight ?? "normal");
+      fontStyle.value = String((text as unknown as { fontStyle?: string }).fontStyle ?? "normal");
+      textAlign.value = String((text as unknown as { textAlign?: string }).textAlign ?? "center");
     }
 
     const connector = selectedConnector.value;
@@ -260,6 +272,38 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     applyToSelectedTexts((text) => {
       text.fill = value;
     });
+  }
+
+  function updateFontWeight(value: string) {
+    fontWeight.value = value;
+    applyToSelectedTexts((text) => {
+      (text as unknown as { fontWeight: string }).fontWeight = value;
+    });
+  }
+
+  function updateFontStyle(value: string) {
+    fontStyle.value = value;
+    applyToSelectedTexts((text) => {
+      (text as unknown as { fontStyle: string }).fontStyle = value;
+    });
+  }
+
+  function updateTextAlign(value: string) {
+    textAlign.value = value;
+    applyToSelectedTexts((text) => {
+      (text as unknown as { textAlign: string }).textAlign = value;
+    });
+  }
+
+  function updateCornerRadius(value: number) {
+    cornerRadius.value = value;
+    applyToSelectedShapes((shape) => {
+      (shape as unknown as { cornerRadius: number }).cornerRadius = value;
+    });
+  }
+
+  function updateLockAspectRatio(value: boolean) {
+    lockAspectRatio.value = value;
   }
 
   function updateLineDashed(value: boolean) {
@@ -465,6 +509,11 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     textContent,
     fontSize,
     textColor,
+    fontWeight,
+    fontStyle,
+    textAlign,
+    cornerRadius,
+    lockAspectRatio,
     lineDashed,
     arrowMode,
     routeType,
@@ -489,6 +538,11 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     updateText,
     updateFontSize,
     updateTextColor,
+    updateFontWeight,
+    updateFontStyle,
+    updateTextAlign,
+    updateCornerRadius,
+    updateLockAspectRatio,
     updateLineDashed,
     updateArrowMode,
     updateRouteType,

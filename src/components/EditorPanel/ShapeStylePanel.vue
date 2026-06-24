@@ -4,6 +4,7 @@ defineProps<{
   stroke: string;
   strokeWidth: number;
   opacity: number;
+  cornerRadius: number;
   showColors: boolean;
 }>();
 
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   updateStroke: [value: string];
   updateStrokeWidth: [value: number];
   updateOpacity: [value: number];
+  updateCornerRadius: [value: number];
 }>();
 </script>
 
@@ -49,6 +51,22 @@ const emit = defineEmits<{
       step="1"
       :value="strokeWidth"
       @input="emit('updateStrokeWidth', Number(($event.target as HTMLInputElement).value))"
+      class="range range-xs"
+    />
+  </label>
+
+  <label class="form-control w-full">
+    <div class="label p-1">
+      <span class="label-text text-xs">圆角</span>
+      <span class="label-text-alt text-xs">{{ cornerRadius }}</span>
+    </div>
+    <input
+      type="range"
+      min="0"
+      max="50"
+      step="1"
+      :value="cornerRadius"
+      @input="emit('updateCornerRadius', Number(($event.target as HTMLInputElement).value))"
       class="range range-xs"
     />
   </label>

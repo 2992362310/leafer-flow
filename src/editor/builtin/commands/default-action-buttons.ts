@@ -128,6 +128,18 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         icon: "visible",
         label: "切换显示",
       },
+      {
+        id: "flip-horizontal",
+        command: ACTION_NAME.FLIP_HORIZONTAL,
+        icon: "distribute_horizontal",
+        label: "水平翻转",
+      },
+      {
+        id: "flip-vertical",
+        command: ACTION_NAME.FLIP_VERTICAL,
+        icon: "distribute_vertical",
+        label: "垂直翻转",
+      },
     ],
   },
   {

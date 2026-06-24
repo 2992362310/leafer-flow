@@ -10,6 +10,8 @@ import { doAddConnectorLabel } from "../../action/do-connector-label";
 import { doConnectorToFront } from "../../action/do-connector-layer";
 import { doAddConnectorWaypoint, doRemoveConnectorWaypoints } from "../../action/do-connector-waypoint";
 import { doDelete } from "../../action/do-delete";
+import { doFlip } from "../../action/do-flip";
+import { doFormatPainterCopy, doFormatPainterApply } from "../../action/do-format-painter";
 import { doGroup } from "../../action/do-group";
 import { doImage } from "../../action/do-image";
 import { doImportSVG } from "../../action/do-svg-import";
@@ -18,6 +20,7 @@ import { doMoveLayer, type MoveLayerPayload } from "../../action/do-move-layer";
 import { doNudge } from "../../action/do-nudge";
 import { doRedo } from "../../action/do-redo";
 import { doSelectAll } from "../../action/do-select-all";
+import { doSelectByType } from "../../action/do-select-by-type";
 import { doUndo } from "../../action/do-undo";
 import { doUnGroup } from "../../action/do-ungroup";
 import { getSnapEnabled, setSnapEnabled } from "../../core/drawing-settings";
@@ -129,6 +132,36 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "导入 SVG",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doImportSVG,
+  },
+  {
+    id: ACTION_NAME.FLIP_HORIZONTAL,
+    label: "水平翻转",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: (editor) => doFlip(editor, "x"),
+  },
+  {
+    id: ACTION_NAME.FLIP_VERTICAL,
+    label: "垂直翻转",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: (editor) => doFlip(editor, "y"),
+  },
+  {
+    id: ACTION_NAME.SELECT_BY_TYPE,
+    label: "选择同类型元素",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doSelectByType,
+  },
+  {
+    id: ACTION_NAME.FORMAT_PAINTER_COPY,
+    label: "复制样式",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doFormatPainterCopy,
+  },
+  {
+    id: ACTION_NAME.FORMAT_PAINTER_APPLY,
+    label: "应用样式",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doFormatPainterApply,
   },
 ];
 

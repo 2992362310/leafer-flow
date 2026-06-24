@@ -30,6 +30,8 @@ const DEFAULT_SHORTCUTS: ShortcutEntry[] = [
   { key: "ctrl+l", action: ACTION_NAME.UNLOCK_SELECTED, type: "action" },
   { key: "ctrl+u", action: ACTION_NAME.UNLOCK_ALL, type: "action" },
   { key: "ctrl+h", action: ACTION_NAME.TOGGLE_VISIBLE, type: "action" },
+  { key: "ctrl+shift+c", action: ACTION_NAME.FORMAT_PAINTER_COPY, type: "action" },
+  { key: "ctrl+shift+v", action: ACTION_NAME.FORMAT_PAINTER_APPLY, type: "action" },
   { key: "delete", action: ACTION_NAME.DELETE, type: "action" },
   { key: "backspace", action: ACTION_NAME.DELETE, type: "action" },
   { key: "f1", action: "toggleShortcutHelp", type: "action" },
