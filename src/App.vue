@@ -16,6 +16,7 @@ import { useSelectionMarquee } from "@/composables/useSelectionMarquee";
 import { useShapeDrop } from "@/composables/useShapeDrop";
 import { useEditorCommands } from "@/composables/useEditorCommands";
 import { useEditorAppInit } from "@/composables/useEditorAppInit";
+import type { DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "@/editor/builtin/plugins/diagram-lint/types";
 
 const CanvasSearch = defineAsyncComponent(() => import("@/components/CanvasSearch.vue"));
 const HistoryPanel = defineAsyncComponent(() => import("@/components/HistoryPanel.vue"));
@@ -24,6 +25,7 @@ const PluginMarketDrawer = defineAsyncComponent(() => import("@/components/Plugi
 const AgentChatPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/agent/AgentChatPanel.vue"));
 const MinimapPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/minimap/MinimapPanel.vue"));
 const MultiLayerPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/multi-layer/LayerPanel.vue"));
+const DiagramLintPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/diagram-lint/DiagramLintPanel.vue"));
 
 const editorRef = useTemplateRef("editorRef");
 const logRef = useTemplateRef("logRef");
@@ -39,6 +41,10 @@ const multiLayerOpen = ref(false);
 const searchOpen = ref(false);
 const historyOpen = ref(false);
 const shortcutHelpOpen = ref(false);
+const diagramLintOpen = ref(false);
+const diagramLintIssues = ref<LintIssue[]>([]);
+const diagramLintGeneratedAt = ref<number>(Date.now());
+const diagramLintFixSummary = ref<LintFixSummary | null>(null);
 const cleanupCallbacks: Array<() => void> = [];
 
 const {
@@ -144,6 +150,17 @@ onMounted(() => {
     window.removeEventListener("leafer-flow:toggle-shortcut-help", handleToggleShortcutHelp);
   });
 
+  const handleLintUpdated = (event: Event) => {
+    const customEvent = event as CustomEvent<DiagramLintUpdatedEventDetail>;
+    diagramLintIssues.value = customEvent.detail?.issues ?? [];
+    diagramLintGeneratedAt.value = customEvent.detail?.generatedAt ?? Date.now();
+    diagramLintOpen.value = true;
+  };
+  window.addEventListener("leafer-flow:diagram-lint-updated", handleLintUpdated);
+  addCleanup(() => {
+    window.removeEventListener("leafer-flow:diagram-lint-updated", handleLintUpdated);
+  });
+
   // 监听快捷键 Ctrl+Shift+A 打开 AI 助手
   const handleKeydown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -194,6 +211,116 @@ function handlePluginMarketChanged() {
   resetToSelectTool();
   logRef.value?.addLog({ message: "插件状态已更新", level: "success" });
 }
+
+async function handleLintFocus(issueId: string) {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute(
+    `diagramLint.focus.issue:${encodeURIComponent(issueId)}`,
+  );
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "info" : "warning",
+  });
+}
+
+async function handleLintFix(issueId: string) {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute(
+    `diagramLint.fix.issue:${encodeURIComponent(issueId)}`,
+  ) as { success: boolean; message: string; summary?: LintFixSummary };
+
+  if (result.summary) diagramLintFixSummary.value = result.summary;
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "success" : "warning",
+  });
+}
+
+async function handleLintFixNext(issueId: string) {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute(
+    `diagramLint.fix.next:${encodeURIComponent(issueId)}`,
+  ) as { success: boolean; message: string; nextIssueId?: string; summary?: LintFixSummary };
+
+  if (result.summary) diagramLintFixSummary.value = result.summary;
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "success" : "warning",
+  });
+
+  if (result.success && result.nextIssueId) {
+    await handleLintFocus(result.nextIssueId);
+  }
+}
+
+async function handleLintFixPipeline() {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute("diagramLint.fix.pipeline")
+    as { success: boolean; message: string; summary?: LintFixSummary };
+
+  if (result.summary) diagramLintFixSummary.value = result.summary;
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "success" : "warning",
+  });
+}
+
+async function handleLintFixAll() {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute("diagramLint.fix.all")
+    as { success: boolean; message: string; summary?: LintFixSummary };
+
+  if (result.summary) diagramLintFixSummary.value = result.summary;
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "success" : "warning",
+  });
+}
+
+async function handleLintFixRule(ruleId: string) {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute(
+    `diagramLint.fix.rule:${encodeURIComponent(ruleId)}`,
+  ) as { success: boolean; message: string; summary?: LintFixSummary };
+
+  if (result.summary) diagramLintFixSummary.value = result.summary;
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "success" : "warning",
+  });
+}
+
+async function handleLintFocusPathNode(payload: { issueId: string; nodeId: string }) {
+  const currentEditor = editor.value;
+  if (!currentEditor) return;
+
+  const result = await currentEditor.commands.execute(
+    `diagramLint.focus.pathNode:${encodeURIComponent(payload.issueId)}:${encodeURIComponent(payload.nodeId)}`,
+  );
+
+  logRef.value?.addLog({
+    message: result.message,
+    level: result.success ? "info" : "warning",
+  });
+}
 </script>
 
 <template>
@@ -228,4 +355,18 @@ function handlePluginMarketChanged() {
   <AgentChatPanel v-if="editor && agentOpen" :editor="editor" />
   <MinimapPanel v-if="editor && minimapOpen" :editor="editor" />
   <MultiLayerPanel v-if="editor && multiLayerOpen" :editor="editor" />
+  <DiagramLintPanel
+    :open="diagramLintOpen"
+    :issues="diagramLintIssues"
+    :generated-at="diagramLintGeneratedAt"
+    :fix-summary="diagramLintFixSummary"
+    @close="diagramLintOpen = false"
+    @focus-issue="handleLintFocus"
+    @fix-issue="handleLintFix"
+    @fix-next="handleLintFixNext"
+    @fix-pipeline="handleLintFixPipeline"
+    @fix-all="handleLintFixAll"
+    @fix-rule="handleLintFixRule"
+    @focus-path-node="handleLintFocusPathNode"
+  />
 </template>

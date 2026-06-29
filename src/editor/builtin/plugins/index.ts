@@ -15,6 +15,7 @@ import { templateActionsPlugin } from "../plugins/template-actions";
 import { viewControlsPlugin } from "../plugins/view-controls";
 import { agentPlugin } from "./agent";
 import { autoLayoutPlugin } from "./auto-layout";
+import { diagramLintPlugin } from "./diagram-lint";
 import { minimapPlugin } from "./minimap";
 import { multiLayerPlugin } from "./multi-layer";
 
@@ -35,6 +36,7 @@ export const builtinPlugins: EditorPluginModule[] = [
   architectureShapesPlugin,
   agentPlugin,
   autoLayoutPlugin,
+  diagramLintPlugin,
   minimapPlugin,
   multiLayerPlugin,
 ];

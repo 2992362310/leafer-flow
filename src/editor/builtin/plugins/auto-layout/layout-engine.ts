@@ -8,6 +8,7 @@ export interface LayoutOptions {
   rankSep: number;
   marginX: number;
   marginY: number;
+  skipLocked: boolean;
 }
 
 export interface LayoutResult {
@@ -22,6 +23,7 @@ const DEFAULT_OPTIONS: LayoutOptions = {
   rankSep: 80,
   marginX: 50,
   marginY: 50,
+  skipLocked: true,
 };
 
 export function autoLayout(
@@ -36,17 +38,26 @@ export function autoLayout(
 
   // 分离节点和连接线
   const nodes: IUI[] = [];
+  const lockedNodes: IUI[] = [];
   const connectors: Connector[] = [];
 
   for (const el of elements) {
     if (el instanceof Connector) {
       connectors.push(el);
     } else {
-      nodes.push(el);
+      const isLocked = Boolean((el as { locked?: boolean }).locked);
+      if (opts.skipLocked && isLocked) {
+        lockedNodes.push(el);
+      } else {
+        nodes.push(el);
+      }
     }
   }
 
   if (nodes.length === 0) {
+    if (lockedNodes.length > 0) {
+      return { success: false, message: "选中节点均已锁定，无法自动布局" };
+    }
     return { success: false, message: "没有可布局的节点" };
   }
 
@@ -119,7 +130,9 @@ export function autoLayout(
     const newY = nodeData.y - (node.height || 60) / 2;
 
     // 只有位置变化时才标记移动
-    if (Math.abs(node.x - newX) > 1 || Math.abs(node.y - newY) > 1) {
+    const currentX = node.x ?? 0;
+    const currentY = node.y ?? 0;
+    if (Math.abs(currentX - newX) > 1 || Math.abs(currentY - newY) > 1) {
       node.x = newX;
       node.y = newY;
       movedCount++;
@@ -132,7 +145,10 @@ export function autoLayout(
 
   return {
     success: true,
-    message: `已自动布局 ${movedCount} 个节点`,
+    message:
+      lockedNodes.length > 0
+        ? `已自动布局 ${movedCount} 个节点（跳过 ${lockedNodes.length} 个锁定节点）`
+        : `已自动布局 ${movedCount} 个节点`,
     movedCount,
   };
 }
