@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from "vue";
+import { defineAsyncComponent, onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from "vue";
 import { type Editor, getZoomPercent } from "@/editor";
 import { TOOL_NAME } from "@/editor/constants";
 import EditorLog from "@/components/EditorLog.vue";
@@ -10,19 +10,20 @@ import StatusBar from "@/components/StatusBar.vue";
 import ViewControls from "@/components/ViewControls.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import SelectionMarquee from "@/components/SelectionMarquee.vue";
-import CanvasSearch from "@/components/CanvasSearch.vue";
-import HistoryPanel from "@/components/HistoryPanel.vue";
-import ShortcutHelp from "@/components/ShortcutHelp.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
-import PluginMarketDrawer from "@/components/PluginMarket/PluginMarketDrawer.vue";
-import AgentChatPanel from "@/editor/builtin/plugins/agent/AgentChatPanel.vue";
-import MinimapPanel from "@/editor/builtin/plugins/minimap/MinimapPanel.vue";
-import MultiLayerPanel from "@/editor/builtin/plugins/multi-layer/LayerPanel.vue";
 import { useRuntimeContributions } from "@/composables/useRuntimeContributions";
 import { useSelectionMarquee } from "@/composables/useSelectionMarquee";
 import { useShapeDrop } from "@/composables/useShapeDrop";
 import { useEditorCommands } from "@/composables/useEditorCommands";
 import { useEditorAppInit } from "@/composables/useEditorAppInit";
+
+const CanvasSearch = defineAsyncComponent(() => import("@/components/CanvasSearch.vue"));
+const HistoryPanel = defineAsyncComponent(() => import("@/components/HistoryPanel.vue"));
+const ShortcutHelp = defineAsyncComponent(() => import("@/components/ShortcutHelp.vue"));
+const PluginMarketDrawer = defineAsyncComponent(() => import("@/components/PluginMarket/PluginMarketDrawer.vue"));
+const AgentChatPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/agent/AgentChatPanel.vue"));
+const MinimapPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/minimap/MinimapPanel.vue"));
+const MultiLayerPanel = defineAsyncComponent(() => import("@/editor/builtin/plugins/multi-layer/LayerPanel.vue"));
 
 const editorRef = useTemplateRef("editorRef");
 const logRef = useTemplateRef("logRef");
@@ -197,82 +198,34 @@ function handlePluginMarketChanged() {
 
 <template>
   <section class="w-full h-full" ref="editorRef"></section>
-  <SelectionMarquee
-    :active="marquee.active"
-    :x="marquee.x"
-    :y="marquee.y"
-    :width="marquee.width"
-    :height="marquee.height"
-  />
-  <CanvasSearch
-    v-if="editor"
-    :editor="editor"
-    :open="searchOpen"
-    @close="searchOpen = false"
-  />
+  <SelectionMarquee :active="marquee.active" :x="marquee.x" :y="marquee.y" :width="marquee.width"
+    :height="marquee.height" />
+  <CanvasSearch v-if="editor" :editor="editor" :open="searchOpen" @close="searchOpen = false" />
 
-  <ShapeLibrary
-    :active-tool="activeTool"
-    :groups="runtimeShapeLibraryGroups"
-    @tool="handleLibraryTool"
-  />
+  <ShapeLibrary :active-tool="activeTool" :groups="runtimeShapeLibraryGroups" @tool="handleLibraryTool" />
 
-  <EditorTopBar
-    v-model:selected-tool="activeTool"
-    :toolbar-groups="runtimeToolbarGroups"
-    :action-button-groups="runtimeActionButtonGroups"
-    @tool="handleTool"
-    @action="handleAction"
-    @open-plugin-market="pluginMarketOpen = true"
-  />
+  <EditorTopBar v-model:selected-tool="activeTool" :toolbar-groups="runtimeToolbarGroups"
+    :action-button-groups="runtimeActionButtonGroups" @tool="handleTool" @action="handleAction"
+    @open-plugin-market="pluginMarketOpen = true" />
 
   <LayerPanel :editor="editor" />
   <EditorPanel :editor="editor" class="z-10" />
 
   <div class="absolute bottom-2 left-8 w-fit">
-    <StatusBar
-      :selected-tool="activeTool"
-      :tool-labels="runtimeToolLabels"
-      :element-count="elementCount"
-    />
+    <StatusBar :selected-tool="activeTool" :tool-labels="runtimeToolLabels" :element-count="elementCount" />
   </div>
 
   <div class="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
-    <ViewControls
-      :zoom-percent="zoomPercent"
-      :controls="runtimeViewControls"
-      @action="handleAction"
-    />
+    <ViewControls :zoom-percent="zoomPercent" :controls="runtimeViewControls" @action="handleAction" />
   </div>
 
   <EditorLog class="absolute bottom-2 right-4" ref="logRef" />
-  <HistoryPanel
-    v-if="editor"
-    :editor="editor"
-    :open="historyOpen"
-    @close="historyOpen = false"
-  />
-  <ShortcutHelp
-    :open="shortcutHelpOpen"
-    @close="shortcutHelpOpen = false"
-  />
+  <HistoryPanel v-if="editor" :editor="editor" :open="historyOpen" @close="historyOpen = false" />
+  <ShortcutHelp :open="shortcutHelpOpen" @close="shortcutHelpOpen = false" />
   <ContextMenu :editor="editor" @action="handleAction" />
-  <PluginMarketDrawer
-    :editor="editor"
-    :open="pluginMarketOpen"
-    @close="pluginMarketOpen = false"
-    @changed="handlePluginMarketChanged"
-  />
-  <AgentChatPanel
-    v-if="editor && agentOpen"
-    :editor="editor"
-  />
-  <MinimapPanel
-    v-if="editor && minimapOpen"
-    :editor="editor"
-  />
-  <MultiLayerPanel
-    v-if="editor && multiLayerOpen"
-    :editor="editor"
-  />
+  <PluginMarketDrawer :editor="editor" :open="pluginMarketOpen" @close="pluginMarketOpen = false"
+    @changed="handlePluginMarketChanged" />
+  <AgentChatPanel v-if="editor && agentOpen" :editor="editor" />
+  <MinimapPanel v-if="editor && minimapOpen" :editor="editor" />
+  <MultiLayerPanel v-if="editor && multiLayerOpen" :editor="editor" />
 </template>
