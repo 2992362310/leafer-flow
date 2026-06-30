@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import EditorButton from "@/components/EditorButton.vue";
-import type { ActionButtonGroupContribution } from "@/editor/api/action-button";
+import type { Editor } from "@/editor";
 import { useCollapsible, useDraggable } from "@/composables/useDraggable";
 import { usePanelDock } from "@/composables/usePanelDock";
 
 const ACTION_BAR_POSITION_KEY = "leafer-flow-action-bar-position";
 
 const props = withDefaults(defineProps<{
-    actionButtonGroups: ActionButtonGroupContribution[];
+    editor?: Editor;
     showMarketButtons?: boolean;
 }>(), {
     showMarketButtons: false,
 });
+
+const actionButtonGroups = computed(() => props.editor?.actionButtons.list() ?? []);
 
 const emit = defineEmits<{
     action: [action: string];
@@ -71,7 +73,8 @@ function savePosition(next: { x: number; y: number }) {
                     @click.stop="togglePanelDock('action-bar')" @mousedown.stop>
                     <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
                 </button>
-                <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop>
+                <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)"
+                    @mousedown.stop>
                     {{ isCollapsed ? "∨" : "∧" }}
                 </button>
             </div>

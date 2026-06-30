@@ -8,6 +8,7 @@ import { applyStylePreset } from "@/editor/core/style-presets";
 import type { StylePresetId } from "@/editor/core/style-presets";
 import { getConnectorLabelTarget } from "@/editor/core/connector-labels";
 import { resolveNodeById, CUSTOM_DATA_PROP } from "@/editor/core/flow-serialization";
+import { getFlowShapeKind, updateFlowNodeShape } from "@/editor/core/flow-node-shape";
 
 interface EditorPanelStateOptions {
   editor: Ref<Editor | undefined>;
@@ -414,9 +415,13 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       const shape = children.find((child) => !(child instanceof Text)) as IUI | undefined;
       const text = children.find((child) => child instanceof Text) as Text | undefined;
       if (shape) {
-        shape.width = nextWidth;
-        shape.height = nextHeight;
-        if (shape.tag === "Path") updatePathShape(shape, nextWidth, nextHeight);
+        const kind = getFlowShapeKind(shape);
+        if (kind) {
+          updateFlowNodeShape(shape, kind, nextWidth, nextHeight);
+        } else {
+          shape.width = nextWidth;
+          shape.height = nextHeight;
+        }
       }
       if (text) updateTextBox(text, nextWidth, nextHeight);
       el.width = nextWidth;
@@ -566,14 +571,6 @@ function updateTextBox(text: Text, nextWidth: number, nextHeight: number) {
   text.width = Math.max(nextWidth - 20, 0);
   text.height = Math.max(nextHeight - 20, 0);
   text.visible = nextWidth > 40 && nextHeight > 30;
-}
-
-function updatePathShape(shape: IUI, nextWidth: number, nextHeight: number) {
-  const currentPath = String(shape.path || "");
-  if (currentPath.includes("Q")) return;
-  const centerX = nextWidth / 2;
-  const centerY = nextHeight / 2;
-  shape.path = `M ${centerX} 0 L ${nextWidth} ${centerY} L ${centerX} ${nextHeight} L 0 ${centerY} Z`;
 }
 
 function toHex(value: unknown, fallback: string) {

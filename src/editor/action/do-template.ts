@@ -1,9 +1,11 @@
-import { Ellipse, Group, Path, Rect, Text, type IUI } from "leafer";
+import { Group, Text, type IUI } from "leafer";
 import { Connector } from "@/editor/core/connector";
 import type { ConnectorSide, ConnectorState } from "@/editor/core/connector";
 import type Editor from "../editor";
 import { createConnectorLabel } from "../core/connector-labels";
 import { makeGroupSelectionAtomic } from "../core/group-selection";
+import { createFlowNodeShape, updateFlowNodeShape } from "../core/flow-node-shape";
+import type { FlowNodeKind } from "../core/flow-node-shape";
 
 export type TemplateKind =
   | "approval"
@@ -16,22 +18,10 @@ export type TemplateKind =
   | "systemArchitecture"
   | "swimlaneCollaboration";
 
-type TemplateNodeType =
-  | "startEnd"
-  | "process"
-  | "decision"
-  | "database"
-  | "document"
-  | "swimlane"
-  | "bpmnEvent"
-  | "bpmnGateway"
-  | "component"
-  | "cloud";
-
 type TemplateNode = {
   id: string;
   text: string;
-  type: TemplateNodeType;
+  type: FlowNodeKind;
   x: number;
   y: number;
   width: number;
@@ -110,14 +100,16 @@ export function doInsertTemplate(
 }
 
 function createFlowNode(node: TemplateNode) {
-  const shape = createShape(node);
+  const shape = createFlowNodeShape(node.type, getTemplateStyle(node.type));
+  updateFlowNodeShape(shape, node.type, node.width, node.height);
   const text = new Text({
+    draggable: false,
+    editable: true,
     x: 12,
     y: 10,
     width: Math.max(node.width - 24, 0),
     height: Math.max(node.height - 20, 0),
     text: node.text,
-    editable: true,
     fill: "#1f2937",
     fontSize: 14,
     fontWeight: "bold",
@@ -136,75 +128,19 @@ function createFlowNode(node: TemplateNode) {
   return group;
 }
 
-function createShape(node: TemplateNode) {
-  const base = getStyleByType(node.type);
-
-  if (node.type === "startEnd" || node.type === "bpmnEvent") {
-    return new Ellipse({ ...base, width: node.width, height: node.height });
-  }
-
-  if (node.type === "decision" || node.type === "bpmnGateway") {
-    return new Path({
-      ...base,
-      path: `M ${node.width / 2} 0 L ${node.width} ${node.height / 2} L ${node.width / 2} ${node.height} L 0 ${node.height / 2} Z`,
-    });
-  }
-
-  if (node.type === "database") {
-    const ry = Math.min(18, node.height * 0.18);
-    return new Path({
-      ...base,
-      path: `M 0 ${ry} Q ${node.width / 2} 0 ${node.width} ${ry} L ${node.width} ${node.height - ry} Q ${node.width / 2} ${node.height} 0 ${node.height - ry} Z M 0 ${ry} Q ${node.width / 2} ${ry * 2} ${node.width} ${ry}`,
-    });
-  }
-
-  if (node.type === "document") {
-    const wave = Math.min(18, node.height * 0.18);
-    return new Path({
-      ...base,
-      path: `M 0 0 L ${node.width} 0 L ${node.width} ${node.height - wave} Q ${node.width * 0.75} ${node.height + wave} ${node.width * 0.5} ${node.height - wave / 2} Q ${node.width * 0.25} ${node.height - wave * 1.5} 0 ${node.height - wave / 2} Z`,
-    });
-  }
-
-  if (node.type === "swimlane") {
-    const header = Math.min(40, Math.max(24, node.height * 0.22));
-    return new Path({
-      ...base,
-      path: `M 0 0 L ${node.width} 0 L ${node.width} ${node.height} L 0 ${node.height} Z M 0 ${header} L ${node.width} ${header}`,
-    });
-  }
-
-  if (node.type === "component") {
-    const tabW = Math.min(18, node.width * 0.18);
-    const tabH = Math.min(12, node.height * 0.18);
-    return new Path({
-      ...base,
-      path: `M ${tabW} 0 L ${node.width} 0 L ${node.width} ${node.height} L ${tabW} ${node.height} Z M 0 ${node.height * 0.22} L ${tabW} ${node.height * 0.22} L ${tabW} ${node.height * 0.22 + tabH} L 0 ${node.height * 0.22 + tabH} Z M 0 ${node.height * 0.58} L ${tabW} ${node.height * 0.58} L ${tabW} ${node.height * 0.58 + tabH} L 0 ${node.height * 0.58 + tabH} Z`,
-    });
-  }
-
-  if (node.type === "cloud") {
-    return new Path({
-      ...base,
-      path: `M ${node.width * 0.22} ${node.height * 0.65} Q ${node.width * 0.02} ${node.height * 0.62} ${node.width * 0.12} ${node.height * 0.42} Q ${node.width * 0.18} ${node.height * 0.2} ${node.width * 0.42} ${node.height * 0.28} Q ${node.width * 0.55} ${node.height * 0.05} ${node.width * 0.74} ${node.height * 0.28} Q ${node.width * 0.96} ${node.height * 0.28} ${node.width * 0.9} ${node.height * 0.55} Q ${node.width * 0.84} ${node.height * 0.78} ${node.width * 0.58} ${node.height * 0.72} L ${node.width * 0.22} ${node.height * 0.65} Z`,
-    });
-  }
-
-  return new Rect({ ...base, width: node.width, height: node.height, cornerRadius: 8 });
-}
-
-function getStyleByType(type: TemplateNodeType) {
-  const common = { editable: false, strokeWidth: 2, opacity: 1 };
-  if (type === "startEnd" || type === "bpmnEvent")
-    return { ...common, fill: "#ecfdf5", stroke: "#059669" };
-  if (type === "decision" || type === "bpmnGateway")
-    return { ...common, fill: "#fffbeb", stroke: "#d97706" };
-  if (type === "database") return { ...common, fill: "#ecfeff", stroke: "#0891b2" };
-  if (type === "document") return { ...common, fill: "#fff7ed", stroke: "#ea580c" };
-  if (type === "swimlane") return { ...common, fill: "#f0f9ff", stroke: "#0284c7" };
-  if (type === "component" || type === "cloud")
-    return { ...common, fill: "#eff6ff", stroke: "#2563eb" };
-  return { ...common, fill: "#eff6ff", stroke: "#2563eb" };
+function getTemplateStyle(kind: FlowNodeKind) {
+  const base = { strokeWidth: 2, opacity: 1 };
+  if (kind === "startEnd" || kind === "bpmnStartEvent" || kind === "bpmnEndEvent")
+    return { ...base, fill: "#ecfdf5", stroke: "#059669" };
+  if (kind === "decision" || kind === "bpmnExclusiveGateway")
+    return { ...base, fill: "#fffbeb", stroke: "#d97706" };
+  if (kind === "database")
+    return { ...base, fill: "#ecfeff", stroke: "#0891b2" };
+  if (kind === "document")
+    return { ...base, fill: "#fff7ed", stroke: "#ea580c" };
+  if (kind === "swimlane")
+    return { ...base, fill: "#f0f9ff", stroke: "#0284c7" };
+  return { ...base, fill: "#eff6ff", stroke: "#2563eb" };
 }
 
 function applyTemplateEdgeAnchors(
@@ -442,12 +378,12 @@ function bpmnOrderTemplate(): TemplateData {
   return {
     message: "已插入 BPMN 订单流程模板",
     nodes: [
-      { id: "start", text: "开始", type: "bpmnEvent", x: 120, y: 140, width: 72, height: 72 },
+      { id: "start", text: "开始", type: "bpmnStartEvent", x: 120, y: 140, width: 72, height: 72 },
       { id: "create", text: "创建订单", type: "process", x: 280, y: 140, width: 130, height: 64 },
       {
         id: "gateway",
         text: "库存充足",
-        type: "bpmnGateway",
+        type: "bpmnExclusiveGateway",
         x: 500,
         y: 128,
         width: 90,
@@ -455,7 +391,7 @@ function bpmnOrderTemplate(): TemplateData {
       },
       { id: "reserve", text: "预留库存", type: "process", x: 700, y: 90, width: 130, height: 64 },
       { id: "wait", text: "等待补货", type: "process", x: 700, y: 220, width: 130, height: 64 },
-      { id: "end", text: "结束", type: "bpmnEvent", x: 920, y: 90, width: 72, height: 72 },
+      { id: "end", text: "结束", type: "bpmnStartEvent", x: 920, y: 90, width: 72, height: 72 },
     ],
     edges: [
       { from: "start", to: "create" },
@@ -476,7 +412,7 @@ function systemArchitectureTemplate(): TemplateData {
       {
         id: "gateway",
         text: "API Gateway",
-        type: "component",
+        type: "archComponent",
         x: 360,
         y: 160,
         width: 150,
@@ -485,16 +421,16 @@ function systemArchitectureTemplate(): TemplateData {
       {
         id: "service",
         text: "业务服务",
-        type: "component",
+        type: "archComponent",
         x: 600,
         y: 100,
         width: 150,
         height: 80,
       },
-      { id: "worker", text: "异步任务", type: "component", x: 600, y: 240, width: 150, height: 80 },
+      { id: "worker", text: "异步任务", type: "archComponent", x: 600, y: 240, width: 150, height: 80 },
       { id: "db", text: "数据库", type: "database", x: 860, y: 100, width: 130, height: 90 },
       { id: "cache", text: "缓存", type: "database", x: 860, y: 250, width: 130, height: 90 },
-      { id: "cloud", text: "第三方服务", type: "cloud", x: 1080, y: 160, width: 150, height: 90 },
+      { id: "cloud", text: "第三方服务", type: "archCloud", x: 1080, y: 160, width: 150, height: 90 },
     ],
     edges: [
       { from: "client", to: "gateway" },

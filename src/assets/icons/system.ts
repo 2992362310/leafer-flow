@@ -1,4 +1,14 @@
 export const systemIcons = {
+  template: {
+    path: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z',
+    viewBox: '0 0 24 24',
+    title: '模板',
+  },
+  agent: {
+    path: 'M9 3h6l1 3H8L9 3zm3 3a6 6 0 016 6v1h1a1 1 0 010 2h-1v1a6 6 0 01-12 0v-1H5a1 1 0 010-2h1v-1a6 6 0 016-6zm0 4a2 2 0 100 4 2 2 0 000-4z',
+    viewBox: '0 0 24 24',
+    title: '插件',
+  },
   'arrow-down': {
     path: 'M19 9l-7 7-7-7',
     viewBox: '0 0 24 24',
