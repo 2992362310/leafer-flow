@@ -4,7 +4,8 @@ import type { IUI } from "leafer";
 import type { Editor } from "@/editor";
 import { Text } from "leafer";
 import { useDraggable } from "@/composables/useDraggable";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const props = defineProps<{
   editor: Editor;
@@ -19,7 +20,8 @@ const query = ref("");
 const results = ref<IUI[]>([]);
 const selectedIndex = ref(-1);
 const inputRef = ref<HTMLInputElement>();
-const { isPanelDocked, togglePanelDock } = usePanelDock();
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("canvas-search");
 
 const { position, startDrag } = useDraggable({
   initialX: Math.max(window.innerWidth / 2 - 160, 8),
@@ -144,37 +146,23 @@ function getElementLabel(el: IUI): string {
 </script>
 
 <template>
-  <div
-    v-if="open && !isPanelDocked('canvas-search')"
-    class="fixed z-50 w-80"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-  >
+  <div v-if="open && mode === 'float'" class="fixed z-50 w-80"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
     <div class="bg-base-100 shadow-xl border border-base-200 rounded-lg p-3">
       <div class="flex items-center gap-2 mb-2 cursor-move select-none" @mousedown="startDrag">
-        <input
-          ref="inputRef"
-          v-model="query"
-          @input="search"
-          @keydown="handleKeydown"
-          type="search"
-          placeholder="搜索元素..."
-          class="input input-sm input-bordered flex-1"
-          @mousedown.stop
-        />
-        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('canvas-search')" @mousedown.stop>
+        <input ref="inputRef" v-model="query" @input="search" @keydown="handleKeydown" type="search"
+          placeholder="搜索元素..." class="input input-sm input-bordered flex-1" @mousedown.stop />
+        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('canvas-search')"
+          @mousedown.stop>
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
         <button class="btn btn-xs btn-ghost btn-square" @click="emit('close')" @mousedown.stop>✕</button>
       </div>
 
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
-        <div
-          v-for="(el, index) in results"
-          :key="index"
+        <div v-for="(el, index) in results" :key="index"
           class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
-          :class="{ 'bg-primary/10': index === selectedIndex }"
-          @click="selectResult(index)"
-        >
+          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
           <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
           <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
           <span class="text-[10px] opacity-50">
@@ -188,4 +176,21 @@ function getElementLabel(el: IUI): string {
       </div>
     </div>
   </div>
+
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="canvas-search" title="画布搜索" icon="select" :width="320">
+    <div class="p-3">
+      <input ref="inputRef" v-model="query" @input="search" @keydown="handleKeydown" type="search" placeholder="搜索元素..."
+        class="input input-sm input-bordered w-full mb-2" />
+      <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
+        <div v-for="(el, index) in results" :key="index"
+          class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
+          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
+          <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
+          <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
+          <span class="text-[10px] opacity-50">({{ Math.round(el.x || 0) }}, {{ Math.round(el.y || 0) }})</span>
+        </div>
+      </div>
+      <div v-else-if="query.trim()" class="text-xs opacity-50 text-center py-2">未找到匹配元素</div>
+    </div>
+  </PanelFlyoutWrapper>
 </template>

@@ -5,7 +5,8 @@ import { useCollapsible, useDraggable } from "@/composables/useDraggable";
 import { useEditorPanelState } from "@/composables/useEditorPanelState";
 import type { PropertyPanelContext } from "@/editor/api/property-panel";
 import PropertyPanelHost from "@/components/EditorPanel/PropertyPanelHost.vue";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const props = defineProps<{ editor: Editor | undefined }>();
 
@@ -21,8 +22,9 @@ const { position, isDragging, startDrag } = useDraggable({
   margin: 8,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(false);
-const { isPanelDocked, togglePanelDock } = usePanelDock();
-const isDocked = computed(() => isPanelDocked("property-panel"));
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("property-panel");
+const isDocked = computed(() => mode.value !== "float");
 
 const propertyPanelContext = computed<PropertyPanelContext | null>(() => {
   if (!props.editor) return null;
@@ -50,7 +52,7 @@ const visiblePanels = computed(() => {
 
 <template>
   <Transition name="slide-fade">
-    <div v-if="panelState.hasSelection.value && propertyPanelContext && !isDocked"
+    <div v-if="panelState.hasSelection.value && propertyPanelContext && mode === 'float'"
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden transition-[height]"
       :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }">
       <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
@@ -77,6 +79,19 @@ const visiblePanels = computed(() => {
       </div>
     </div>
   </Transition>
+
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="property-panel" title="属性" icon="layer" :width="256">
+    <div class="p-3 pt-2">
+      <div v-if="!panelState.hasSelection.value" class="text-xs opacity-50 text-center py-6">请先选中元素</div>
+      <template v-else-if="props.editor && propertyPanelContext">
+        <div v-if="panelState.isMultiSelection.value" class="alert alert-info py-2 px-3 text-xs mb-3">
+          已选择 {{ panelState.selectedElements.value.length }} 个元素，可批量修改样式
+        </div>
+        <PropertyPanelHost :editor="props.editor" :context="propertyPanelContext" :panel-state="panelState"
+          :panels="visiblePanels" />
+      </template>
+    </div>
+  </PanelFlyoutWrapper>
 </template>
 
 <style scoped>

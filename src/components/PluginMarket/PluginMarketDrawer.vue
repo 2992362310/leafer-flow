@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { Editor } from "@/editor";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 import {
   disablePlugin,
   enablePlugin,
@@ -32,7 +33,8 @@ const items = ref<PluginMarketViewItem[]>([]);
 const pendingPluginId = ref<string | null>(null);
 const configuringPluginId = ref<string | null>(null);
 const configuringPluginConfig = ref<any>(null);
-const { isPanelDocked, togglePanelDock } = usePanelDock();
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("plugin-market");
 
 const filteredItems = computed(() => {
   const keyword = query.value.trim().toLowerCase();
@@ -207,16 +209,12 @@ function handleConfigClose() {
 
 <template>
   <Teleport to="body">
-    <div v-if="open && !isPanelDocked('plugin-market')" class="fixed inset-0 z-50 pointer-events-none">
-      <button
-        class="absolute inset-0 bg-neutral/20 backdrop-blur-[1px] pointer-events-auto"
-        aria-label="关闭插件市场"
-        @click="emits('close')"
-      ></button>
+    <div v-if="open && mode === 'float'" class="fixed inset-0 z-50 pointer-events-none">
+      <button class="absolute inset-0 bg-neutral/20 backdrop-blur-[1px] pointer-events-auto" aria-label="关闭插件市场"
+        @click="emits('close')"></button>
 
       <aside
-        class="absolute right-0 top-0 h-full w-lg max-w-[calc(100vw-1rem)] bg-base-100 shadow-2xl border-l border-base-200 pointer-events-auto flex flex-col"
-      >
+        class="absolute right-0 top-0 h-full w-lg max-w-[calc(100vw-1rem)] bg-base-100 shadow-2xl border-l border-base-200 pointer-events-auto flex flex-col">
         <header class="px-4 py-3 border-b border-base-200 flex items-start justify-between gap-3">
           <div>
             <h2 class="text-base font-semibold">插件市场</h2>
@@ -225,7 +223,8 @@ function handleConfigClose() {
             </p>
           </div>
           <div class="flex items-center gap-1">
-            <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('plugin-market')">
+            <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽"
+              @click.stop="togglePanelDock('plugin-market')">
               <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
             </button>
             <button class="btn btn-ghost btn-sm" @click="emits('close')">✕</button>
@@ -233,38 +232,23 @@ function handleConfigClose() {
         </header>
 
         <div class="p-4 border-b border-base-200 space-y-3">
-          <PluginMarketStats
-            :total="marketStats.total"
-            :active="marketStats.active"
-            :required="marketStats.required"
-            :property-panel="marketStats.propertyPanel"
-            :filtered="marketStats.filtered"
-          />
+          <PluginMarketStats :total="marketStats.total" :active="marketStats.active" :required="marketStats.required"
+            :property-panel="marketStats.propertyPanel" :filtered="marketStats.filtered" />
 
-          <input
-            v-model="query"
-            class="input input-sm input-bordered w-full"
-            placeholder="搜索插件、分类、能力或贡献项..."
-          />
+          <input v-model="query" class="input input-sm input-bordered w-full" placeholder="搜索插件、分类、能力或贡献项..." />
           <div class="space-y-2">
             <div class="flex items-center justify-between gap-2 text-[11px] text-base-content/50">
               <span>能力筛选</span>
-              <button
-                v-if="selectedCapability !== 'all'"
-                class="btn btn-ghost btn-xs h-auto min-h-0 px-1 py-0"
-                @click="selectedCapability = 'all'"
-              >
+              <button v-if="selectedCapability !== 'all'" class="btn btn-ghost btn-xs h-auto min-h-0 px-1 py-0"
+                @click="selectedCapability = 'all'">
                 清除
               </button>
             </div>
             <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="capability in capabilityOptions"
-                :key="capability"
+              <button v-for="capability in capabilityOptions" :key="capability"
                 class="btn btn-xs h-6 min-h-0 rounded-full"
                 :class="selectedCapability === capability ? 'btn-primary' : 'btn-ghost'"
-                @click="selectedCapability = capability"
-              >
+                @click="selectedCapability = capability">
                 {{ capability === "all" ? "全部能力" : capabilityLabel(capability) }}
               </button>
             </div>
@@ -273,11 +257,8 @@ function handleConfigClose() {
           <div class="grid grid-cols-2 gap-2">
             <select v-model="selectedCategory" class="select select-bordered select-xs w-full">
               <option value="all">全部分类</option>
-              <option
-                v-for="category in categoryOptions.filter((item) => item !== 'all')"
-                :key="category"
-                :value="category"
-              >
+              <option v-for="category in categoryOptions.filter((item) => item !== 'all')" :key="category"
+                :value="category">
                 {{ categoryLabel(category) }}
               </option>
             </select>
@@ -292,22 +273,12 @@ function handleConfigClose() {
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <PluginMarketCard
-            v-for="item in filteredItems"
-            :key="item.manifest.id"
-            :item="item"
-            :editor-ready="Boolean(editor)"
-            :pending="pendingPluginId === item.manifest.id"
-            :expanded="isExpanded(item.manifest.id)"
-            @toggle="handleToggle"
-            @toggle-expanded="toggleExpanded"
-            @configure="handleConfigure"
-          />
+          <PluginMarketCard v-for="item in filteredItems" :key="item.manifest.id" :item="item"
+            :editor-ready="Boolean(editor)" :pending="pendingPluginId === item.manifest.id"
+            :expanded="isExpanded(item.manifest.id)" @toggle="handleToggle" @toggle-expanded="toggleExpanded"
+            @configure="handleConfigure" />
 
-          <div
-            v-if="filteredItems.length === 0"
-            class="text-center text-sm text-base-content/50 py-12"
-          >
+          <div v-if="filteredItems.length === 0" class="text-center text-sm text-base-content/50 py-12">
             没有找到匹配的插件
           </div>
         </div>
@@ -315,12 +286,33 @@ function handleConfigClose() {
     </div>
 
     <!-- 配置对话框 -->
-    <PluginConfigDialog
-      v-if="configuringPluginId && configuringPluginConfig"
-      :plugin-id="configuringPluginId"
-      :config="configuringPluginConfig"
-      :editor="editor"
-      @close="handleConfigClose"
-    />
+    <PluginConfigDialog v-if="configuringPluginId && configuringPluginConfig" :plugin-id="configuringPluginId"
+      :config="configuringPluginConfig" :editor="editor" @close="handleConfigClose" />
   </Teleport>
+
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="plugin-market" title="插件市场" icon="agent" :width="400">
+    <div class="flex flex-col">
+      <div class="p-3 border-b border-base-200 space-y-2">
+        <PluginMarketStats :total="marketStats.total" :active="marketStats.active" :required="marketStats.required"
+          :property-panel="marketStats.propertyPanel" :filtered="marketStats.filtered" />
+        <input v-model="query" class="input input-sm input-bordered w-full" placeholder="搜索插件、分类、能力或贡献项..." />
+        <div class="flex flex-wrap gap-1.5">
+          <button v-for="capability in capabilityOptions" :key="capability" class="btn btn-xs h-6 min-h-0 rounded-full"
+            :class="selectedCapability === capability ? 'btn-primary' : 'btn-ghost'"
+            @click="selectedCapability = capability">
+            {{ capability === 'all' ? '全部能力' : capabilityLabel(capability) }}
+          </button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-3 space-y-2" style="max-height: calc(100vh - 16rem)">
+        <PluginMarketCard v-for="item in filteredItems" :key="item.manifest.id" :item="item"
+          :editor-ready="Boolean(editor)" :pending="pendingPluginId === item.manifest.id"
+          :expanded="isExpanded(item.manifest.id)" @toggle="handleToggle" @toggle-expanded="toggleExpanded"
+          @configure="handleConfigure" />
+        <div v-if="filteredItems.length === 0" class="text-center text-sm text-base-content/50 py-8">没有找到匹配的插件</div>
+      </div>
+    </div>
+    <PluginConfigDialog v-if="configuringPluginId && configuringPluginConfig" :plugin-id="configuringPluginId"
+      :config="configuringPluginConfig" :editor="editor" @close="handleConfigClose" />
+  </PanelFlyoutWrapper>
 </template>

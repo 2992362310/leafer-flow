@@ -5,7 +5,8 @@ import type { Editor } from "@/editor";
 import { ACTION_NAME } from "@/editor/constants";
 import LayerItem from "./LayerItem.vue";
 import { useDraggable, useCollapsible } from "@/composables/useDraggable";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const props = defineProps<{
   editor?: Editor;
@@ -170,11 +171,12 @@ const { position, isDragging, startDrag } = useDraggable({
   margin: 8,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(true);
-const { isPanelDocked, togglePanelDock } = usePanelDock();
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("layer-panel");
 </script>
 
 <template>
-  <div v-show="(props.open ?? true) && !isPanelDocked('layer-panel')"
+  <div v-show="(props.open ?? true) && mode === 'float'"
     class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm fixed overflow-hidden transition-[height,width] z-30"
     :style="{
       left: position.x + 'px',
@@ -215,4 +217,15 @@ const { isPanelDocked, togglePanelDock } = usePanelDock();
         @moveBottom="handleMoveBottom" />
     </div>
   </div>
+
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="layer-panel" title="图层" icon="layer" :width="256">
+    <div class="py-2" style="max-height: calc(100vh - 10rem)">
+      <div class="px-3 py-1 text-[10px] opacity-50">({{ treeData.length }})</div>
+      <div v-if="treeData.length === 0" class="text-center text-xs opacity-40 mt-10">没有图层</div>
+      <LayerItem v-for="node in treeData.slice().reverse()" :key="node.innerId" :node="node" :depth="0"
+        :selectedIds="selectedIds" :treeVersion="treeVersion" @select="handleSelect" @toggleLock="handleToggleLock"
+        @toggleVisible="handleToggleVisible" @moveUp="handleMoveUp" @moveDown="handleMoveDown" @moveTop="handleMoveTop"
+        @moveBottom="handleMoveBottom" />
+    </div>
+  </PanelFlyoutWrapper>
 </template>

@@ -41,6 +41,7 @@ const panelMetaMap: Record<DockPanelId, DockPanelMeta> = {
 };
 
 const dockedIds = ref<DockPanelId[]>([]);
+const activeFlyoutId = ref<DockPanelId | null>(null);
 let initialized = false;
 
 function isDockPanelId(value: string): value is DockPanelId {
@@ -90,6 +91,7 @@ export function usePanelDock() {
     function undockPanel(id: DockPanelId) {
         if (!isPanelDocked(id)) return;
         dockedIds.value = dockedIds.value.filter((item) => item !== id);
+        if (activeFlyoutId.value === id) activeFlyoutId.value = null;
         persist();
     }
 
@@ -114,12 +116,38 @@ export function usePanelDock() {
         persist();
     }
 
+    function toggleFlyout(id: DockPanelId) {
+        activeFlyoutId.value = activeFlyoutId.value === id ? null : id;
+    }
+
+    function closeFlyout() {
+        activeFlyoutId.value = null;
+    }
+
+    function isFlyoutOpen(id: DockPanelId) {
+        return activeFlyoutId.value === id;
+    }
+
     return {
         dockedPanels,
+        activeFlyoutId,
         isPanelDocked,
+        isFlyoutOpen,
         dockPanel,
         undockPanel,
         togglePanelDock,
+        toggleFlyout,
+        closeFlyout,
         moveDockedPanel,
     };
+}
+
+/** 返回面板当前渲染模式：float（浮动）| flyout（槽位弹出）| hidden（已收起，不渲染） */
+export function usePanelMode(id: DockPanelId) {
+    const { isPanelDocked, isFlyoutOpen } = usePanelDock();
+    return computed((): "float" | "flyout" | "hidden" => {
+        if (!isPanelDocked(id)) return "float";
+        if (isFlyoutOpen(id)) return "flyout";
+        return "hidden";
+    });
 }

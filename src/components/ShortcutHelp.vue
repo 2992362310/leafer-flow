@@ -2,7 +2,8 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { getShortcutConfig } from "@/editor/core/shortcut-config";
 import { useDraggable } from "@/composables/useDraggable";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const EVENT_NAME = "leafer-flow:toggle-shortcut-help";
 
@@ -12,7 +13,8 @@ const editing = ref(false);
 const editingAction = ref<string | null>(null);
 const editingKey = ref("");
 const conflictError = ref("");
-const { isPanelDocked, togglePanelDock } = usePanelDock();
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("shortcut-help");
 
 const { position, startDrag } = useDraggable({
   initialX: Math.max(window.innerWidth / 2 - 260, 8),
@@ -203,7 +205,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="open && !isPanelDocked('shortcut-help')" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
+  <div v-if="open && mode === 'float'" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
     @keydown="handleCaptureKey" tabindex="0">
     <div class="bg-base-100 shadow-2xl border border-base-200 rounded-xl w-[520px] max-h-[80vh] overflow-hidden fixed"
       :style="{ left: `${position.x}px`, top: `${position.y}px` }">
@@ -255,4 +257,39 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="shortcut-help" title="快捷键" icon="info" :width="480">
+    <div class="p-1">
+      <div class="flex items-center justify-between border-b border-base-200 px-4 py-2">
+        <button class="btn btn-xs" :class="editing ? 'btn-primary' : 'btn-ghost'"
+          @click="editing = !editing; editingAction = null">
+          {{ editing ? "完成" : "自定义" }}
+        </button>
+        <button v-if="editing" class="btn btn-xs btn-ghost" @click="handleReset">重置</button>
+      </div>
+      <div v-if="editing" class="px-4 py-2 bg-primary/5 text-xs text-primary border-b border-base-200">
+        {{ editingAction ? "请按下新的快捷键组合（Esc 取消）" : "点击快捷键进行修改" }}
+      </div>
+      <div class="overflow-y-auto p-4 space-y-4">
+        <div v-for="group in groups" :key="group.title">
+          <h4 class="text-xs font-medium opacity-60 mb-2">{{ group.title }}</h4>
+          <div class="space-y-1">
+            <div v-for="item in group.items" :key="item.action" class="flex items-center justify-between text-xs py-1">
+              <span>{{ item.label }}</span>
+              <div class="flex items-center gap-2">
+                <template v-if="editingAction === item.action">
+                  <span class="text-xs text-primary animate-pulse">按下快捷键...</span>
+                  <span v-if="conflictError" class="text-xs text-error">{{ conflictError }}</span>
+                </template>
+                <kbd v-else class="kbd kbd-xs bg-base-200" :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
+                  @click="startEdit(item.action)">
+                  {{ getKeyForAction(item.action) }}
+                </kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </PanelFlyoutWrapper>
 </template>

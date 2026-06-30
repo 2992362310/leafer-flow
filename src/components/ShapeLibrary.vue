@@ -4,7 +4,8 @@ import type { ShapeLibraryGroup, ShapeLibraryItem } from "@/editor/shape-library
 import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "@/editor/shape-library";
 import ShapeLibraryGroupView from "@/components/ShapeLibraryGroup.vue";
 import ShapeLibraryItemView from "@/components/ShapeLibraryItem.vue";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const props = defineProps<{
   activeTool?: string;
@@ -46,8 +47,9 @@ let dragState: DragState | null = null;
 let dragRafId: number | null = null;
 let pendingDragPosition: PanelPosition | null = null;
 
-const { isPanelDocked, togglePanelDock } = usePanelDock();
-const isDocked = computed(() => isPanelDocked("shape-library"));
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("shape-library");
+const isDocked = computed(() => mode.value !== "float");
 
 const libraryGroups = computed(() => props.groups ?? []);
 const allItems = computed(() => libraryGroups.value.flatMap((group) => group.items));
@@ -309,7 +311,7 @@ function rememberShape(tool: string) {
 </script>
 
 <template>
-  <aside v-if="!isDocked" ref="panelRef" :class="panelClass" :style="panelStyle">
+  <aside v-if="mode === 'float'" ref="panelRef" :class="panelClass" :style="panelStyle">
     <div class="flex touch-none items-center border-b border-base-200"
       :class="collapsed ? 'justify-between px-1.5 py-1.5' : 'cursor-move justify-between px-3 py-2'" title="拖动面板"
       @pointerdown="!collapsed ? handlePanelDragStart : undefined">
@@ -377,4 +379,23 @@ function rememberShape(tool: string) {
       </div>
     </div>
   </aside>
+
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="shape-library" title="图形库" icon="template" :width="256">
+    <div class="flex flex-col">
+      <div class="p-2">
+        <input v-model="query" class="input input-bordered input-xs w-full" type="search"
+          placeholder="搜索图形、BPMN、架构..." />
+      </div>
+      <p class="px-2 pb-2 text-[11px] leading-relaxed text-base-content/50">
+        拖拽创建，点击进入连续绘制模式
+      </p>
+      <div class="overflow-y-auto px-2 pb-3" style="max-height: calc(100vh - 14rem)">
+        <ShapeLibraryGroupView v-for="group in filteredGroups" :key="group.id" :group="group" :active-tool="activeTool"
+          @select="handleSelect" @drag-start="handleDragStart" />
+        <div v-if="filteredGroups.length === 0" class="py-8 text-center text-xs text-base-content/50">
+          未找到匹配图形
+        </div>
+      </div>
+    </div>
+  </PanelFlyoutWrapper>
 </template>

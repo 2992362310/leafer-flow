@@ -3,7 +3,8 @@ import { nextTick, ref } from "vue";
 import { formatTime } from "@/editor/utils";
 import type { IconName } from "@/assets/icons";
 import { useDraggable } from "@/composables/useDraggable";
-import { usePanelDock } from "@/composables/usePanelDock";
+import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
+import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
 const EVENT_LOG_POSITION_KEY = "leafer-flow-event-log-position";
 
@@ -20,7 +21,8 @@ interface LogEntry extends LogOptions {
 
 const eventLog = ref<LogEntry[]>([]);
 const isCollapsed = ref(false);
-const { isPanelDocked, togglePanelDock } = usePanelDock();
+const { togglePanelDock } = usePanelDock();
+const mode = usePanelMode("event-log");
 
 const { position, startDrag } = useDraggable({
   initialX: window.innerWidth - 420,
@@ -107,8 +109,8 @@ defineExpose({
 </script>
 
 <template>
-  <div v-if="!isPanelDocked('event-log')" class="card bg-base-100 shadow-lg w-96 fixed z-20"
-    :class="{ 'h-12': isCollapsed }" :style="{ left: `${position.x}px`, top: `${position.y}px` }">
+  <div v-if="mode === 'float'" class="card bg-base-100 shadow-lg w-96 fixed z-20" :class="{ 'h-12': isCollapsed }"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
     <div class="card-body p-3">
       <div class="flex justify-between items-center mb-2 cursor-move select-none" @mousedown="startDrag">
         <h3 class="card-title text-sm flex items-center">
@@ -147,4 +149,26 @@ defineExpose({
       </div>
     </div>
   </div>
+
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="event-log" title="事件日志" icon="info" :width="384">
+    <div class="p-3">
+      <div class="flex justify-end mb-2">
+        <button class="btn btn-xs btn-ghost" @click="handleClear">
+          <Icon name="clear" class="h-3 w-3" /><span class="ml-1">清空</span>
+        </button>
+      </div>
+      <div class="text-xs space-y-1 max-h-80 overflow-y-auto">
+        <div v-for="log in eventLog" :key="log.id" class="flex items-start p-2 rounded transition-colors"
+          :class="getLogClass(log)">
+          <Icon :name="getLogIcon(log)" class="h-4 w-4 mr-2 mt-0.5 shrink-0" :class="getLogClass(log)" />
+          <span class="mr-2 whitespace-nowrap font-mono">{{ formatTime(log.timestamp) }}</span>
+          <span class="flex-1 break-all">{{ log.message }}</span>
+        </div>
+        <div v-if="eventLog.length === 0" class="text-gray-400 text-center py-2">
+          <Icon name="select" class="h-6 w-6 mx-auto mb-1 opacity-50" />
+          暂无事件...
+        </div>
+      </div>
+    </div>
+  </PanelFlyoutWrapper>
 </template>
