@@ -1,25 +1,32 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import EditorButton from "@/components/EditorButton.vue";
 import type { Editor } from "@/editor";
 import { useCollapsible, useDraggable } from "@/composables/useDraggable";
 import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
 const ACTION_BAR_POSITION_KEY = "leafer-flow-action-bar-position";
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   editor?: Editor;
-  showMarketButtons?: boolean;
-}>(), {
-  showMarketButtons: false,
-});
+}>();
 
 const actionButtonGroups = computed(() => props.editor?.actionButtons.list() ?? []);
 
-const emit = defineEmits<{
-  action: [action: string];
-  openPluginMarket: [];
-  openTemplateMarket: [];
-}>();
+const router = useRouter();
+
+async function handleAction(action: string) {
+  if (!props.editor) return;
+  await props.editor.commands.execute(action);
+}
+
+function openPluginMarket() {
+  void router.push("/plugin-market");
+}
+
+function openTemplateMarket() {
+  void router.push("/template-market");
+}
 
 const { position, isDragging, startDrag } = useDraggable({
   initialX: 430,
@@ -80,23 +87,21 @@ function savePosition(next: { x: number; y: number }) {
     </div>
 
     <div v-show="!isCollapsed" class="p-3">
-      <div v-if="props.showMarketButtons" class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
+      <div class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场入口</div>
         <div class="flex flex-wrap gap-2">
-          <button class="btn btn-sm h-9 min-w-20" @click="emit('openPluginMarket')">
-            <Icon name="agent" class="h-4 w-4" />
-            插件
+          <button class="btn btn-sm h-9 min-w-20" @click="openPluginMarket">
+            <Icon name="agent" class="h-4 w-4" />插件
           </button>
-          <button class="btn btn-sm h-9 min-w-20" @click="emit('openTemplateMarket')">
-            <Icon name="template" class="h-4 w-4" />
-            模板
+          <button class="btn btn-sm h-9 min-w-20" @click="openTemplateMarket">
+            <Icon name="template" class="h-4 w-4" />模板
           </button>
         </div>
       </div>
 
       <div class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">常用操作</div>
-        <EditorButton :groups="actionButtonGroups" :columns="8" @action="emit('action', $event)" />
+        <EditorButton :groups="actionButtonGroups" :columns="8" @action="handleAction" />
       </div>
     </div>
   </div>
@@ -119,23 +124,21 @@ function savePosition(next: { x: number; y: number }) {
     </div>
 
     <div class="p-3">
-      <div v-if="props.showMarketButtons" class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
+      <div class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场入口</div>
         <div class="flex flex-wrap gap-2">
-          <button class="btn btn-sm h-9 min-w-20" @click="emit('openPluginMarket')">
-            <Icon name="agent" class="h-4 w-4" />
-            插件
+          <button class="btn btn-sm h-9 min-w-20" @click="openPluginMarket">
+            <Icon name="agent" class="h-4 w-4" />插件
           </button>
-          <button class="btn btn-sm h-9 min-w-20" @click="emit('openTemplateMarket')">
-            <Icon name="template" class="h-4 w-4" />
-            模板
+          <button class="btn btn-sm h-9 min-w-20" @click="openTemplateMarket">
+            <Icon name="template" class="h-4 w-4" />模板
           </button>
         </div>
       </div>
 
       <div class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">常用操作</div>
-        <EditorButton :groups="actionButtonGroups" :columns="8" @action="emit('action', $event)" />
+        <EditorButton :groups="actionButtonGroups" :columns="8" @action="handleAction" />
       </div>
     </div>
   </div>
