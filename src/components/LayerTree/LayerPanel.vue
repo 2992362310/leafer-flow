@@ -8,6 +8,7 @@ import { useDraggable, useCollapsible } from "@/composables/useDraggable";
 
 const props = defineProps<{
   editor?: Editor;
+  open?: boolean;
 }>();
 
 const treeData = shallowRef<IUI[]>([]);
@@ -161,12 +162,18 @@ onUnmounted(() => {
 const { position, isDragging, startDrag } = useDraggable({
   initialX: window.innerWidth - 260,
   initialY: 70,
+  snapToViewport: true,
+  snapThreshold: 16,
+  panelWidth: 240,
+  panelHeight: 560,
+  margin: 8,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(true);
 </script>
 
 <template>
   <div
+    v-show="props.open ?? true"
     class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm fixed overflow-hidden transition-[height,width] z-30"
     :style="{
       left: position.x + 'px',

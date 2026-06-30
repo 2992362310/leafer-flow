@@ -6,11 +6,17 @@ import type { ActionButtonGroupContribution } from "@/editor/api/action-button";
 import type { ToolToolbarGroup } from "@/editor/api/tool";
 import type { IExecuteCommand } from "@/editor/types";
 
-defineProps<{
-  toolbarGroups: ToolToolbarGroup[];
-  actionButtonGroups: ActionButtonGroupContribution[];
-  selectedTool?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    toolbarGroups: ToolToolbarGroup[];
+    actionButtonGroups: ActionButtonGroupContribution[];
+    selectedTool?: string;
+    showActionButtons?: boolean;
+  }>(),
+  {
+    showActionButtons: true,
+  },
+);
 
 const emit = defineEmits<{
   tool: [evt: IExecuteCommand];
@@ -45,7 +51,11 @@ defineExpose({
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <button class="btn btn-sm h-9" @click="emit('openPluginMarket')">插件</button>
     <button class="btn btn-sm h-9" @click="emit('openTemplateMarket')">模板</button>
-    <span class="divider divider-horizontal mx-0 my-1"></span>
-    <EditorButton :groups="actionButtonGroups" @action="emit('action', $event)" />
+    <span v-if="props.showActionButtons" class="divider divider-horizontal mx-0 my-1"></span>
+    <EditorButton
+      v-if="props.showActionButtons"
+      :groups="actionButtonGroups"
+      @action="emit('action', $event)"
+    />
   </div>
 </template>

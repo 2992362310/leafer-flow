@@ -19,6 +19,14 @@ interface GraphStats {
   adjacency: Map<string, Set<string>>;
 }
 
+interface TextCarrier {
+  text?: unknown;
+}
+
+type TextNode = IUI & {
+  text: string;
+};
+
 function collectVisibleNodes(editor: Editor): NodeLike[] {
   const children = (editor.app.tree.children ?? []) as IUI[];
   const nodes = children.filter((item) => !(item instanceof Connector)) as NodeLike[];
@@ -146,7 +154,7 @@ function analyzeReachability(
 }
 
 function getEditableTextNode(node: NodeLike): { get: () => string; set: (value: string) => void } | null {
-  const direct = node as unknown as { text?: unknown };
+  const direct = node as unknown as TextCarrier;
   if (typeof direct.text === "string") {
     return {
       get: () => String(direct.text ?? ""),
@@ -159,8 +167,7 @@ function getEditableTextNode(node: NodeLike): { get: () => string; set: (value: 
   const children = (node as unknown as { children?: IUI[] }).children;
   if (!children?.length) return null;
 
-  const textChild = children.find((child) => typeof (child as unknown as { text?: unknown }).text === "string")
-    as (IUI & { text?: string }) | undefined;
+  const textChild = children.find((child) => typeof (child as unknown as TextCarrier).text === "string") as TextNode | undefined;
   if (!textChild) return null;
 
   return {
@@ -182,7 +189,7 @@ export function runDiagramLint(editor: Editor): LintResult {
   const nodeMap = new Map<string, NodeLike>();
 
   for (const node of nodes) {
-    const name = (node as unknown as { text?: string }).text?.trim();
+    const name = String((node as unknown as TextCarrier).text ?? "").trim();
     nodeMap.set(toId(node.innerId), node);
     if (!name) continue;
     const key = name.toLowerCase();
@@ -247,7 +254,7 @@ export function runDiagramLint(editor: Editor): LintResult {
     const id = toId(node.innerId);
     const inbound = stats.inbound.get(id) ?? 0;
     const outbound = stats.outbound.get(id) ?? 0;
-    const labelText = String((node as unknown as { text?: string }).text ?? "").trim();
+    const labelText = String((node as unknown as TextCarrier).text ?? "").trim();
 
     if (inbound === 0 && outbound === 0) {
       issues.push({

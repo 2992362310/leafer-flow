@@ -20,6 +20,7 @@ const SHAPE_LIBRARY_COLLAPSED_KEY = "leafer-flow-shape-library-collapsed";
 const SHAPE_LIBRARY_POSITION_KEY = "leafer-flow-shape-library-position";
 const DEFAULT_PANEL_POSITION = { x: 12, y: 96 };
 const PANEL_MARGIN = 8;
+const SNAP_THRESHOLD = 16;
 
 interface PanelPosition {
   x: number;
@@ -93,7 +94,7 @@ const panelClass = computed(() => [
 const panelStyle = computed(() => ({
   left: `${panelPosition.value.x}px`,
   top: `${panelPosition.value.y}px`,
-  height: "calc(100vh - 12rem)",
+  height: collapsed.value ? "12.5rem" : "calc(100vh - 12rem)",
 }));
 
 onMounted(() => {
@@ -157,6 +158,7 @@ function handlePanelDragMove(evt: PointerEvent) {
 function handlePanelDragEnd(evt: PointerEvent) {
   if (dragState && evt.pointerId !== dragState.pointerId) return;
   stopPanelDrag();
+  panelPosition.value = applyEdgeSnap(panelPosition.value);
   savePanelPosition();
 }
 
@@ -190,6 +192,23 @@ function clampPanelPosition(position: PanelPosition): PanelPosition {
 function clampPanelToViewport() {
   panelPosition.value = clampPanelPosition(panelPosition.value);
   savePanelPosition();
+}
+
+function applyEdgeSnap(position: PanelPosition): PanelPosition {
+  const clamped = clampPanelPosition(position);
+  const { width, height } = getPanelSize();
+  const maxX = Math.max(PANEL_MARGIN, window.innerWidth - width - PANEL_MARGIN);
+  const maxY = Math.max(PANEL_MARGIN, window.innerHeight - height - PANEL_MARGIN);
+
+  let nextX = clamped.x;
+  let nextY = clamped.y;
+
+  if (Math.abs(nextX - PANEL_MARGIN) <= SNAP_THRESHOLD) nextX = PANEL_MARGIN;
+  if (Math.abs(nextX - maxX) <= SNAP_THRESHOLD) nextX = maxX;
+  if (Math.abs(nextY - PANEL_MARGIN) <= SNAP_THRESHOLD) nextY = PANEL_MARGIN;
+  if (Math.abs(nextY - maxY) <= SNAP_THRESHOLD) nextY = maxY;
+
+  return { x: nextX, y: nextY };
 }
 
 function loadPanelPosition() {
@@ -295,7 +314,7 @@ function rememberShape(tool: string) {
 
       <div
         v-if="collapsedShortcutItems.length > 0"
-        class="mt-2 flex flex-col gap-1 border-t border-base-200 pt-2"
+        class="mt-2 flex max-h-[7rem] flex-col gap-1 overflow-y-auto border-t border-base-200 pt-2"
       >
         <ShapeLibraryItemView
           v-for="item in collapsedShortcutItems"

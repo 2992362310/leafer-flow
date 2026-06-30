@@ -7,6 +7,7 @@ import { canUseTemplateAction } from "@/editor/plugins/market/plugin-market-serv
 import EditorLog from "@/components/EditorLog.vue";
 import EditorPanel from "@/components/EditorPanel.vue";
 import EditorTopBar from "@/components/EditorTopBar.vue";
+import EditorActionBar from "@/components/EditorActionBar.vue";
 import LayerPanel from "@/components/LayerTree/LayerPanel.vue";
 import StatusBar from "@/components/StatusBar.vue";
 import ViewControls from "@/components/ViewControls.vue";
@@ -40,7 +41,7 @@ const zoomPercent = ref(100);
 const activeTool = ref<string>(TOOL_NAME.SELECT);
 const pluginMarketOpen = ref(false);
 const agentOpen = ref(false);
-const minimapOpen = ref(true);
+const minimapOpen = ref(false);
 const multiLayerOpen = ref(false);
 const searchOpen = ref(false);
 const historyOpen = ref(false);
@@ -251,9 +252,9 @@ async function handleLintFix(issueId: string) {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
-  const result = await currentEditor.commands.execute(
+  const result: { success: boolean; message: string; summary?: LintFixSummary } = await currentEditor.commands.execute(
     `diagramLint.fix.issue:${encodeURIComponent(issueId)}`,
-  ) as { success: boolean; message: string; summary?: LintFixSummary };
+  );
 
   if (result.summary) diagramLintFixSummary.value = result.summary;
 
@@ -267,9 +268,9 @@ async function handleLintFixNext(issueId: string) {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
-  const result = await currentEditor.commands.execute(
+  const result: { success: boolean; message: string; nextIssueId?: string; summary?: LintFixSummary } = await currentEditor.commands.execute(
     `diagramLint.fix.next:${encodeURIComponent(issueId)}`,
-  ) as { success: boolean; message: string; nextIssueId?: string; summary?: LintFixSummary };
+  );
 
   if (result.summary) diagramLintFixSummary.value = result.summary;
 
@@ -287,8 +288,7 @@ async function handleLintFixPipeline() {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
-  const result = await currentEditor.commands.execute("diagramLint.fix.pipeline")
-    as { success: boolean; message: string; summary?: LintFixSummary };
+  const result: { success: boolean; message: string; summary?: LintFixSummary } = await currentEditor.commands.execute("diagramLint.fix.pipeline");
 
   if (result.summary) diagramLintFixSummary.value = result.summary;
 
@@ -302,8 +302,7 @@ async function handleLintFixAll() {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
-  const result = await currentEditor.commands.execute("diagramLint.fix.all")
-    as { success: boolean; message: string; summary?: LintFixSummary };
+  const result: { success: boolean; message: string; summary?: LintFixSummary } = await currentEditor.commands.execute("diagramLint.fix.all");
 
   if (result.summary) diagramLintFixSummary.value = result.summary;
 
@@ -317,9 +316,9 @@ async function handleLintFixRule(ruleId: string) {
   const currentEditor = editor.value;
   if (!currentEditor) return;
 
-  const result = await currentEditor.commands.execute(
+  const result: { success: boolean; message: string; summary?: LintFixSummary } = await currentEditor.commands.execute(
     `diagramLint.fix.rule:${encodeURIComponent(ruleId)}`,
-  ) as { success: boolean; message: string; summary?: LintFixSummary };
+  );
 
   if (result.summary) diagramLintFixSummary.value = result.summary;
 
@@ -356,13 +355,19 @@ async function handleLintFocusPathNode(payload: { issueId: string; nodeId: strin
     v-model:selected-tool="activeTool"
     :toolbar-groups="runtimeToolbarGroups"
     :action-button-groups="runtimeActionButtonGroups"
+    :show-action-buttons="false"
     @tool="handleTool"
     @action="handleAction"
     @open-plugin-market="openPluginMarketPage"
     @open-template-market="openTemplateMarketPage"
   />
 
-  <LayerPanel :editor="editor" />
+  <EditorActionBar
+    :action-button-groups="runtimeActionButtonGroups"
+    @action="handleAction"
+  />
+
+  <LayerPanel :editor="editor" :open="multiLayerOpen" />
   <EditorPanel :editor="editor" class="z-10" />
 
   <div class="absolute bottom-2 left-8 w-fit">

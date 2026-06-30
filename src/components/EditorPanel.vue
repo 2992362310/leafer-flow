@@ -10,7 +10,15 @@ const props = defineProps<{ editor: Editor | undefined }>();
 
 const panelState = useEditorPanelState({ editor: toRef(props, "editor") });
 
-const { position, isDragging, startDrag } = useDraggable({ initialX: 340, initialY: 110 });
+const { position, isDragging, startDrag } = useDraggable({
+  initialX: 340,
+  initialY: 110,
+  snapToViewport: true,
+  snapThreshold: 16,
+  panelWidth: 256,
+  panelHeight: 520,
+  margin: 8,
+});
 const { isCollapsed, toggleCollapse } = useCollapsible(false);
 
 const propertyPanelContext = computed<PropertyPanelContext | null>(() => {
