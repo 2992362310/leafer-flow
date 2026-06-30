@@ -2,23 +2,17 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "./types";
 import { usePanelDock } from "@/composables/usePanelDock";
+import type { Editor } from "@/editor";
 
 const props = defineProps<{
   open: boolean;
+  editor?: Editor;
   issues?: LintIssue[];
   generatedAt?: number;
-  fixSummary?: LintFixSummary | null;
 }>();
 
 const emits = defineEmits<{
   close: [];
-  focusIssue: [issueId: string];
-  fixIssue: [issueId: string];
-  fixNext: [issueId: string];
-  fixPipeline: [];
-  fixAll: [];
-  fixRule: [ruleId: string];
-  focusPathNode: [payload: { issueId: string; nodeId: string }];
 }>();
 
 const EVENT_NAME = "leafer-flow:diagram-lint-updated";
@@ -31,6 +25,7 @@ const activeIssueId = ref<string | null>(null);
 const resolvedIssues = computed(() => props.issues ?? issues.value);
 const resolvedGeneratedAt = computed(() => props.generatedAt ?? generatedAt.value);
 const { isPanelDocked, togglePanelDock } = usePanelDock();
+const fixSummary = ref<LintFixSummary | null>(null);
 
 const summary = computed(() => {
   const all = resolvedIssues.value;
@@ -42,7 +37,7 @@ const summary = computed(() => {
   };
 });
 
-const remainingCount = computed(() => props.fixSummary?.remainingCount ?? summary.value.total);
+const remainingCount = computed(() => fixSummary.value?.remainingCount ?? summary.value.total);
 
 const groupedByRule = computed(() => {
   const map = new Map<string, { total: number; fixable: number }>();
@@ -89,9 +84,56 @@ function ensureActiveIssue() {
   }
 }
 
+async function executeLintCommand(command: string) {
+  if (!props.editor) return undefined;
+  const result = await props.editor.commands.execute(command) as {
+    success: boolean;
+    message: string;
+    summary?: LintFixSummary;
+    nextIssueId?: string;
+  };
+  if (result?.summary) {
+    fixSummary.value = result.summary;
+  }
+  return result;
+}
+
+async function focusIssue(issueId: string) {
+  await executeLintCommand(`diagramLint.focus.issue:${encodeURIComponent(issueId)}`);
+}
+
+async function fixIssue(issueId: string) {
+  await executeLintCommand(`diagramLint.fix.issue:${encodeURIComponent(issueId)}`);
+}
+
+async function fixNext(issueId: string) {
+  const result = await executeLintCommand(`diagramLint.fix.next:${encodeURIComponent(issueId)}`);
+  if (result?.success && result.nextIssueId) {
+    await focusIssue(result.nextIssueId);
+  }
+}
+
+async function fixPipeline() {
+  await executeLintCommand("diagramLint.fix.pipeline");
+}
+
+async function fixAll() {
+  await executeLintCommand("diagramLint.fix.all");
+}
+
+async function fixRule(ruleId: string) {
+  await executeLintCommand(`diagramLint.fix.rule:${encodeURIComponent(ruleId)}`);
+}
+
+async function focusPathNode(issueId: string, nodeId: string) {
+  await executeLintCommand(
+    `diagramLint.focus.pathNode:${encodeURIComponent(issueId)}:${encodeURIComponent(nodeId)}`,
+  );
+}
+
 function selectIssue(issueId: string, focus = false) {
   activeIssueId.value = issueId;
-  if (focus) emits("focusIssue", issueId);
+  if (focus) focusIssue(issueId);
 }
 
 function navigateIssue(offset: 1 | -1) {
@@ -101,7 +143,7 @@ function navigateIssue(offset: 1 | -1) {
   const next = (current + offset + filteredIssues.value.length) % filteredIssues.value.length;
   const issue = filteredIssues.value[next];
   activeIssueId.value = issue.id;
-  emits("focusIssue", issue.id);
+  focusIssue(issue.id);
 }
 
 function onUpdated(event: Event) {
@@ -124,10 +166,10 @@ function onPanelKeydown(event: KeyboardEvent) {
     navigateIssue(-1);
   } else if (event.key === "Enter" && activeIssueId.value) {
     event.preventDefault();
-    emits("focusIssue", activeIssueId.value);
+    focusIssue(activeIssueId.value);
   } else if (event.key.toLowerCase() === "f" && activeIssueId.value) {
     event.preventDefault();
-    emits("fixNext", activeIssueId.value);
+    fixNext(activeIssueId.value);
   }
 }
 
@@ -163,7 +205,8 @@ watch(filteredIssues, () => {
 </script>
 
 <template>
-  <div v-if="open && !isPanelDocked('diagram-lint')" class="fixed inset-0 z-30 flex items-center justify-end bg-black/20" @click.self="emits('close')">
+  <div v-if="open && !isPanelDocked('diagram-lint')"
+    class="fixed inset-0 z-30 flex items-center justify-end bg-black/20" @click.self="emits('close')">
     <div class="h-full w-[380px] bg-base-100 shadow-2xl border-l border-base-200 flex flex-col">
       <div class="px-4 py-3 border-b border-base-200 flex items-center justify-between">
         <div>
@@ -198,41 +241,37 @@ watch(filteredIssues, () => {
       </div>
 
       <div class="px-4 py-2 border-b border-base-200 grid grid-cols-4 gap-2 text-[11px]">
-        <div
-          class="rounded border px-2 py-1"
-          :class="props.fixSummary ? 'border-success/30 bg-success/10 text-success' : 'border-base-300'"
-        >
+        <div class="rounded border px-2 py-1"
+          :class="fixSummary ? 'border-success/30 bg-success/10 text-success' : 'border-base-300'">
           剩余 {{ remainingCount }}
         </div>
         <div class="rounded border border-red-200 bg-red-50 px-2 py-1 text-red-700">严重 {{ summary.error }}</div>
         <div class="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">提示 {{ summary.warning }}</div>
-        <button
-          class="rounded border px-2 py-1 text-left transition hover:bg-base-200 disabled:opacity-50"
-          :disabled="summary.fixable === 0"
-          @click="emits('fixAll')"
-        >
+        <button class="rounded border px-2 py-1 text-left transition hover:bg-base-200 disabled:opacity-50"
+          :disabled="summary.fixable === 0" @click="fixAll()">
           一键修复 {{ summary.fixable }}
         </button>
       </div>
 
       <div class="px-4 py-2 border-b border-base-200 flex items-center gap-2">
-        <button class="btn btn-xs" :disabled="!activeIssueId" @click="activeIssueId && emits('fixNext', activeIssueId)">
+        <button class="btn btn-xs" :disabled="!activeIssueId" @click="activeIssueId && fixNext(activeIssueId)">
           修复并下一条 (F)
         </button>
-        <button class="btn btn-xs" :disabled="summary.fixable === 0" @click="emits('fixPipeline')">
+        <button class="btn btn-xs" :disabled="summary.fixable === 0" @click="fixPipeline()">
           自动连续修复
         </button>
       </div>
 
-      <div v-if="props.fixSummary" class="px-4 py-2 border-b border-base-200 text-[11px] text-base-content/75">
+      <div v-if="fixSummary" class="px-4 py-2 border-b border-base-200 text-[11px] text-base-content/75">
         <div>
-          最近修复：模式 {{ props.fixSummary.mode }}，已修复 {{ props.fixSummary.fixedCount }}，跳过 {{ props.fixSummary.skippedCount }}，剩余 {{ props.fixSummary.remainingCount }}
+          最近修复：模式 {{ fixSummary.mode }}，已修复 {{ fixSummary.fixedCount }}，跳过 {{ fixSummary.skippedCount }}，剩余 {{
+            fixSummary.remainingCount }}
         </div>
-        <div v-if="props.fixSummary.touchedRules.length > 0" class="mt-1">
-          规则：{{ props.fixSummary.touchedRules.join('，') }}
+        <div v-if="fixSummary.touchedRules.length > 0" class="mt-1">
+          规则：{{ fixSummary.touchedRules.join('，') }}
         </div>
-        <div v-if="props.fixSummary.note" class="mt-1 text-warning">
-          {{ props.fixSummary.note }}
+        <div v-if="fixSummary.note" class="mt-1 text-warning">
+          {{ fixSummary.note }}
         </div>
       </div>
 
@@ -240,12 +279,8 @@ watch(filteredIssues, () => {
         <div class="mb-3" v-if="groupedByRule.length > 0">
           <div class="text-[11px] text-base-content/60 mb-2">规则分布</div>
           <div class="flex flex-wrap gap-2">
-            <button
-              v-for="item in groupedByRule"
-              :key="item.ruleId"
-              class="badge badge-outline h-auto py-1 px-2 gap-1"
-              @click="ruleFilter = item.ruleId"
-            >
+            <button v-for="item in groupedByRule" :key="item.ruleId" class="badge badge-outline h-auto py-1 px-2 gap-1"
+              @click="ruleFilter = item.ruleId">
               <span>{{ item.ruleId }}</span>
               <span>({{ item.total }})</span>
             </button>
@@ -258,45 +293,30 @@ watch(filteredIssues, () => {
         </div>
 
         <div v-else class="space-y-2">
-          <button
-            v-for="issue in filteredIssues"
-            :key="issue.id"
-            class="w-full text-left rounded-lg border px-3 py-2 transition hover:shadow-sm"
-            :class="[
+          <button v-for="issue in filteredIssues" :key="issue.id"
+            class="w-full text-left rounded-lg border px-3 py-2 transition hover:shadow-sm" :class="[
               levelClass(issue.severity),
               activeIssueId === issue.id ? 'ring-2 ring-offset-1 ring-primary/50' : '',
-            ]"
-            @click="selectIssue(issue.id, true)"
-          >
+            ]" @click="selectIssue(issue.id, true)">
             <div class="flex items-center justify-between gap-2">
               <span class="text-[11px] font-medium">{{ levelLabel(issue.severity) }} · {{ issue.ruleId }}</span>
               <span v-if="issue.fixable" class="badge badge-outline badge-xs">可修复</span>
             </div>
             <p class="text-xs mt-1">{{ issue.message }}</p>
             <p class="text-[11px] opacity-80 mt-1">目标：{{ issue.targetIds.join(', ') }}</p>
-            <div
-              v-if="issue.meta?.flowUnclosed?.pathIds?.length"
-              class="mt-2 flex flex-wrap items-center gap-1"
-            >
+            <div v-if="issue.meta?.flowUnclosed?.pathIds?.length" class="mt-2 flex flex-wrap items-center gap-1">
               <span class="text-[11px] opacity-70">路径：</span>
-              <button
-                v-for="(nodeId, index) in issue.meta.flowUnclosed.pathIds"
-                :key="`${issue.id}-${nodeId}-${index}`"
-                class="badge badge-outline badge-xs"
-                @click.stop="emits('focusPathNode', { issueId: issue.id, nodeId })"
-              >
+              <button v-for="(nodeId, index) in issue.meta.flowUnclosed.pathIds" :key="`${issue.id}-${nodeId}-${index}`"
+                class="badge badge-outline badge-xs" @click.stop="focusPathNode(issue.id, nodeId)">
                 {{ nodeId }}
               </button>
             </div>
             <div class="mt-2" v-if="issue.fixable">
-              <button class="btn btn-xs" @click.stop="emits('fixIssue', issue.id)">修复此问题</button>
-              <button class="btn btn-xs ml-1" @click.stop="emits('fixNext', issue.id)">修复并下一条</button>
+              <button class="btn btn-xs" @click.stop="fixIssue(issue.id)">修复此问题</button>
+              <button class="btn btn-xs ml-1" @click.stop="fixNext(issue.id)">修复并下一条</button>
             </div>
             <div class="mt-2" v-else>
-              <button
-                class="btn btn-xs btn-ghost"
-                @click.stop="emits('fixRule', issue.ruleId)"
-              >
+              <button class="btn btn-xs btn-ghost" @click.stop="fixRule(issue.ruleId)">
                 尝试修复同类规则
               </button>
             </div>

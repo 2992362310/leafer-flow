@@ -2,7 +2,7 @@ import { ref } from "vue";
 import type { Editor } from "@/editor";
 import { getZoomPercent } from "@/editor";
 import { TOOL_NAME } from "@/editor/constants";
-import type { LintFixSummary, LintIssue } from "@/editor/builtin/plugins/diagram-lint/types";
+import type { LintIssue } from "@/editor/builtin/plugins/diagram-lint/types";
 import type { SelectionMarqueeState } from "@/composables/useSelectionMarquee";
 
 export function useEditorPageState() {
@@ -20,7 +20,6 @@ export function useEditorPageState() {
 
   const diagramLintIssues = ref<LintIssue[]>([]);
   const diagramLintGeneratedAt = ref<number>(Date.now());
-  const diagramLintFixSummary = ref<LintFixSummary | null>(null);
   const marquee = ref<SelectionMarqueeState>({ active: false, x: 0, y: 0, width: 0, height: 0 });
 
   const cleanupCallbacks: Array<() => void> = [];
@@ -51,7 +50,6 @@ export function useEditorPageState() {
     diagramLintOpen,
     diagramLintIssues,
     diagramLintGeneratedAt,
-    diagramLintFixSummary,
     marquee,
     refreshEditorStats,
     addCleanup,
