@@ -5,6 +5,7 @@ import type { Editor } from "@/editor";
 import { ACTION_NAME } from "@/editor/constants";
 import LayerItem from "./LayerItem.vue";
 import { useDraggable, useCollapsible } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 const props = defineProps<{
   editor?: Editor;
@@ -169,11 +170,11 @@ const { position, isDragging, startDrag } = useDraggable({
   margin: 8,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(true);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 </script>
 
 <template>
-  <div
-    v-show="props.open ?? true"
+  <div v-show="(props.open ?? true) && !isPanelDocked('layer-panel')"
     class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm fixed overflow-hidden transition-[height,width] z-30"
     :style="{
       left: position.x + 'px',
@@ -181,13 +182,10 @@ const { isCollapsed, toggleCollapse } = useCollapsible(true);
       width: '15rem',
       height: isCollapsed ? 'auto' : '60vh',
       backgroundColor: 'rgb(var(--color-base-100) / 0.9)',
-    }"
-  >
+    }">
     <!-- Header / Drag Handle -->
-    <div
-      class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
-      @mousedown="startDrag"
-    >
+    <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
+      @mousedown="startDrag">
       <div class="flex items-center gap-2">
         <!-- Layers Icon -->
         <Icon name="layer" class="w-4 h-4 opacity-70" />
@@ -195,35 +193,26 @@ const { isCollapsed, toggleCollapse } = useCollapsible(true);
         <span class="text-[10px] font-normal opacity-50 ml-1">({{ treeData.length }})</span>
       </div>
 
-      <!-- Collapse Button -->
-      <button
-        class="btn btn-ghost btn-xs btn-square"
-        @click.stop="toggleCollapse(isDragging)"
-        @mousedown.stop
-      >
-        <Icon :name="isCollapsed ? 'arrow-down' : 'arrow-up'" class="w-4 h-4" />
-      </button>
+      <div class="flex items-center gap-0.5">
+        <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('layer-panel')"
+          @mousedown.stop>
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+
+        <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop>
+          <Icon :name="isCollapsed ? 'arrow-down' : 'arrow-up'" class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto py-2" v-show="!isCollapsed">
       <div v-if="treeData.length === 0" class="text-center text-xs opacity-40 mt-10">没有图层</div>
 
-      <LayerItem
-        v-for="node in treeData.slice().reverse()"
-        :key="node.innerId"
-        :node="node"
-        :depth="0"
-        :selectedIds="selectedIds"
-        :treeVersion="treeVersion"
-        @select="handleSelect"
-        @toggleLock="handleToggleLock"
-        @toggleVisible="handleToggleVisible"
-        @moveUp="handleMoveUp"
-        @moveDown="handleMoveDown"
-        @moveTop="handleMoveTop"
-        @moveBottom="handleMoveBottom"
-      />
+      <LayerItem v-for="node in treeData.slice().reverse()" :key="node.innerId" :node="node" :depth="0"
+        :selectedIds="selectedIds" :treeVersion="treeVersion" @select="handleSelect" @toggleLock="handleToggleLock"
+        @toggleVisible="handleToggleVisible" @moveUp="handleMoveUp" @moveDown="handleMoveDown" @moveTop="handleMoveTop"
+        @moveBottom="handleMoveBottom" />
     </div>
   </div>
 </template>

@@ -3,6 +3,8 @@ import { ref, watch, nextTick } from "vue";
 import type { IUI } from "leafer";
 import type { Editor } from "@/editor";
 import { Text } from "leafer";
+import { useDraggable } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 const props = defineProps<{
   editor: Editor;
@@ -17,6 +19,17 @@ const query = ref("");
 const results = ref<IUI[]>([]);
 const selectedIndex = ref(-1);
 const inputRef = ref<HTMLInputElement>();
+const { isPanelDocked, togglePanelDock } = usePanelDock();
+
+const { position, startDrag } = useDraggable({
+  initialX: Math.max(window.innerWidth / 2 - 160, 8),
+  initialY: 72,
+  snapToViewport: true,
+  snapThreshold: 16,
+  panelWidth: 320,
+  panelHeight: 360,
+  margin: 8,
+});
 
 watch(
   () => props.open,
@@ -131,9 +144,13 @@ function getElementLabel(el: IUI): string {
 </script>
 
 <template>
-  <div v-if="open" class="absolute top-16 left-1/2 z-50 -translate-x-1/2 w-80">
+  <div
+    v-if="open && !isPanelDocked('canvas-search')"
+    class="fixed z-50 w-80"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
+  >
     <div class="bg-base-100 shadow-xl border border-base-200 rounded-lg p-3">
-      <div class="flex items-center gap-2 mb-2">
+      <div class="flex items-center gap-2 mb-2 cursor-move select-none" @mousedown="startDrag">
         <input
           ref="inputRef"
           v-model="query"
@@ -142,8 +159,12 @@ function getElementLabel(el: IUI): string {
           type="search"
           placeholder="搜索元素..."
           class="input input-sm input-bordered flex-1"
+          @mousedown.stop
         />
-        <button class="btn btn-sm btn-ghost" @click="emit('close')">✕</button>
+        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('canvas-search')" @mousedown.stop>
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <button class="btn btn-xs btn-ghost btn-square" @click="emit('close')" @mousedown.stop>✕</button>
       </div>
 
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "./types";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 const props = defineProps<{
   open: boolean;
@@ -29,6 +30,7 @@ const ruleFilter = ref<string>("all");
 const activeIssueId = ref<string | null>(null);
 const resolvedIssues = computed(() => props.issues ?? issues.value);
 const resolvedGeneratedAt = computed(() => props.generatedAt ?? generatedAt.value);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 
 const summary = computed(() => {
   const all = resolvedIssues.value;
@@ -161,7 +163,7 @@ watch(filteredIssues, () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-30 flex items-center justify-end bg-black/20" @click.self="emits('close')">
+  <div v-if="open && !isPanelDocked('diagram-lint')" class="fixed inset-0 z-30 flex items-center justify-end bg-black/20" @click.self="emits('close')">
     <div class="h-full w-[380px] bg-base-100 shadow-2xl border-l border-base-200 flex flex-col">
       <div class="px-4 py-3 border-b border-base-200 flex items-center justify-between">
         <div>
@@ -171,6 +173,9 @@ watch(filteredIssues, () => {
         <div class="flex items-center gap-1">
           <button class="btn btn-xs" :disabled="!hasIssues" @click="navigateIssue(-1)">上一条</button>
           <button class="btn btn-xs" :disabled="!hasIssues" @click="navigateIssue(1)">下一条</button>
+          <button class="btn btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('diagram-lint')">
+            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+          </button>
           <button class="btn btn-xs" @click="emits('close')">关闭</button>
         </div>
       </div>

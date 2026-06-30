@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { Editor } from "@/editor";
+import { usePanelDock } from "@/composables/usePanelDock";
 import {
   disablePlugin,
   enablePlugin,
@@ -31,6 +32,7 @@ const items = ref<PluginMarketViewItem[]>([]);
 const pendingPluginId = ref<string | null>(null);
 const configuringPluginId = ref<string | null>(null);
 const configuringPluginConfig = ref<any>(null);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 
 const filteredItems = computed(() => {
   const keyword = query.value.trim().toLowerCase();
@@ -205,7 +207,7 @@ function handleConfigClose() {
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-50 pointer-events-none">
+    <div v-if="open && !isPanelDocked('plugin-market')" class="fixed inset-0 z-50 pointer-events-none">
       <button
         class="absolute inset-0 bg-neutral/20 backdrop-blur-[1px] pointer-events-auto"
         aria-label="关闭插件市场"
@@ -222,7 +224,12 @@ function handleConfigClose() {
               管理内置插件，启停后会即时刷新工具和图形库。
             </p>
           </div>
-          <button class="btn btn-ghost btn-sm" @click="emits('close')">✕</button>
+          <div class="flex items-center gap-1">
+            <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('plugin-market')">
+              <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+            </button>
+            <button class="btn btn-ghost btn-sm" @click="emits('close')">✕</button>
+          </div>
         </header>
 
         <div class="p-4 border-b border-base-200 space-y-3">

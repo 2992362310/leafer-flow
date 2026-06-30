@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import type Editor from "@/editor/editor";
 import { useDraggable } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 interface Props {
   editor: Editor;
@@ -14,6 +15,7 @@ const { position, isDragging, startDrag } = useDraggable({
   initialX: window.innerWidth - 220,
   initialY: window.innerHeight - 200,
 });
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 
 const isCollapsed = ref(false);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -573,6 +575,7 @@ function toggleCollapse() {
 
 <template>
   <div
+    v-if="!isPanelDocked('minimap-panel')"
     ref="containerRef"
     class="card shadow-lg border border-base-200 bg-base-100/95 backdrop-blur-sm fixed overflow-hidden z-10"
     :style="{
@@ -588,12 +591,15 @@ function toggleCollapse() {
       @mousedown="startDrag"
     >
       <span v-if="!isCollapsed" class="text-[10px] font-medium">缩略图</span>
-      <button
-        class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0"
-        @click.stop="toggleCollapse"
-      >
-        <span class="text-[10px]">{{ isCollapsed ? "□" : "−" }}</span>
-      </button>
+      <div class="flex items-center gap-0.5">
+        <button class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0" title="收纳到右侧槽"
+          @click.stop="togglePanelDock('minimap-panel')">
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <button class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0" @click.stop="toggleCollapse">
+          <span class="text-[10px]">{{ isCollapsed ? "□" : "−" }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- 缩略图内容 -->

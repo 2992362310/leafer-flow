@@ -16,9 +16,12 @@ interface MarqueeState {
   height: number;
 }
 
+export type SelectionMarqueeState = MarqueeState;
+
 interface UseSelectionMarqueeOptions {
   editor: Ref<Editor | undefined>;
   selectedTool: Ref<string | undefined>;
+  marquee?: Ref<MarqueeState>;
   addCleanup: (cleanup: () => void) => void;
   onLog?: (message: string, level: MarqueeLogLevel) => void;
 }
@@ -26,10 +29,11 @@ interface UseSelectionMarqueeOptions {
 export function useSelectionMarquee({
   editor,
   selectedTool,
+  marquee: externalMarquee,
   addCleanup,
   onLog,
 }: UseSelectionMarqueeOptions) {
-  const marquee = ref<MarqueeState>({ active: false, x: 0, y: 0, width: 0, height: 0 });
+  const marquee = externalMarquee ?? ref<MarqueeState>({ active: false, x: 0, y: 0, width: 0, height: 0 });
   let marqueeStart = { x: 0, y: 0 };
   let marqueeDragging = false;
 

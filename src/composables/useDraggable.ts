@@ -8,6 +8,7 @@ export interface DraggableOptions {
   panelWidth?: number;
   panelHeight?: number;
   margin?: number;
+  onDragEnd?: (position: { x: number; y: number }) => void;
 }
 
 /**
@@ -27,14 +28,26 @@ export function useDraggable(options: DraggableOptions = {}) {
   const isDragging = ref(false);
   const hasMoved = ref(false);
   const dragOffset = ref({ x: 0, y: 0 });
+  let rafId: number | null = null;
+  let pendingPosition: { x: number; y: number } | null = null;
+
+  const flushPendingPosition = () => {
+    rafId = null;
+    if (!pendingPosition) return;
+    position.value = pendingPosition;
+    pendingPosition = null;
+  };
 
   const onDrag = (event: MouseEvent) => {
     if (!isDragging.value) return;
     hasMoved.value = true;
-    position.value = {
+    pendingPosition = {
       x: event.clientX - dragOffset.value.x,
       y: event.clientY - dragOffset.value.y,
     };
+    if (rafId === null) {
+      rafId = window.requestAnimationFrame(flushPendingPosition);
+    }
   };
 
   const applyViewportSnap = () => {
@@ -56,7 +69,12 @@ export function useDraggable(options: DraggableOptions = {}) {
 
   const stopDrag = () => {
     isDragging.value = false;
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      flushPendingPosition();
+    }
     applyViewportSnap();
+    options.onDragEnd?.(position.value);
     document.removeEventListener("mousemove", onDrag);
     document.removeEventListener("mouseup", stopDrag);
   };
@@ -75,6 +93,9 @@ export function useDraggable(options: DraggableOptions = {}) {
   };
 
   onUnmounted(() => {
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+    }
     document.removeEventListener("mousemove", onDrag);
     document.removeEventListener("mouseup", stopDrag);
   });

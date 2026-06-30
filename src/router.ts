@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 
-import EditorPage from "@/views/EditorPage.vue";
+import EditorPage from "@/views/editor-page/index.vue";
 import PluginMarketPage from "@/views/PluginMarketPage.vue";
 import TemplateMarketPage from "@/views/TemplateMarketPage.vue";
 

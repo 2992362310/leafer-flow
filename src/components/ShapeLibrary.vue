@@ -4,6 +4,7 @@ import type { ShapeLibraryGroup, ShapeLibraryItem } from "@/editor/shape-library
 import { getShapeLibrarySearchText, SHAPE_DROP_MIME } from "@/editor/shape-library";
 import ShapeLibraryGroupView from "@/components/ShapeLibraryGroup.vue";
 import ShapeLibraryItemView from "@/components/ShapeLibraryItem.vue";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 const props = defineProps<{
   activeTool?: string;
@@ -42,6 +43,11 @@ const panelRef = ref<HTMLElement | null>(null);
 const panelPosition = ref<PanelPosition>({ ...DEFAULT_PANEL_POSITION });
 const dragging = ref(false);
 let dragState: DragState | null = null;
+let dragRafId: number | null = null;
+let pendingDragPosition: PanelPosition | null = null;
+
+const { isPanelDocked, togglePanelDock } = usePanelDock();
+const isDocked = computed(() => isPanelDocked("shape-library"));
 
 const libraryGroups = computed(() => props.groups ?? []);
 const allItems = computed(() => libraryGroups.value.flatMap((group) => group.items));
@@ -88,13 +94,13 @@ const filteredGroups = computed(() => {
 const panelClass = computed(() => [
   "fixed z-20 rounded-lg border border-base-200 bg-base-100/95 shadow-xl backdrop-blur overflow-hidden transition-[width] duration-200 ease-out",
   dragging.value ? "select-none" : "",
-  collapsed.value ? "w-12" : "w-64",
+  collapsed.value ? "w-14" : "w-64",
 ]);
 
 const panelStyle = computed(() => ({
   left: `${panelPosition.value.x}px`,
   top: `${panelPosition.value.y}px`,
-  height: collapsed.value ? "12.5rem" : "calc(100vh - 12rem)",
+  height: collapsed.value ? "13.5rem" : "calc(100vh - 12rem)",
 }));
 
 onMounted(() => {
@@ -105,6 +111,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  if (dragRafId !== null) {
+    window.cancelAnimationFrame(dragRafId);
+  }
   stopPanelDrag();
   window.removeEventListener("resize", clampPanelToViewport);
 });
@@ -148,15 +157,31 @@ function handlePanelDragStart(evt: PointerEvent) {
 function handlePanelDragMove(evt: PointerEvent) {
   if (!dragState || evt.pointerId !== dragState.pointerId) return;
 
-  const nextPosition = clampPanelPosition({
+  pendingDragPosition = clampPanelPosition({
     x: dragState.originX + evt.clientX - dragState.startX,
     y: dragState.originY + evt.clientY - dragState.startY,
   });
-  panelPosition.value = nextPosition;
+
+  if (dragRafId === null) {
+    dragRafId = window.requestAnimationFrame(() => {
+      dragRafId = null;
+      if (!pendingDragPosition) return;
+      panelPosition.value = pendingDragPosition;
+      pendingDragPosition = null;
+    });
+  }
 }
 
 function handlePanelDragEnd(evt: PointerEvent) {
   if (dragState && evt.pointerId !== dragState.pointerId) return;
+  if (dragRafId !== null) {
+    window.cancelAnimationFrame(dragRafId);
+    dragRafId = null;
+    if (pendingDragPosition) {
+      panelPosition.value = pendingDragPosition;
+      pendingDragPosition = null;
+    }
+  }
   stopPanelDrag();
   panelPosition.value = applyEdgeSnap(panelPosition.value);
   savePanelPosition();
@@ -165,6 +190,7 @@ function handlePanelDragEnd(evt: PointerEvent) {
 function stopPanelDrag() {
   dragging.value = false;
   dragState = null;
+  pendingDragPosition = null;
   window.removeEventListener("pointermove", handlePanelDragMove);
   window.removeEventListener("pointerup", handlePanelDragEnd);
   window.removeEventListener("pointercancel", handlePanelDragEnd);
@@ -173,7 +199,7 @@ function stopPanelDrag() {
 function getPanelSize() {
   const rect = panelRef.value?.getBoundingClientRect();
   return {
-    width: rect?.width ?? (collapsed.value ? 48 : 256),
+    width: rect?.width ?? (collapsed.value ? 56 : 256),
     height: rect?.height ?? Math.max(window.innerHeight - 192, 120),
   };
 }
@@ -283,59 +309,58 @@ function rememberShape(tool: string) {
 </script>
 
 <template>
-  <aside ref="panelRef" :class="panelClass" :style="panelStyle">
-    <div
-      class="flex cursor-move touch-none items-center border-b border-base-200 px-3 py-2"
-      :class="collapsed ? 'justify-center px-1' : 'justify-between'"
-      title="拖动面板"
-      @pointerdown="handlePanelDragStart"
-    >
-      <div v-show="!collapsed" class="text-sm font-semibold">图形库</div>
-      <button
-        class="btn btn-xs btn-ghost"
-        @click="toggleCollapsed"
-        @pointerdown.stop
-        :title="collapsed ? '展开图形库' : '折叠图形库'"
-      >
-        {{ collapsed ? "›" : "‹" }}
+  <aside v-if="!isDocked" ref="panelRef" :class="panelClass" :style="panelStyle">
+    <div class="flex touch-none items-center border-b border-base-200"
+      :class="collapsed ? 'justify-between px-1.5 py-1.5' : 'cursor-move justify-between px-3 py-2'" title="拖动面板"
+      @pointerdown="!collapsed ? handlePanelDragStart : undefined">
+      <button v-if="collapsed" class="btn btn-ghost btn-xs btn-square cursor-move" title="拖动图形库面板"
+        @pointerdown="handlePanelDragStart">
+        <Icon name="layer" class="h-3.5 w-3.5 opacity-75" />
       </button>
+
+      <div v-else class="flex items-center gap-1.5 text-sm font-semibold">
+        <Icon name="template" class="h-4 w-4 opacity-75" />
+        <span>图形库</span>
+      </div>
+
+      <div class="flex items-center gap-0.5">
+        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click="togglePanelDock('shape-library')"
+          @pointerdown.stop>
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <button class="btn btn-xs btn-ghost" @click="toggleCollapsed" @pointerdown.stop
+          :title="collapsed ? '展开图形库' : '折叠图形库'">
+          {{ collapsed ? "›" : "‹" }}
+        </button>
+      </div>
     </div>
 
-    <div v-if="collapsed" class="flex h-[calc(100%-2.5rem)] flex-col items-center gap-2 px-1 py-2">
-      <button
-        class="btn btn-ghost btn-xs h-auto min-h-0 flex-col gap-1 px-1 py-2 text-[10px] leading-tight"
-        title="展开图形库"
-        @click="toggleCollapsed"
-        @pointerdown.stop
-      >
-        <span class="text-base">▦</span>
-        <span class="[writing-mode:vertical-rl] tracking-widest">图形库</span>
-      </button>
-
+    <div v-if="collapsed" class="flex h-[calc(100%-2.5rem)] flex-col items-center gap-1.5 p-1.5">
       <div
-        v-if="collapsedShortcutItems.length > 0"
-        class="mt-2 flex max-h-[7rem] flex-col gap-1 overflow-y-auto border-t border-base-200 pt-2"
-      >
-        <ShapeLibraryItemView
-          v-for="item in collapsedShortcutItems"
-          :key="item.tool"
-          compact
-          :item="item"
-          :active="activeTool === item.tool"
-          @select="handleSelect"
-          @drag-start="handleDragStart"
-        />
+        class="flex w-full flex-col items-center gap-1 rounded-md border border-base-200/80 bg-base-200/30 px-1 py-1.5 text-[10px] text-base-content/70">
+        <Icon name="template" class="h-4 w-4 opacity-80" />
+        <span class="[writing-mode:vertical-rl] font-medium tracking-[0.2em]">图形库</span>
+      </div>
+
+      <div class="w-full rounded-sm bg-base-200/40 py-1 text-center text-[9px] tracking-wide text-base-content/55">
+        最近
+      </div>
+
+      <div v-if="collapsedShortcutItems.length > 0" class="flex w-full flex-1 flex-col gap-1 overflow-y-auto pr-0.5"
+        title="点击或拖拽最近图形">
+        <ShapeLibraryItemView v-for="item in collapsedShortcutItems" :key="item.tool" compact :item="item"
+          :active="activeTool === item.tool" @select="handleSelect" @drag-start="handleDragStart" />
+      </div>
+
+      <div v-else class="flex w-full flex-1 items-center justify-center text-[10px] text-base-content/45">
+        最近为空
       </div>
     </div>
 
     <div v-else class="flex h-[calc(100%-2.5rem)] flex-col">
       <div class="p-2">
-        <input
-          v-model="query"
-          class="input input-bordered input-xs w-full"
-          type="search"
-          placeholder="搜索图形、BPMN、架构..."
-        />
+        <input v-model="query" class="input input-bordered input-xs w-full" type="search"
+          placeholder="搜索图形、BPMN、架构..." />
       </div>
 
       <p class="px-2 pb-2 text-[11px] leading-relaxed text-base-content/50">
@@ -343,19 +368,10 @@ function rememberShape(tool: string) {
       </p>
 
       <div class="flex-1 overflow-y-auto px-2 pb-3">
-        <ShapeLibraryGroupView
-          v-for="group in filteredGroups"
-          :key="group.id"
-          :group="group"
-          :active-tool="activeTool"
-          @select="handleSelect"
-          @drag-start="handleDragStart"
-        />
+        <ShapeLibraryGroupView v-for="group in filteredGroups" :key="group.id" :group="group" :active-tool="activeTool"
+          @select="handleSelect" @drag-start="handleDragStart" />
 
-        <div
-          v-if="filteredGroups.length === 0"
-          class="py-8 text-center text-xs text-base-content/50"
-        >
+        <div v-if="filteredGroups.length === 0" class="py-8 text-center text-xs text-base-content/50">
           未找到匹配图形
         </div>
       </div>

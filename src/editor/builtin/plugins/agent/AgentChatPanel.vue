@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import type Editor from "@/editor/editor";
 import { useDraggable, useCollapsible } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 import { loadAgentConfig, saveAgentConfig, isConfigValid, type AgentConfig } from "./agent-config";
 import { AgentService, type ToolCallResult } from "./agent-service";
 import AgentMessage from "./AgentMessage.vue";
@@ -22,6 +23,7 @@ const { position, isDragging, hasMoved, startDrag } = useDraggable({
   initialY: 70,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(false);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 
 // 消息状态
 const inputMessage = ref("");
@@ -224,7 +226,7 @@ function handleKeydown(e: KeyboardEvent) {
 <template>
   <Transition name="slide-fade">
     <div
-      v-if="!isCollapsed"
+      v-if="!isCollapsed && !isPanelDocked('agent-chat')"
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20"
       :style="{
         left: `${position.x}px`,
@@ -266,6 +268,14 @@ function handleKeydown(e: KeyboardEvent) {
           </span>
         </div>
         <div class="flex gap-1">
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            title="收纳到右侧槽"
+            @click.stop="togglePanelDock('agent-chat')"
+            @mousedown.stop
+          >
+            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+          </button>
           <!-- 压缩历史按钮 -->
           <button
             v-if="shouldCompress && isReady"
@@ -273,6 +283,7 @@ function handleKeydown(e: KeyboardEvent) {
             title="压缩历史"
             :disabled="isCompressing"
             @click.stop="handleCompressHistory"
+            @mousedown.stop
           >
             <span v-if="isCompressing" class="loading loading-spinner loading-xs"></span>
             <svg
@@ -291,6 +302,7 @@ function handleKeydown(e: KeyboardEvent) {
             class="btn btn-ghost btn-xs btn-square"
             title="设置"
             @click.stop="showSettings = !showSettings"
+            @mousedown.stop
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -308,6 +320,7 @@ function handleKeydown(e: KeyboardEvent) {
             class="btn btn-ghost btn-xs btn-square"
             title="清空历史"
             @click.stop="handleClearHistory"
+            @mousedown.stop
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -325,6 +338,7 @@ function handleKeydown(e: KeyboardEvent) {
             class="btn btn-ghost btn-xs btn-square"
             title="折叠"
             @click.stop="toggleCollapse(hasMoved)"
+            @mousedown.stop
           >
             <span class="text-sm">∨</span>
           </button>
@@ -415,7 +429,7 @@ function handleKeydown(e: KeyboardEvent) {
   <!-- 折叠状态的按钮 -->
   <Transition name="slide-fade">
     <button
-      v-if="isCollapsed"
+      v-if="isCollapsed && !isPanelDocked('agent-chat')"
       class="btn btn-sm fixed z-20 shadow-lg cursor-move"
       :style="{
         left: `${position.x}px`,

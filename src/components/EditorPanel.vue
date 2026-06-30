@@ -5,6 +5,7 @@ import { useCollapsible, useDraggable } from "@/composables/useDraggable";
 import { useEditorPanelState } from "@/composables/useEditorPanelState";
 import type { PropertyPanelContext } from "@/editor/api/property-panel";
 import PropertyPanelHost from "@/components/EditorPanel/PropertyPanelHost.vue";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 const props = defineProps<{ editor: Editor | undefined }>();
 
@@ -20,6 +21,8 @@ const { position, isDragging, startDrag } = useDraggable({
   margin: 8,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(false);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
+const isDocked = computed(() => isPanelDocked("property-panel"));
 
 const propertyPanelContext = computed<PropertyPanelContext | null>(() => {
   if (!props.editor) return null;
@@ -47,24 +50,21 @@ const visiblePanels = computed(() => {
 
 <template>
   <Transition name="slide-fade">
-    <div
-      v-if="panelState.hasSelection.value && propertyPanelContext"
+    <div v-if="panelState.hasSelection.value && propertyPanelContext && !isDocked"
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden transition-[height]"
-      :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }"
-    >
-      <div
-        class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none"
-        @mousedown="startDrag"
-      >
+      :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }">
+      <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
         <div class="text-xs font-bold">属性</div>
-        <button
-          class="btn btn-ghost btn-xs btn-square"
-          @click.stop="toggleCollapse(isDragging)"
-          @mousedown.stop
-          :title="isCollapsed ? '展开属性' : '折叠属性'"
-        >
-          <span class="text-sm">{{ isCollapsed ? "∨" : "∧" }}</span>
-        </button>
+        <div class="flex items-center gap-0.5">
+          <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('property-panel')"
+            @mousedown.stop>
+            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+          </button>
+          <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop
+            :title="isCollapsed ? '展开属性' : '折叠属性'">
+            <span class="text-sm">{{ isCollapsed ? "∨" : "∧" }}</span>
+          </button>
+        </div>
       </div>
 
       <div class="card-body p-3 pt-2 max-h-[70vh] overflow-y-auto" v-show="!isCollapsed">
@@ -72,13 +72,8 @@ const visiblePanels = computed(() => {
           已选择 {{ panelState.selectedElements.value.length }} 个元素，可批量修改样式
         </div>
 
-        <PropertyPanelHost
-          v-if="props.editor && propertyPanelContext"
-          :editor="props.editor"
-          :context="propertyPanelContext"
-          :panel-state="panelState"
-          :panels="visiblePanels"
-        />
+        <PropertyPanelHost v-if="props.editor && propertyPanelContext" :editor="props.editor"
+          :context="propertyPanelContext" :panel-state="panelState" :panels="visiblePanels" />
       </div>
     </div>
   </Transition>

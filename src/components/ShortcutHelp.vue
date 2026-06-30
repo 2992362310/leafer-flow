@@ -1,20 +1,28 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { getShortcutConfig } from "@/editor/core/shortcut-config";
+import { useDraggable } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 
-defineProps<{
-  open: boolean;
-}>();
-
-const emit = defineEmits<{
-  close: [];
-}>();
+const EVENT_NAME = "leafer-flow:toggle-shortcut-help";
 
 const config = getShortcutConfig();
+const open = ref(false);
 const editing = ref(false);
 const editingAction = ref<string | null>(null);
 const editingKey = ref("");
 const conflictError = ref("");
+const { isPanelDocked, togglePanelDock } = usePanelDock();
+
+const { position, startDrag } = useDraggable({
+  initialX: Math.max(window.innerWidth / 2 - 260, 8),
+  initialY: Math.max(window.innerHeight / 2 - 320, 8),
+  snapToViewport: true,
+  snapThreshold: 16,
+  panelWidth: 520,
+  panelHeight: 640,
+  margin: 8,
+});
 
 interface ShortcutGroup {
   title: string;
@@ -176,40 +184,45 @@ function handleReset() {
 }
 
 function closePanel() {
+  open.value = false;
   editing.value = false;
   editingAction.value = null;
-  emit("close");
 }
+
+function handleToggle() {
+  open.value = !open.value;
+}
+
+onMounted(() => {
+  window.addEventListener(EVENT_NAME, handleToggle);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener(EVENT_NAME, handleToggle);
+});
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30"
-    @click.self="closePanel"
-    @keydown="handleCaptureKey"
-    tabindex="0"
-  >
-    <div class="bg-base-100 shadow-2xl border border-base-200 rounded-xl w-[520px] max-h-[80vh] overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-base-200">
+  <div v-if="open && !isPanelDocked('shortcut-help')" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
+    @keydown="handleCaptureKey" tabindex="0">
+    <div class="bg-base-100 shadow-2xl border border-base-200 rounded-xl w-[520px] max-h-[80vh] overflow-hidden fixed"
+      :style="{ left: `${position.x}px`, top: `${position.y}px` }">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-base-200 cursor-move select-none"
+        @mousedown="startDrag">
         <h3 class="text-sm font-semibold">快捷键</h3>
         <div class="flex items-center gap-2">
-          <button
-            class="btn btn-xs"
-            :class="editing ? 'btn-primary' : 'btn-ghost'"
-            @click="editing = !editing; editingAction = null"
-          >
+          <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('shortcut-help')"
+            @mousedown.stop>
+            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+          </button>
+          <button class="btn btn-xs" :class="editing ? 'btn-primary' : 'btn-ghost'"
+            @click="editing = !editing; editingAction = null" @mousedown.stop>
             {{ editing ? "完成" : "自定义" }}
           </button>
-          <button
-            v-if="editing"
-            class="btn btn-xs btn-ghost"
-            title="重置为默认"
-            @click="handleReset"
-          >
+          <button v-if="editing" class="btn btn-xs btn-ghost" title="重置为默认" @click="handleReset" @mousedown.stop>
             重置
           </button>
-          <button class="btn btn-xs btn-ghost" @click="closePanel">✕</button>
+          <button class="btn btn-xs btn-ghost" @click="closePanel" @mousedown.stop>✕</button>
         </div>
       </div>
 
@@ -222,11 +235,7 @@ function closePanel() {
         <div v-for="group in groups" :key="group.title">
           <h4 class="text-xs font-medium opacity-60 mb-2">{{ group.title }}</h4>
           <div class="space-y-1">
-            <div
-              v-for="item in group.items"
-              :key="item.action"
-              class="flex items-center justify-between text-xs py-1"
-            >
+            <div v-for="item in group.items" :key="item.action" class="flex items-center justify-between text-xs py-1">
               <span>{{ item.label }}</span>
               <div class="flex items-center gap-2">
                 <!-- 正在编辑此项 -->
@@ -235,12 +244,8 @@ function closePanel() {
                   <span v-if="conflictError" class="text-xs text-error">{{ conflictError }}</span>
                 </template>
                 <!-- 显示快捷键 -->
-                <kbd
-                  v-else
-                  class="kbd kbd-xs bg-base-200"
-                  :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
-                  @click="startEdit(item.action)"
-                >
+                <kbd v-else class="kbd kbd-xs bg-base-200" :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
+                  @click="startEdit(item.action)">
                   {{ getKeyForAction(item.action) }}
                 </kbd>
               </div>

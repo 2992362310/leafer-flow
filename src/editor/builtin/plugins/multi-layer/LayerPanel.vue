@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import type { Editor } from "@/editor/editor";
 import { useLayerManager, type Layer } from "./layer-manager";
 import { useDraggable, useCollapsible } from "@/composables/useDraggable";
+import { usePanelDock } from "@/composables/usePanelDock";
 
 interface Props {
   editor: Editor;
@@ -16,6 +17,7 @@ const { position, isDragging, startDrag } = useDraggable({
   initialY: 300,
 });
 const { isCollapsed, toggleCollapse } = useCollapsible(true);
+const { isPanelDocked, togglePanelDock } = usePanelDock();
 
 // 图层管理
 const layerManager = useLayerManager(props.editor.app);
@@ -77,6 +79,7 @@ function handleMoveLayer(id: string, direction: "up" | "down") {
 
 <template>
   <div
+    v-if="!isPanelDocked('multi-layer-panel')"
     class="card shadow-lg border border-base-200 bg-base-100/95 backdrop-blur-sm fixed overflow-hidden z-10"
     :style="{
       left: `${position.x}px`,
@@ -92,6 +95,14 @@ function handleMoveLayer(id: string, direction: "up" | "down") {
     >
       <span class="text-[10px] font-medium">图层</span>
       <div class="flex gap-1">
+        <button
+          class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0"
+          title="收纳到右侧槽"
+          @click.stop="togglePanelDock('multi-layer-panel')"
+          @mousedown.stop
+        >
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
         <button
           class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0"
           title="添加图层"
