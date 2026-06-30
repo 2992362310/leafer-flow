@@ -132,13 +132,14 @@ async function handleSend() {
         // 显示工具执行结果
         const currentContent = displayMessages.value[aiMessageIndex].content;
         const toolCallText = `🔧 调用 ${result.name}...`;
-        const resultText = result.result.length > 50
-          ? result.result.substring(0, 50) + "..."
-          : result.result;
+        const resultText =
+          result.result.length > 50 ? result.result.substring(0, 50) + "..." : result.result;
 
         // 替换最后的工具调用文本为结果
-        displayMessages.value[aiMessageIndex].content =
-          currentContent.replace(toolCallText, `✅ ${result.name}: ${resultText}`);
+        displayMessages.value[aiMessageIndex].content = currentContent.replace(
+          toolCallText,
+          `✅ ${result.name}: ${resultText}`,
+        );
         scrollToBottom();
       },
       onComplete: (response) => {
@@ -227,63 +228,78 @@ function handleKeydown(e: KeyboardEvent) {
 
 <template>
   <Transition name="slide-fade">
-    <div v-if="!isCollapsed && mode === 'float'"
-      class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20" :style="{
+    <div
+      v-if="!isCollapsed && mode === 'float'"
+      class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20"
+      :style="{
         left: `${position.x}px`,
         top: `${position.y}px`,
         width: '22rem',
         height: '70vh',
-      }">
+      }"
+    >
       <!-- 标题栏 -->
-      <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
-        @mousedown="startDrag">
+      <div
+        class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
+        @mousedown="startDrag"
+      >
         <div class="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+          <Icon name="agent" class="h-4 w-4" />
           <span class="text-xs font-bold">AI 助手</span>
-          <span v-if="!isReady" class="badge badge-warning badge-xs">
-            未配置
-          </span>
-          <span v-else-if="shouldCompress" class="badge badge-info badge-xs cursor-pointer" title="点击压缩历史"
-            @click.stop="handleCompressHistory">
+          <span v-if="!isReady" class="badge badge-warning badge-xs"> 未配置 </span>
+          <span
+            v-else-if="shouldCompress"
+            class="badge badge-info badge-xs cursor-pointer"
+            title="点击压缩历史"
+            @click.stop="handleCompressHistory"
+          >
             {{ historyCount }}/{{ maxHistory }}
           </span>
         </div>
         <div class="flex gap-1">
-          <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('agent-chat')"
-            @mousedown.stop>
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            title="收纳到右侧槽"
+            @click.stop="togglePanelDock('agent-chat')"
+            @mousedown.stop
+          >
             <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
           </button>
           <!-- 压缩历史按钮 -->
-          <button v-if="shouldCompress && isReady" class="btn btn-ghost btn-xs btn-square" title="压缩历史"
-            :disabled="isCompressing" @click.stop="handleCompressHistory" @mousedown.stop>
+          <button
+            v-if="shouldCompress && isReady"
+            class="btn btn-ghost btn-xs btn-square"
+            title="压缩历史"
+            :disabled="isCompressing"
+            @click.stop="handleCompressHistory"
+            @mousedown.stop
+          >
             <span v-if="isCompressing" class="loading loading-spinner loading-xs"></span>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
-              <path d="M12 3v18M3 12h18M5.636 5.636l12.728 12.728M18.364 5.636L5.636 18.364" />
-            </svg>
+            <Icon v-else name="compress" class="h-3.5 w-3.5" />
           </button>
-          <button class="btn btn-ghost btn-xs btn-square" title="设置" @click.stop="showSettings = !showSettings"
-            @mousedown.stop>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3" />
-              <path
-                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            title="设置"
+            @click.stop="showSettings = !showSettings"
+            @mousedown.stop
+          >
+            <Icon name="settings" class="h-3.5 w-3.5" />
           </button>
-          <button class="btn btn-ghost btn-xs btn-square" title="清空历史" @click.stop="handleClearHistory" @mousedown.stop>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            title="清空历史"
+            @click.stop="handleClearHistory"
+            @mousedown.stop
+          >
+            <Icon name="clear" class="h-3.5 w-3.5" />
           </button>
-          <button class="btn btn-ghost btn-xs btn-square" title="折叠" @click.stop="toggleCollapse(hasMoved)"
-            @mousedown.stop>
-            <span class="text-sm">∨</span>
+          <button
+            class="btn btn-ghost btn-xs btn-square"
+            title="折叠"
+            @click.stop="toggleCollapse(hasMoved)"
+            @mousedown.stop
+          >
+            <Icon name="arrow-down" class="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -294,24 +310,37 @@ function handleKeydown(e: KeyboardEvent) {
       </div>
 
       <!-- 历史状态提示 -->
-      <div v-if="shouldCompress && isReady && !showSettings"
-        class="px-3 py-1.5 bg-info/10 text-info text-[11px] flex items-center justify-between">
+      <div
+        v-if="shouldCompress && isReady && !showSettings"
+        class="px-3 py-1.5 bg-info/10 text-info text-[11px] flex items-center justify-between"
+      >
         <span>历史消息较多 ({{ historyCount }}/{{ maxHistory }})</span>
-        <button class="btn btn-info btn-xs h-5 min-h-0" :disabled="isCompressing" @click="handleCompressHistory">
+        <button
+          class="btn btn-info btn-xs h-5 min-h-0"
+          :disabled="isCompressing"
+          @click="handleCompressHistory"
+        >
           {{ isCompressing ? "压缩中..." : "压缩历史" }}
         </button>
       </div>
 
       <!-- 消息列表 -->
-      <div ref="messagesContainerRef" class="flex-1 overflow-y-auto p-3 space-y-3" :style="{
-        height: showSettings
-          ? 'calc(70vh - 20rem)'
-          : shouldCompress && isReady
-            ? 'calc(70vh - 10rem)'
-            : 'calc(70vh - 8rem)',
-      }">
+      <div
+        ref="messagesContainerRef"
+        class="flex-1 overflow-y-auto p-3 space-y-3"
+        :style="{
+          height: showSettings
+            ? 'calc(70vh - 20rem)'
+            : shouldCompress && isReady
+              ? 'calc(70vh - 10rem)'
+              : 'calc(70vh - 8rem)',
+        }"
+      >
         <!-- 欢迎消息 -->
-        <div v-if="displayMessages.length === 0" class="text-center text-xs text-base-content/50 py-8">
+        <div
+          v-if="displayMessages.length === 0"
+          class="text-center text-xs text-base-content/50 py-8"
+        >
           <p class="mb-2">👋 你好！我是 AI 助手</p>
           <p>告诉我你想做什么，比如：</p>
           <p class="mt-1">"创建一个审批流程"</p>
@@ -320,12 +349,22 @@ function handleKeydown(e: KeyboardEvent) {
         </div>
 
         <!-- 消息列表 -->
-        <AgentMessage v-for="(msg, index) in displayMessages" :key="index" :role="msg.role" :content="msg.content"
-          :tool-calls="msg.toolCalls" :is-loading="msg.isStreaming && !msg.content" />
+        <AgentMessage
+          v-for="(msg, index) in displayMessages"
+          :key="index"
+          :role="msg.role"
+          :content="msg.content"
+          :tool-calls="msg.toolCalls"
+          :is-loading="msg.isStreaming && !msg.content"
+        />
 
         <!-- 加载状态 -->
-        <AgentMessage v-if="isLoading && !displayMessages.some(m => m.isStreaming)" role="assistant" content=""
-          :is-loading="true" />
+        <AgentMessage
+          v-if="isLoading && !displayMessages.some((m) => m.isStreaming)"
+          role="assistant"
+          content=""
+          :is-loading="true"
+        />
       </div>
 
       <!-- 输入区域 -->
@@ -334,10 +373,19 @@ function handleKeydown(e: KeyboardEvent) {
           请先点击设置按钮配置 API
         </div>
         <div v-else class="join w-full">
-          <input v-model="inputMessage" type="text" placeholder="输入指令..."
-            class="input input-bordered input-xs join-item flex-1" :disabled="isLoading" @keydown="handleKeydown" />
-          <button class="btn btn-primary btn-xs join-item" :disabled="isLoading || !inputMessage.trim()"
-            @click="handleSend">
+          <input
+            v-model="inputMessage"
+            type="text"
+            placeholder="输入指令..."
+            class="input input-bordered input-xs join-item flex-1"
+            :disabled="isLoading"
+            @keydown="handleKeydown"
+          />
+          <button
+            class="btn btn-primary btn-xs join-item"
+            :disabled="isLoading || !inputMessage.trim()"
+            @click="handleSend"
+          >
             {{ isLoading ? "..." : "发送" }}
           </button>
         </div>
@@ -345,78 +393,106 @@ function handleKeydown(e: KeyboardEvent) {
     </div>
   </Transition>
 
-  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="agent-chat" title="AI 助手" icon="agent" :width="352">
+  <!-- 折叠状态按钮 -->
+  <Transition name="slide-fade">
+    <button
+      v-if="isCollapsed && mode === 'float'"
+      class="btn btn-sm fixed z-20 shadow-lg cursor-move"
+      :style="{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+      }"
+      @mousedown="startDrag"
+      @click="toggleCollapse(hasMoved)"
+    >
+      <Icon name="agent" class="h-4 w-4" />
+      AI 助手
+    </button>
+  </Transition>
+
+  <PanelFlyoutWrapper
+    v-if="mode === 'flyout'"
+    panel-id="agent-chat"
+    title="AI 助手"
+    icon="agent"
+    :width="352"
+  >
     <div class="flex flex-col" style="height: calc(100vh - 8rem)">
       <div v-if="showSettings" class="p-3 border-b border-base-200 bg-base-100">
         <AgentSettings :config="config" @save="handleSaveConfig" @close="showSettings = false" />
       </div>
-      <div v-if="shouldCompress && isReady && !showSettings"
-        class="px-3 py-1.5 bg-info/10 text-info text-[11px] flex items-center justify-between">
+      <div
+        v-if="shouldCompress && isReady && !showSettings"
+        class="px-3 py-1.5 bg-info/10 text-info text-[11px] flex items-center justify-between"
+      >
         <span>历史消息较多 ({{ historyCount }}/{{ maxHistory }})</span>
-        <button class="btn btn-info btn-xs h-5 min-h-0" :disabled="isCompressing" @click="handleCompressHistory">
+        <button
+          class="btn btn-info btn-xs h-5 min-h-0"
+          :disabled="isCompressing"
+          @click="handleCompressHistory"
+        >
           {{ isCompressing ? "压缩中..." : "压缩历史" }}
         </button>
       </div>
       <div ref="messagesContainerRef" class="flex-1 overflow-y-auto p-3 space-y-3">
-        <div v-if="displayMessages.length === 0" class="text-center text-xs text-base-content/50 py-8">
+        <div
+          v-if="displayMessages.length === 0"
+          class="text-center text-xs text-base-content/50 py-8"
+        >
           <p class="mb-2">👋 你好！我是 AI 助手</p>
           <p>告诉我你想做什么，比如：</p>
           <p class="mt-1">"创建一个审批流程"</p>
         </div>
-        <AgentMessage v-for="(msg, index) in displayMessages" :key="index" :role="msg.role" :content="msg.content"
-          :tool-calls="msg.toolCalls" :is-loading="msg.isStreaming && !msg.content" />
-        <AgentMessage v-if="isLoading && !displayMessages.some(m => m.isStreaming)" role="assistant" content=""
-          :is-loading="true" />
+        <AgentMessage
+          v-for="(msg, index) in displayMessages"
+          :key="index"
+          :role="msg.role"
+          :content="msg.content"
+          :tool-calls="msg.toolCalls"
+          :is-loading="msg.isStreaming && !msg.content"
+        />
+        <AgentMessage
+          v-if="isLoading && !displayMessages.some((m) => m.isStreaming)"
+          role="assistant"
+          content=""
+          :is-loading="true"
+        />
       </div>
       <div class="p-2 border-t border-base-200 bg-base-100 shrink-0">
-        <div v-if="!isReady" class="text-center text-xs text-warning py-2">请先点击设置按鈕配置 API</div>
+        <div v-if="!isReady" class="text-center text-xs text-warning py-2">
+          请先点击设置按钮配置 API
+        </div>
         <div v-else class="join w-full">
-          <input v-model="inputMessage" type="text" placeholder="输入指令..."
-            class="input input-bordered input-xs join-item flex-1" :disabled="isLoading" @keydown="handleKeydown" />
-          <button class="btn btn-primary btn-xs join-item" :disabled="isLoading || !inputMessage.trim()"
-            @click="handleSend">
+          <input
+            v-model="inputMessage"
+            type="text"
+            placeholder="输入指令..."
+            class="input input-bordered input-xs join-item flex-1"
+            :disabled="isLoading"
+            @keydown="handleKeydown"
+          />
+          <button
+            class="btn btn-primary btn-xs join-item"
+            :disabled="isLoading || !inputMessage.trim()"
+            @click="handleSend"
+          >
             {{ isLoading ? "..." : "发送" }}
           </button>
         </div>
       </div>
     </div>
   </PanelFlyoutWrapper>
+</template>
 
-  <style scoped>
-    <Transition name="slide-fade"><button v-if="isCollapsed && mode === 'float'"
-    class="btn btn-sm fixed z-20 shadow-lg cursor-move"
+<style scoped>
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.2s ease;
+}
 
-    :style="{
- left: `$ {
-      position.x
-    }
-
-    px`,
-    top: `$ {
-      position.y
-    }
-
-    px`,
-    }
-
-    "
-@mousedown="startDrag"
-    @click="toggleCollapse(hasMoved)"
-    ><svg xmlns="http://www.w3.org/2000/svg"
-    class="h-4 w-4"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-
-    ><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>AI 助手 </button></Transition></template><style scoped>.slide-fade-enter-active,
-    .slide-fade-leave-active {
-      transition: all 0.2s ease;
-    }
-
-    .slide-fade-enter-from,
-    .slide-fade-leave-to {
-      transform: translateX(16px);
-      opacity: 0;
-    }
-  </style>
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(16px);
+  opacity: 0;
+}
+</style>
