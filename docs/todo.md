@@ -1,290 +1,112 @@
-# Leafer Flow 项目状态
+# Leafer Flow 项目状态（2026-06）
 
-## 项目概述
+本文是当前实现的能力快照与后续待办。以代码现状为准，不再记录历史过程。
 
-`leafer-flow` 是一个基于 Vue 3、Vite、TypeScript 和 LeaferJS 的流程图 / 图形编辑器练手项目。
-
-当前架构：
+## 当前架构
 
 > 核心画布运行时 + 插件宿主 + 注册表驱动 UI + 插件市场
 
-## 当前功能实现情况
+核心入口与事实：
 
-### 编辑器核心
+- `src/editor/index.ts` 负责初始化 `Editor` 与激活已启用内置插件。
+- `src/editor/editor.ts` 负责 registry、history、autosave、工具执行与 mutation 提交。
+- `src/editor/tool-definitions.ts` 是工具与图形元数据单一来源。
+- `src/editor/builtin/plugins/index.ts` 维护内置插件清单。
 
-- ✅ Leafer 画布初始化与生命周期。
-- ✅ `Editor` 运行时。
-- ✅ history 基础服务。
-- ✅ autosave 基础服务。
-- ✅ 序列化 / 自动恢复基础链路。
-- ✅ serialization schema 与版本号。
-- ✅ 保存文件结构与自动恢复结构通过 `documentType` 区分。
-- ✅ 连接线标签运行时同步与持久化辅助。
-- ✅ 插件宿主与插件协议。
+## 当前能力清单
 
-### 注册表
+### 1. 编辑器核心
 
-- ✅ `PluginManager`：插件激活 / 停用。
-- ✅ `ToolRegistry`：工具贡献注册表。
-- ✅ `CommandRegistry`：命令贡献注册表。
-- ✅ `MenuRegistry`：菜单贡献注册表。
-- ✅ `ActionButtonRegistry`：顶部操作按钮贡献注册表。
+- 已完成：画布初始化与生命周期。
+- 已完成：插件宿主与插件协议。
+- 已完成：`ToolRegistry`、`CommandRegistry`、`MenuRegistry`、`ActionButtonRegistry`、`ViewControlRegistry`。
+- 已完成：history 与 autosave 基础链路。
+- 已完成：`commitMutation()` 统一提交（history/autosave/连接线标签同步）。
+- 已完成：序列化 schema 与版本号（`leafer-flow.document` / `schemaVersion: 1`）。
+- 已完成：通过 `documentType` 区分文件保存与自动恢复。
 
-### 插件市场
+### 2. 内置插件（当前 19 个）
 
-- ✅ 右侧 Drawer 市场入口。
-- ✅ 内置插件列表。
-- ✅ 启用/禁用非必需插件。
-- ✅ 必需插件保护。
-- ✅ active / enabled 状态展示。
-- ✅ 工具、命令、菜单、按钮贡献数量。
-- ✅ 未启用插件贡献标签预览。
-- ❌ 远程插件源。
-- ❌ 本地开发插件源。
-- ❌ 插件配置入口。
-- ❌ 插件详情页。
+- 必需：`leafer-flow.builtin-core`。
+- 默认启用：
+  - `leafer-flow.canvas-ruler`
+  - `leafer-flow.canvas-snap`
+  - `leafer-flow.canvas-dot-matrix`
+  - `leafer-flow.drawing-settings`
+  - `leafer-flow.view-controls`
+  - `leafer-flow.file-actions`
+  - `leafer-flow.export-actions`
+  - `leafer-flow.template-actions`
+  - `leafer-flow.basic-tools`
+  - `leafer-flow.flow-shapes`
+  - `leafer-flow.bpmn-shapes`
+  - `leafer-flow.architecture-shapes`
+  - `leafer-flow.agent`
+  - `leafer-flow.auto-layout`
+  - `leafer-flow.diagram-lint`
+  - `leafer-flow.minimap`
+- 默认关闭：
+  - `leafer-flow.multi-layer`
+  - `leafer-flow.custom-data-panel`
 
-### 内置插件
+### 3. 绘制工具与图形（当前 50 种）
 
-- ✅ `leafer-flow.builtin-core`
-  - 默认命令。
-  - 右键菜单。
-  - 顶部操作按钮。
-  - 必需插件，不可关闭。
-- ✅ `leafer-flow.basic-tools`
-  - 基础绘制工具。
-- ✅ `leafer-flow.flow-shapes`
-  - 流程图节点。
-- ✅ `leafer-flow.bpmn-shapes`
-  - BPMN 节点。
-- ✅ `leafer-flow.architecture-shapes`
-  - 架构图节点。
-- ✅ `leafer-flow.canvas-ruler`
-  - 画布标尺，可停用并释放运行时资源。
-- ✅ `leafer-flow.canvas-snap`
-  - 智能吸附，可停用并释放运行时资源。
-- ✅ `leafer-flow.canvas-dot-matrix`
-  - 点阵背景，可停用并释放运行时资源。
-- ✅ `leafer-flow.agent`
-  - AI 助手，支持自然语言指令操作编辑器。
-  - 支持 OpenAI 兼容 API（URL、Key、模型配置）。
-  - 27 种工具调用能力。
-  - 流式响应，实时显示 AI 回复。
-  - 智能上下文感知，自动注入画布状态。
-  - 对话历史持久化与上下文压缩。
+- 基础图形（13）：矩形、圆形、菱形、三角形、五边形、六边形、平行四边形、星形、便签、圆柱、连接线、文本、自由绘制。
+- 流程图节点（19）：开始/结束、处理、判断、输入/输出、文档、数据库、子流程、连接点、泳道、延迟、准备、手动输入、手动操作、存储数据、显示、离页连接、合并、注释。
+- BPMN（9）：开始事件、中间事件、结束事件、排他网关、并行网关、包容网关、任务、数据对象、数据存储。
+- 架构图（10）：Actor、Use Case、Component、Package、Node、Queue、Cache、Cloud、Service、Device。
 
-### 绘制工具与图形
+### 4. 编辑与视图能力
 
-- ✅ 基础图形
-  - 矩形。
-  - 圆形 / 椭圆。
-  - 菱形。
-  - 三角形。
-  - 五边形。
-  - 六边形。
-  - 箭头 / 连接线。
-  - 文本。
-  - 自由绘制。
-- ✅ 流程图节点
-  - 开始/结束。
-  - 处理。
-  - 判断。
-  - 输入/输出。
-  - 文档。
-  - 数据库。
-  - 子流程。
-  - 连接点。
-  - 泳道。
-  - 延迟。
-  - 准备。
-  - 手动输入。
-  - 手动操作。
-  - 存储数据。
-  - 显示。
-  - 页外连接。
-  - 合并。
-  - 注释。
-- ✅ BPMN 节点
-  - 开始事件。
-  - 中间事件。
-  - 结束事件。
-  - 排他网关。
-  - 并行网关。
-  - 包容网关。
-  - 任务。
-  - 数据对象。
-  - 数据存储。
-- ✅ 架构图节点
-  - Actor。
-  - Use Case。
-  - Component。
-  - Package。
-  - Node。
-  - Queue。
-  - Cache。
-  - Cloud。
-  - Service。
-  - Device。
+- 已完成：多选/框选、复制/剪切/粘贴、删除、全选、撤销/重做。
+- 已完成：对齐、分布、编组/取消编组、层级前后移动。
+- 已完成：锁定/解锁、显隐切换、图层拖拽排序。
+- 已完成：连接线标签、连接线路径与标签同步。
+- 已完成：视图缩放、适配、居中、重置。
+- 已完成：缩略图导航（minimap 插件）。
+- 已完成：自动布局（选区/全图 + TB/LR/BT/RL）。
+- 已完成：规范检查 Pro（检查、定位、按问题修复、流水线修复）。
 
-### UI 组件
+### 5. 文件、导出与模板
 
-- ✅ `App.vue`：编辑器初始化、command 分发、插件市场协调、运行时 UI 数据刷新。
-- ✅ `EditorToolbar.vue`：从 `ToolRegistry` 派生工具栏。
-- ✅ `ShapeLibrary.vue`：从 `ToolRegistry` 派生图形库。
-- ✅ `EditorButton.vue`：从 `ActionButtonRegistry` 派生按钮/下拉菜单。
-- ✅ `ContextMenu.vue`：从 `MenuRegistry` 派生右键菜单。
-- ✅ `LayerPanel.vue`：图层展示和图层操作。
-- ✅ `EditorPanel.vue`：属性面板。
-- ✅ `StatusBar.vue`：状态栏。
-- ✅ `ViewControls.vue`：视图控制。
-- ✅ `EditorLog.vue`：操作日志。
-- ✅ `PluginMarketDrawer.vue`：插件市场 Drawer。
-- ✅ `Icon.vue`：图标组件。
-- ✅ `AgentChatPanel.vue`：AI 助手聊天面板。
+- 已完成：保存、加载、自动恢复。
+- 已完成：导出 PNG、导出 SVG。
+- 已完成：模板插入（业务流程、BPMN、系统架构、泳道协作等）。
+- 未完成：导出 PDF。
+- 未完成：导入 Visio / Draw.io 等外部格式。
 
-### 编辑功能
+### 6. AI 助手
 
-- ✅ 工具切换。
-- ✅ 快捷键支持。
-- ✅ 多选 / 框选。
-- ✅ 复制 / 粘贴。
-- ✅ 删除。
-- ✅ 全选。
-- ✅ 撤销 / 重做。
-- ✅ 清空画布。
-- ✅ 元素对齐。
-- ✅ 元素分布。
-- ✅ 元素编组 / 取消编组。
-- ✅ 元素锁定 / 解锁。
-- ✅ 元素显隐切换。
-- ✅ 图层前移 / 后移 / 置顶 / 置底。
-- ✅ 图层拖拽排序。
-- ✅ 连接线置顶。
-- ✅ 连接线标签。
-- ✅ 属性面板基础编辑。
-- ✅ 日志系统。
-- ✅ 元素计数显示。
-- ✅ 缩放 / 适配视图 / 居中 / 重置缩放。
+- 已完成：OpenAI 兼容 API 配置与连接测试。
+- 已完成：流式响应、历史持久化、上下文压缩。
+- 已完成：快捷键 `Ctrl+Shift+A` 打开/关闭。
+- 已完成：当前工具调用能力为 33 项（文件、编辑、布局、图层、图形创建、模板、样式、文本修改、视图、检索、连接等）。
 
-### 文件与模板
+## 当前主要差距
 
-- ✅ 保存。
-- ✅ 加载。
-- ✅ 自动保存恢复。
-- ✅ 导出 PNG。
-- ✅ 导出 SVG。
-- ✅ 业务流程模板。
-- ✅ 专业图模板。
-- ❌ 导出 PDF。
-- ❌ 导入 Visio / Draw.io 等外部格式。
+### P0（高优先级）
 
-### AI 助手
+- [ ] connector label / custom data / group 的 round-trip 验收用例固化。
+- [ ] clipboard / group / ungroup / file 的最小自动化测试。
+- [ ] 高风险链路改动后的回归清单固定化（连接线、序列化、剪贴板、编组）。
 
-- ✅ 配置管理（API URL、Key、模型、温度）。
-- ✅ API 连接测试。
-- ✅ 流式响应支持。
-- ✅ 智能上下文感知（自动注入画布状态）。
-- ✅ 27 种工具调用能力。
-  - 文件操作：保存、加载、导出 PNG/SVG。
-  - 编辑操作：撤销、重做、删除、复制、粘贴、全选。
-  - 布局操作：对齐（6 方向）、分布、编组、取消编组。
-  - 图层操作：上移、下移、置顶、置底。
-  - 图形创建：23 种图形类型。
-  - 模板插入：9 种预设模板。
-  - 样式修改：填充、边框、透明度。
-  - 视图控制：缩放、适应、居中、重置。
-  - 画布操作：清空、获取信息、获取选中信息。
-- ✅ 对话历史持久化。
-- ✅ 上下文压缩（AI 摘要）。
-- ✅ 快捷键 Ctrl+Shift+A 打开/关闭。
+### P1（结构优化）
 
-## 当前实现流程
+- [ ] 属性面板 contribution 化继续推进（当前仅 custom-data 示例插件）。
+- [ ] `EditorPanel` 的 selection/property 逻辑进一步收敛。
+- [ ] 插件配置入口统一化（当前已有 `configurable` 能力，但未形成统一 UI）。
 
-### 编辑器启动
+### P2（能力扩展）
 
-```mermaid
-flowchart TD
-    A[App.vue 挂载] --> B[initEditor]
-    B --> C[创建 Editor]
-    C --> D[getEnabledPluginIds]
-    D --> E[激活 required 和 enabled 内置插件]
-    E --> F[刷新工具栏/图形库/按钮/菜单/快捷键数据]
-```
-
-### 用户命令执行
-
-```mermaid
-flowchart TD
-    A[用户点击按钮/菜单/快捷键] --> B[UI emit command id]
-    B --> C[App.vue]
-    C --> D[editor.commands.execute]
-    D --> E[CommandContribution.run]
-    E --> F[do-* action 或内联命令逻辑]
-    F --> G[按需 history/autosave/刷新 UI]
-```
-
-### 工具绘制
-
-```mermaid
-flowchart TD
-    A[选择工具] --> B[Editor.execute]
-    B --> C[ToolRegistry.get]
-    C --> D[禁用选择器并设置绘制光标]
-    D --> E[tool.execute]
-    E --> F[创建元素]
-    F --> G[history.save]
-    G --> H[恢复选择模式]
-```
-
-## 当前仍需推进
-
-### 高优先级
-
-- [ ] 收敛 history / autosave / connector label sync 等 mutation side effects。
-- [x] 建立 serialization schema 与版本号。
-- [x] 明确保存文件结构与自动恢复结构的边界。
-- [ ] 为 connector label / custom data / group 建立 round-trip 验收。
-- [ ] 为 clipboard / group / ungroup / file 建立最小自动化测试。
-
-### 插件化深化
-
-- [ ] 属性面板 contribution 化。
-- [ ] 绘制设置面板 contribution 化或 settings schema 化。
-- [x] 文件 / 导出 / 模板能力从 `builtin-core` 拆为独立插件。
-- [ ] 插件配置入口。
-- [ ] 插件源抽象：builtin / remote / local-dev。
-- [ ] 远程插件加载、权限、沙箱、签名和安全边界。
-
-### 组件结构优化
-
-- [ ] 拆分 `EditorPanel.vue` 中的 selection/property 逻辑。
-- [ ] 抽出 `useSelectionInspector` 或类似 composable。
-- [ ] 复用 selection predicates：`canGroup`、`canUnGroup`、`hasConnectorSelection`。
-- [ ] 继续拆分 `App.vue` 中的运行时刷新、shape drop、框选、插件市场协调逻辑。
-
-### 高级能力
-
+- [ ] 远程插件源与本地开发插件源。
+- [ ] 插件权限、沙箱、签名与安全边界。
 - [ ] 导出 PDF。
-- [ ] 导入其他格式，如 Visio、Draw.io。
-- [ ] 自动布局算法。
-- [ ] 缩略图导航。
-- [ ] 多层画布。
-- [ ] 多人协作编辑。
-- [ ] 评论功能。
-- [ ] 版本控制。
+- [ ] 外部格式导入（Visio / Draw.io）。
+- [ ] 多人协作、评论、版本控制。
 
-### 质量与验证
+## 文档维护约定
 
-- [ ] 完善 TypeScript 类型定义，尤其是 Leafer / Connector 类型兼容区域。
-- [ ] 添加 action/core 层自动化测试。
-- [ ] 建立高风险链路验收清单并在改动后执行。
-- [ ] 优化大量图形时的性能表现。
-
-## 当前设计原则
-
-- UI 优先从 registry 派生数据。
-- Vue 组件优先 emit command id，不直接调用底层 action。
-- 工具插件通过 `ctx.editor.registerTool(...)` 注册贡献。
-- 可禁用插件必须在 `deactivate(ctx)` 后清理运行时副作用。
-- 市场服务负责插件启停业务边界，Vue 组件不直接操作内置插件数组。
-- 高风险链路包括连接线、序列化、剪贴板、编组、文件、history/autosave。
+- 架构事实：`docs/plugin-architecture.md`
+- 插件市场流程：`docs/plugin-market-plan.md`
+- 重构与验收：`docs/refactor-checklist.md`
+- 项目状态与待办：本文件

@@ -120,6 +120,18 @@ leafer-flow.plugin.${pluginId}.
   - BPMN 节点。
 - `leafer-flow.architecture-shapes`
   - 架构图节点。
+- `leafer-flow.agent`
+  - AI 助手。
+- `leafer-flow.auto-layout`
+  - 自动布局（选区/全图，支持 TB/LR/BT/RL）。
+- `leafer-flow.diagram-lint`
+  - 规范检查与自动修复流程。
+- `leafer-flow.minimap`
+  - 缩略图导航。
+- `leafer-flow.multi-layer`
+  - 多层画布（默认关闭）。
+- `leafer-flow.custom-data-panel`
+  - 自定义数据属性面板（默认关闭）。
 
 ## 工具注册流程
 
@@ -312,7 +324,7 @@ leafer-flow.enabled-plugins.default-migrations
 
 ## 仍未插件化或仍需收敛的区域
 
-- `EditorPanel.vue` 属性面板 UI 仍由宿主组件承载；状态解析与属性写入已抽到 `src/composables/useEditorPanelState.ts`，后续如需完全插件化，可继续引入 property panel contribution。
+- `EditorPanel.vue` 属性面板 UI 仍由宿主组件承载；状态解析与属性写入已抽到 `src/composables/useEditorPanelState.ts`。当前已有 `custom-data-panel` 作为 property panel contribution 示例，后续仍可继续插件化。
 - 远程插件、本地开发插件源、权限、沙箱、签名等仍未实现。
 - serialization round-trip 自动化测试尚未建立。
 

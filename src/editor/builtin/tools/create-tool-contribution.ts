@@ -22,13 +22,13 @@ export function createToolContribution(
     createTool: () => createTool(definition),
     library: definition.library
       ? {
-          groupId: definition.library.groupId,
-          groupTitle: definition.library.groupTitle,
-          icon: definition.library.icon,
-          keywords: definition.library.keywords,
-          width: definition.library.width,
-          height: definition.library.height,
-        }
+        groupId: definition.library.groupId,
+        groupTitle: definition.library.groupTitle,
+        icon: definition.library.icon,
+        keywords: definition.library.keywords,
+        width: definition.library.width,
+        height: definition.library.height,
+      }
       : undefined,
     toolbar: createToolbarContribution(definition, order),
   };
@@ -93,6 +93,10 @@ function getToolShortcut(tool: string) {
     [TOOL_NAME.DRAW_CIRCLE]: "C",
     [TOOL_NAME.DRAW_DIAMOND]: "D",
     [TOOL_NAME.DRAW_TRIANGLE]: "U",
+    [TOOL_NAME.DRAW_PARALLELOGRAM]: "G",
+    [TOOL_NAME.DRAW_STAR]: "Y",
+    [TOOL_NAME.DRAW_NOTE]: "N",
+    [TOOL_NAME.DRAW_CYLINDER]: "O",
     [TOOL_NAME.DRAW_HEXAGON]: "X",
     [TOOL_NAME.DRAW_ARROW]: "A",
     [TOOL_NAME.DRAW_TEXT]: "T",

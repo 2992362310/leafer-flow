@@ -7,6 +7,15 @@ import {
   listPluginMarketItems,
   saveEnabledPluginIds,
 } from "./builtin-registry";
+import {
+  isPluginPurchased,
+  isTemplatePurchased,
+  listPurchasedTemplateActions,
+  PREMIUM_PLUGIN_IDS,
+  PREMIUM_TEMPLATE_ACTIONS,
+  purchasePlugin,
+  purchaseTemplate,
+} from "./entitlements";
 
 export type PluginContributionKind =
   | "tool"
@@ -35,6 +44,8 @@ export interface PluginMarketViewItem {
   active: boolean;
   contributions: PluginMarketContributionSummary;
   configurable: boolean;
+  premium: boolean;
+  purchased: boolean;
 }
 
 export function listInstalledPlugins(editor?: Editor): PluginMarketViewItem[] {
@@ -43,7 +54,106 @@ export function listInstalledPlugins(editor?: Editor): PluginMarketViewItem[] {
     active: editor?.pluginManager.isActive(item.manifest.id) ?? item.enabled,
     contributions: getPluginContributionSummary(editor, item.manifest.id),
     configurable: Boolean(item.manifest.configurable),
+    premium: PREMIUM_PLUGIN_IDS.includes(item.manifest.id),
+    purchased: isPluginPurchased(item.manifest.id),
   }));
+}
+
+export function buyPlugin(pluginId: string) {
+  purchasePlugin(pluginId);
+}
+
+export interface TemplateMarketItem {
+  action: string;
+  title: string;
+  description: string;
+  category: "business" | "professional";
+  premium: boolean;
+  purchased: boolean;
+}
+
+const TEMPLATE_MARKET_ITEMS: Array<Omit<TemplateMarketItem, "purchased">> = [
+  {
+    action: "templateApproval",
+    title: "审批流程",
+    description: "标准审批流转节点与判断分支",
+    category: "business",
+    premium: false,
+  },
+  {
+    action: "templateDecision",
+    title: "判断分支",
+    description: "单判断双分支的流程骨架",
+    category: "business",
+    premium: false,
+  },
+  {
+    action: "templateLogin",
+    title: "登录注册",
+    description: "账号登录、注册、找回密码路径",
+    category: "business",
+    premium: false,
+  },
+  {
+    action: "templateWorkOrder",
+    title: "工单流转",
+    description: "工单创建、分派、处理与完成",
+    category: "business",
+    premium: true,
+  },
+  {
+    action: "templateCRM",
+    title: "CRM 跟进",
+    description: "线索、商机、推进和回访流程",
+    category: "business",
+    premium: true,
+  },
+  {
+    action: "templatePayment",
+    title: "支付流程",
+    description: "下单、支付、回调和结果处理",
+    category: "business",
+    premium: true,
+  },
+  {
+    action: "templateBpmnOrder",
+    title: "BPMN 订单",
+    description: "订单处理 BPMN 示例",
+    category: "professional",
+    premium: true,
+  },
+  {
+    action: "templateSystemArchitecture",
+    title: "系统架构",
+    description: "常见服务化系统结构图",
+    category: "professional",
+    premium: true,
+  },
+  {
+    action: "templateSwimlaneCollaboration",
+    title: "泳道协作",
+    description: "跨角色协作流程示例",
+    category: "professional",
+    premium: true,
+  },
+];
+
+export function listTemplateMarketItems(): TemplateMarketItem[] {
+  const purchased = new Set(listPurchasedTemplateActions());
+  return TEMPLATE_MARKET_ITEMS.map((item) => ({
+    ...item,
+    purchased: purchased.has(item.action),
+  }));
+}
+
+export function canUseTemplateAction(action: string) {
+  if (!PREMIUM_TEMPLATE_ACTIONS.includes(action)) return true;
+  return isTemplatePurchased(action);
+}
+
+export function buyTemplate(action: string) {
+  if (!PREMIUM_TEMPLATE_ACTIONS.includes(action)) return;
+  purchaseTemplate(action);
 }
 
 export function getPluginConfig(

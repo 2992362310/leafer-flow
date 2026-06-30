@@ -25,6 +25,10 @@ export type FlowNodeKind =
   | "triangle"
   | "pentagon"
   | "hexagon"
+  | "parallelogram"
+  | "star"
+  | "note"
+  | "cylinder"
   | "bpmnStartEvent"
   | "bpmnIntermediateEvent"
   | "bpmnEndEvent"
@@ -161,6 +165,10 @@ export class DrawFlowNode extends DrawBase {
       this.options.kind === "triangle" ||
       this.options.kind === "pentagon" ||
       this.options.kind === "hexagon" ||
+      this.options.kind === "parallelogram" ||
+      this.options.kind === "star" ||
+      this.options.kind === "note" ||
+      this.options.kind === "cylinder" ||
       this.options.kind === "bpmnExclusiveGateway" ||
       this.options.kind === "bpmnParallelGateway" ||
       this.options.kind === "bpmnInclusiveGateway" ||
@@ -305,6 +313,45 @@ export class DrawFlowNode extends DrawBase {
       const inset = Math.min(32, width * 0.22);
       const path = shape as Path;
       path.path = `M ${inset} 0 L ${width - inset} 0 L ${width} ${height / 2} L ${width - inset} ${height} L ${inset} ${height} L 0 ${height / 2} Z`;
+      return;
+    }
+
+    if (this.options.kind === "parallelogram") {
+      const offset = Math.min(28, width * 0.2);
+      const path = shape as Path;
+      path.path = `M ${offset} 0 L ${width} 0 L ${width - offset} ${height} L 0 ${height} Z`;
+      return;
+    }
+
+    if (this.options.kind === "star") {
+      const cx = width / 2;
+      const cy = height / 2;
+      const outer = Math.min(width, height) * 0.48;
+      const inner = outer * 0.45;
+      const points: string[] = [];
+      for (let i = 0; i < 10; i += 1) {
+        const angle = (-90 + i * 36) * (Math.PI / 180);
+        const radius = i % 2 === 0 ? outer : inner;
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        points.push(`${i === 0 ? "M" : "L"} ${x} ${y}`);
+      }
+      const path = shape as Path;
+      path.path = `${points.join(" ")} Z`;
+      return;
+    }
+
+    if (this.options.kind === "note") {
+      const fold = Math.min(24, width * 0.24, height * 0.3);
+      const path = shape as Path;
+      path.path = `M 0 0 L ${width - fold} 0 L ${width} ${fold} L ${width} ${height} L 0 ${height} Z M ${width - fold} 0 L ${width - fold} ${fold} L ${width} ${fold}`;
+      return;
+    }
+
+    if (this.options.kind === "cylinder") {
+      const ry = Math.min(18, height * 0.18);
+      const path = shape as Path;
+      path.path = `M 0 ${ry} Q ${width / 2} 0 ${width} ${ry} L ${width} ${height - ry} Q ${width / 2} ${height} 0 ${height - ry} Z M 0 ${ry} Q ${width / 2} ${ry * 2} ${width} ${ry}`;
       return;
     }
 

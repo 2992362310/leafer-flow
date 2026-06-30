@@ -1,5 +1,6 @@
 import type { EditorPluginManifest } from "../../api/plugin";
 import { builtinPlugins } from "../../builtin/plugins";
+import { listPurchasedPluginIds } from "./entitlements";
 
 const ENABLED_PLUGINS_KEY = "leafer-flow.enabled-plugins";
 const DEFAULT_PLUGIN_MIGRATIONS_KEY = "leafer-flow.enabled-plugins.default-migrations";
@@ -44,8 +45,13 @@ function getRequiredPluginIds() {
 }
 
 function getDefaultEnabledPluginIds() {
+  const purchasedIds = new Set(listPurchasedPluginIds());
   return builtinPlugins
-    .filter((plugin) => plugin.manifest.enabledByDefault && !plugin.manifest.required)
+    .filter(
+      (plugin) =>
+        (plugin.manifest.enabledByDefault || purchasedIds.has(plugin.manifest.id)) &&
+        !plugin.manifest.required,
+    )
     .map((plugin) => plugin.manifest.id);
 }
 

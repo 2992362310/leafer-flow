@@ -32,17 +32,17 @@ interface ToolLibraryConfig {
 
 type ToolRegistrationConfig =
   | {
-      type: "class";
-      toolKind: ClassToolKind;
-    }
+    type: "class";
+    toolKind: ClassToolKind;
+  }
   | {
-      type: "flow-node";
-      kind: FlowNodeKind;
-      fill: string;
-      stroke: string;
-      strokeWidth?: number;
-      cornerRadius?: number;
-    };
+    type: "flow-node";
+    kind: FlowNodeKind;
+    fill: string;
+    stroke: string;
+    strokeWidth?: number;
+    cornerRadius?: number;
+  };
 
 interface BaseToolDefinition {
   tool: ToolName;
@@ -144,6 +144,58 @@ export const toolDefinitions: ToolDefinition[] = [
       keywords: ["hexagon", "六边形", "liubianxing"],
       width: 124,
       height: 82,
+    },
+  },
+  {
+    tool: TOOL_NAME.DRAW_PARALLELOGRAM,
+    label: "平行四边形",
+    registration: { type: "flow-node", kind: "parallelogram", fill: "#f8fafc", stroke: "#475569" },
+    library: {
+      groupId: "basic",
+      groupTitle: "基础图形",
+      icon: "draw_parallelogram",
+      keywords: ["parallelogram", "平行四边形", "pingxingsibianxing"],
+      width: 132,
+      height: 82,
+    },
+  },
+  {
+    tool: TOOL_NAME.DRAW_STAR,
+    label: "星形",
+    registration: { type: "flow-node", kind: "star", fill: "#fffbeb", stroke: "#d97706" },
+    library: {
+      groupId: "basic",
+      groupTitle: "基础图形",
+      icon: "draw_star",
+      keywords: ["star", "星形", "五角星", "xingxing", "wujiaoxing"],
+      width: 108,
+      height: 108,
+    },
+  },
+  {
+    tool: TOOL_NAME.DRAW_NOTE,
+    label: "便签",
+    registration: { type: "flow-node", kind: "note", fill: "#fef9c3", stroke: "#ca8a04" },
+    library: {
+      groupId: "basic",
+      groupTitle: "基础图形",
+      icon: "draw_note",
+      keywords: ["note", "便签", "注释", "提示", "bianqian", "tishi"],
+      width: 132,
+      height: 96,
+    },
+  },
+  {
+    tool: TOOL_NAME.DRAW_CYLINDER,
+    label: "圆柱",
+    registration: { type: "flow-node", kind: "cylinder", fill: "#ecfeff", stroke: "#0891b2" },
+    library: {
+      groupId: "basic",
+      groupTitle: "基础图形",
+      icon: "draw_cylinder",
+      keywords: ["cylinder", "圆柱", "桶", "yuanzhu", "tong"],
+      width: 126,
+      height: 88,
     },
   },
   {

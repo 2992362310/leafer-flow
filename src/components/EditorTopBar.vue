@@ -16,6 +16,7 @@ const emit = defineEmits<{
   tool: [evt: IExecuteCommand];
   action: [action: string];
   openPluginMarket: [];
+  openTemplateMarket: [];
   "update:selectedTool": [tool: string];
 }>();
 
@@ -43,6 +44,7 @@ defineExpose({
     />
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <button class="btn btn-sm h-9" @click="emit('openPluginMarket')">插件</button>
+    <button class="btn btn-sm h-9" @click="emit('openTemplateMarket')">模板</button>
     <span class="divider divider-horizontal mx-0 my-1"></span>
     <EditorButton :groups="actionButtonGroups" @action="emit('action', $event)" />
   </div>
