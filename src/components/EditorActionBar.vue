@@ -61,14 +61,20 @@ function savePosition(next: { x: number; y: number }) {
 
 <template>
   <!-- 浮动模式 -->
-  <div v-if="mode === 'float'"
+  <div
+    v-if="mode === 'float'"
     class="fixed z-20 rounded-2xl border border-base-200/80 bg-base-100/95 shadow-xl backdrop-blur overflow-hidden"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
-    <div class="flex items-center justify-between gap-2 border-b border-base-200/80 px-4 py-3 cursor-move select-none"
-      @mousedown="startDrag">
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
+  >
+    <div
+      class="flex items-center justify-between gap-2 border-b border-base-200/80 px-4 py-3 cursor-move select-none"
+      @mousedown="startDrag"
+    >
       <div class="flex items-center gap-2.5">
-        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-base-200 text-base-content/80">
-          <Icon name="template" class="h-4 w-4" />
+        <span
+          class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-base-200 text-base-content/80"
+        >
+          <Icon name="toolbar" class="h-4 w-4" />
         </span>
         <div>
           <div class="text-sm font-semibold leading-5">操作工具</div>
@@ -76,48 +82,69 @@ function savePosition(next: { x: number; y: number }) {
         </div>
       </div>
       <div class="flex items-center gap-0.5">
-        <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('action-bar')"
-          @mousedown.stop>
+        <button
+          class="btn btn-ghost btn-xs btn-square"
+          title="收纳到右侧槽"
+          @click.stop="togglePanelDock('action-bar')"
+          @mousedown.stop
+        >
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
-        <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop>
-          {{ isCollapsed ? "∨" : "∧" }}
+        <button
+          class="btn btn-ghost btn-xs btn-square"
+          @click.stop="toggleCollapse(isDragging)"
+          @mousedown.stop
+        >
+          <Icon :name="isCollapsed ? 'arrow-down' : 'arrow-up'" class="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
 
     <div v-show="!isCollapsed" class="p-3">
       <div class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
-        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场入口</div>
+        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
+          市场入口
+        </div>
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm h-9 min-w-20" @click="openPluginMarket">
             <Icon name="agent" class="h-4 w-4" />插件
           </button>
           <button class="btn btn-sm h-9 min-w-20" @click="openTemplateMarket">
-            <Icon name="template" class="h-4 w-4" />模板
+            <Icon name="toolbar" class="h-4 w-4" />模板
           </button>
         </div>
       </div>
 
       <div class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
-        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">常用操作</div>
+        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
+          常用操作
+        </div>
         <EditorButton :groups="actionButtonGroups" :columns="8" @action="handleAction" />
       </div>
     </div>
   </div>
 
   <!-- 槽位 flyout 模式 -->
-  <div v-else-if="mode === 'flyout'"
+  <div
+    v-else-if="mode === 'flyout'"
     class="fixed z-40 w-72 rounded-2xl border border-base-200/80 bg-base-100/95 shadow-xl backdrop-blur overflow-hidden"
-    style="right: 3.25rem; top: 4rem;" @click.stop>
+    style="right: 3.25rem; top: 4rem"
+    @click.stop
+  >
     <div class="flex items-center justify-between gap-2 border-b border-base-200/80 px-4 py-3">
       <div class="flex items-center gap-2.5">
-        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-base-200 text-base-content/80">
-          <Icon name="template" class="h-3.5 w-3.5" />
+        <span
+          class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-base-200 text-base-content/80"
+        >
+          <Icon name="toolbar" class="h-3.5 w-3.5" />
         </span>
         <span class="text-sm font-semibold">操作工具</span>
       </div>
-      <button class="btn btn-ghost btn-xs gap-1" title="移出槽位，恢复浮动" @click="undockPanel('action-bar')">
+      <button
+        class="btn btn-ghost btn-xs gap-1"
+        title="移出槽位，恢复浮动"
+        @click="undockPanel('action-bar')"
+      >
         <Icon name="arrow-up" class="h-3 w-3 -rotate-90" />
         移出
       </button>
@@ -125,19 +152,23 @@ function savePosition(next: { x: number; y: number }) {
 
     <div class="p-3">
       <div class="mb-3 rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
-        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场入口</div>
+        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
+          市场入口
+        </div>
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm h-9 min-w-20" @click="openPluginMarket">
             <Icon name="agent" class="h-4 w-4" />插件
           </button>
           <button class="btn btn-sm h-9 min-w-20" @click="openTemplateMarket">
-            <Icon name="template" class="h-4 w-4" />模板
+            <Icon name="toolbar" class="h-4 w-4" />模板
           </button>
         </div>
       </div>
 
       <div class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
-        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">常用操作</div>
+        <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
+          常用操作
+        </div>
         <EditorButton :groups="actionButtonGroups" :columns="8" @action="handleAction" />
       </div>
     </div>
