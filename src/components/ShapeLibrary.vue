@@ -313,7 +313,7 @@ function rememberShape(tool: string) {
 <template>
   <aside v-if="mode === 'float'" ref="panelRef" :class="panelClass" :style="panelStyle">
     <div class="flex touch-none items-center border-b border-base-200"
-      :class="collapsed ? 'justify-between px-1.5 py-1.5' : 'cursor-move justify-between px-3 py-2'" title="拖动面板"
+      :class="collapsed ? 'justify-between px-0.5 py-1.5' : 'cursor-move justify-between px-3 py-2'" title="拖动面板"
       @pointerdown="!collapsed ? handlePanelDragStart : undefined">
       <button v-if="collapsed" class="btn btn-ghost btn-xs btn-square cursor-move" title="拖动图形库面板"
         @pointerdown="handlePanelDragStart">
@@ -326,11 +326,11 @@ function rememberShape(tool: string) {
       </div>
 
       <div class="flex items-center gap-0.5">
-        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click="togglePanelDock('shape-library')"
-          @pointerdown.stop>
+        <button v-if="!collapsed" class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽"
+          @click="togglePanelDock('shape-library')" @pointerdown.stop>
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
-        <button class="btn btn-xs btn-ghost" @click="toggleCollapsed" @pointerdown.stop
+        <button class="btn btn-xs btn-ghost btn-square" @click="toggleCollapsed" @pointerdown.stop
           :title="collapsed ? '展开图形库' : '折叠图形库'">
           {{ collapsed ? "›" : "‹" }}
         </button>
