@@ -312,11 +312,11 @@ function rememberShape(tool: string) {
 
 <template>
   <aside v-if="mode === 'float'" ref="panelRef" :class="panelClass" :style="panelStyle">
-    <div class="flex touch-none items-center border-b border-base-200"
-      :class="collapsed ? 'justify-between px-0.5 py-1.5' : 'cursor-move justify-between px-3 py-2'" title="拖动面板"
-      @pointerdown="!collapsed ? handlePanelDragStart : undefined">
+    <div class="flex touch-none cursor-move items-center justify-between border-b border-base-200"
+      :class="collapsed ? 'px-0.5 py-1.5' : 'px-3 py-2'" title="拖动面板"
+      @pointerdown="handlePanelDragStart">
       <button v-if="collapsed" class="btn btn-ghost btn-xs btn-square cursor-move" title="拖动图形库面板"
-        @pointerdown="handlePanelDragStart">
+        >
         <Icon name="layer" class="h-3.5 w-3.5 opacity-75" />
       </button>
 
