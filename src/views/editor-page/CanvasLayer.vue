@@ -6,11 +6,11 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import type { Editor } from "@/editor";
 import { TOOL_NAME } from "@/editor/constants";
 import type { IExecuteArg } from "@/editor/types";
-import type { EditorPageState } from "@/views/editor-page/editor-page.state";
+import type { PageState } from "@/views/editor-page";
 
 const props = defineProps<{
   editor: Editor | undefined;
-  state: EditorPageState;
+  state: PageState;
 }>();
 
 const activeTool = computed(() => props.state.activeTool.value);
@@ -42,8 +42,13 @@ async function handleContextAction(action: string) {
 </script>
 
 <template>
-  <SelectionMarquee :active="state.marquee.value.active" :x="state.marquee.value.x" :y="state.marquee.value.y"
-    :width="state.marquee.value.width" :height="state.marquee.value.height" />
+  <SelectionMarquee
+    :active="state.marquee.value.active"
+    :x="state.marquee.value.x"
+    :y="state.marquee.value.y"
+    :width="state.marquee.value.width"
+    :height="state.marquee.value.height"
+  />
 
   <ShapeLibrary :active-tool="activeTool" :groups="shapeLibraryGroups" @tool="handleLibraryTool" />
 

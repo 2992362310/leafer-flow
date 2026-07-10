@@ -20,8 +20,12 @@ async function handleAction(action: string) {
   await props.editor.commands.execute(action);
 }
 
-function openPluginMarket() {
-  void router.push("/plugin-market");
+async function openPluginMarket() {
+  if (!props.editor) {
+    void router.push("/plugin-market");
+    return;
+  }
+  await props.editor.commands.execute("togglePluginMarket");
 }
 
 function openTemplateMarket() {

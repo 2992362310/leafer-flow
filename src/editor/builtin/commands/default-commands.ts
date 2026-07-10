@@ -102,6 +102,26 @@ const CORE_COMMANDS: CommandContribution[] = [
     },
   },
   {
+    id: "toggleLayerPanel",
+    label: "图层树",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-layer-panel"));
+      return { success: true, message: "已切换图层树" };
+    },
+  },
+  {
+    id: "togglePluginMarket",
+    label: "插件市场",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-plugin-market"));
+      return { success: true, message: "已切换插件市场" };
+    },
+  },
+  {
     id: "toggleHistoryPanel",
     label: "历史面板",
     pluginId: BUILTIN_PLUGIN_ID,

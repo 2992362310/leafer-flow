@@ -10,6 +10,7 @@ import { MenuRegistry } from "./core/menu-registry";
 import { ActionButtonRegistry } from "./core/action-button-registry";
 import { ViewControlRegistry } from "./core/view-control-registry";
 import { PropertyPanelRegistry } from "./core/property-panel-registry";
+import { OverlayPanelRegistry } from "./core/overlay-panel-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
@@ -36,6 +37,7 @@ export default class Editor {
   public actionButtons: ActionButtonRegistry;
   public viewControls: ViewControlRegistry;
   public propertyPanels: PropertyPanelRegistry;
+  public overlayPanels: OverlayPanelRegistry;
   private currentCursorClass: string = "";
   private syncingConnectors = false;
   public snap?: Snap;
@@ -55,6 +57,7 @@ export default class Editor {
     this.actionButtons = new ActionButtonRegistry();
     this.viewControls = new ViewControlRegistry();
     this.propertyPanels = new PropertyPanelRegistry();
+    this.overlayPanels = new OverlayPanelRegistry();
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
     app.on("ready", () => {

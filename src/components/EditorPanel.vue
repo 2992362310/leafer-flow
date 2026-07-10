@@ -69,7 +69,7 @@ const visiblePanels = computed(() => {
         </div>
       </div>
 
-      <div class="card-body p-3 pt-2 max-h-[70vh] overflow-y-auto" v-show="!isCollapsed">
+      <div class="card-body p-3 pt-2 max-h-[50vh] overflow-y-auto" v-show="!isCollapsed">
         <div v-if="panelState.isMultiSelection.value" class="alert alert-info py-2 px-3 text-xs">
           已选择 {{ panelState.selectedElements.value.length }} 个元素，可批量修改样式
         </div>

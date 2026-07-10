@@ -95,7 +95,9 @@ export function doInsertTemplate(
     }
   });
 
+  editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
   editor.endTransaction();
+  editor.autoSave.save();
   return { success: true, message: data.message };
 }
 
@@ -134,11 +136,15 @@ function getTemplateStyle(kind: FlowNodeKind) {
     return { ...base, fill: "#ecfdf5", stroke: "#059669" };
   if (kind === "decision" || kind === "bpmnExclusiveGateway")
     return { ...base, fill: "#fffbeb", stroke: "#d97706" };
-  if (kind === "database")
-    return { ...base, fill: "#ecfeff", stroke: "#0891b2" };
-  if (kind === "document")
-    return { ...base, fill: "#fff7ed", stroke: "#ea580c" };
-  if (kind === "swimlane")
+  if (kind === "database") return { ...base, fill: "#ecfeff", stroke: "#0891b2" };
+  if (kind === "document") return { ...base, fill: "#fff7ed", stroke: "#ea580c" };
+  if (kind === "swimlane") return { ...base, fill: "#f0f9ff", stroke: "#0284c7" };
+  if (kind === "archActor" || kind === "archUseCase")
+    return { ...base, fill: "#f0fdf4", stroke: "#16a34a" };
+  if (kind === "archComponent" || kind === "archService" || kind === "archDevice")
+    return { ...base, fill: "#eff6ff", stroke: "#2563eb" };
+  if (kind === "archCloud") return { ...base, fill: "#fef3c7", stroke: "#d97706" };
+  if (kind === "archCache" || kind === "archQueue")
     return { ...base, fill: "#f0f9ff", stroke: "#0284c7" };
   return { ...base, fill: "#eff6ff", stroke: "#2563eb" };
 }
@@ -391,7 +397,7 @@ function bpmnOrderTemplate(): TemplateData {
       },
       { id: "reserve", text: "预留库存", type: "process", x: 700, y: 90, width: 130, height: 64 },
       { id: "wait", text: "等待补货", type: "process", x: 700, y: 220, width: 130, height: 64 },
-      { id: "end", text: "结束", type: "bpmnStartEvent", x: 920, y: 90, width: 72, height: 72 },
+      { id: "end", text: "结束", type: "bpmnEndEvent", x: 920, y: 90, width: 72, height: 72 },
     ],
     edges: [
       { from: "start", to: "create" },
@@ -408,7 +414,15 @@ function systemArchitectureTemplate(): TemplateData {
   return {
     message: "已插入系统架构图模板",
     nodes: [
-      { id: "client", text: "Web / App", type: "process", x: 120, y: 160, width: 140, height: 70 },
+      {
+        id: "client",
+        text: "Web / App",
+        type: "archActor",
+        x: 120,
+        y: 160,
+        width: 140,
+        height: 70,
+      },
       {
         id: "gateway",
         text: "API Gateway",
@@ -421,16 +435,32 @@ function systemArchitectureTemplate(): TemplateData {
       {
         id: "service",
         text: "业务服务",
-        type: "archComponent",
+        type: "archService",
         x: 600,
         y: 100,
         width: 150,
         height: 80,
       },
-      { id: "worker", text: "异步任务", type: "archComponent", x: 600, y: 240, width: 150, height: 80 },
+      {
+        id: "worker",
+        text: "异步任务",
+        type: "archService",
+        x: 600,
+        y: 240,
+        width: 150,
+        height: 80,
+      },
       { id: "db", text: "数据库", type: "database", x: 860, y: 100, width: 130, height: 90 },
       { id: "cache", text: "缓存", type: "database", x: 860, y: 250, width: 130, height: 90 },
-      { id: "cloud", text: "第三方服务", type: "archCloud", x: 1080, y: 160, width: 150, height: 90 },
+      {
+        id: "cloud",
+        text: "第三方服务",
+        type: "archCloud",
+        x: 1080,
+        y: 160,
+        width: 150,
+        height: 90,
+      },
     ],
     edges: [
       { from: "client", to: "gateway" },

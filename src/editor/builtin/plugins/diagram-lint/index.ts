@@ -1,5 +1,6 @@
 import type { EditorPluginModule } from "../../../api/plugin";
 import type { IUI } from "leafer";
+import { defineAsyncComponent } from "vue";
 import { fixNodeOverlaps, fixTextTooLong, runDiagramLint } from "./lint-engine";
 import type { DiagramLintCachePayload, DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "./types";
 
@@ -89,7 +90,7 @@ export const diagramLintPlugin: EditorPluginModule = {
     version: "0.1.0",
     description: "检测流程图常见问题并提供基础修复能力。",
     category: "utility",
-    capabilities: ["command", "action-button"],
+    capabilities: ["command", "action-button", "overlay-panel"],
     enabledByDefault: true,
   },
   contributes: {
@@ -107,8 +108,18 @@ export const diagramLintPlugin: EditorPluginModule = {
       "定位路径节点",
     ],
     buttons: ["规范检查 Pro"],
+    overlayPanels: ["规范检查"],
   },
   activate(ctx) {
+    ctx.editor.overlayPanels.register({
+      id: "diagram-lint",
+      pluginId: PLUGIN_ID,
+      component: defineAsyncComponent(() => import("./DiagramLintPanel.vue")),
+      visibilityMode: "open-prop",
+      needsEditor: false,
+      order: 70,
+    });
+
     const executeIssueFix = (
       editor: Parameters<Parameters<typeof ctx.editor.commands.register>[0]["run"]>[0],
       issue: LintIssue,

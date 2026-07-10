@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.minimap";
@@ -14,14 +15,25 @@ export const minimapPlugin: EditorPluginModule = {
     version: "1.0.0",
     description: "显示画布缩略图，支持点击导航",
     category: "view",
-    capabilities: ["command", "action-button"],
+    capabilities: ["command", "action-button", "overlay-panel"],
     enabledByDefault: true,
   },
   contributes: {
     commands: ["切换缩略图"],
     buttons: ["缩略图"],
+    overlayPanels: ["缩略图"],
   },
   activate(ctx) {
+    ctx.editor.overlayPanels.register({
+      id: "minimap-panel",
+      pluginId: PLUGIN_ID,
+      component: defineAsyncComponent(() => import("./MinimapPanel.vue")),
+      visibilityMode: "self-visible",
+      needsEditor: true,
+      order: 50,
+      toggleEvent: "leafer-flow:toggle-minimap",
+    });
+
     ctx.editor.commands.register({
       id: "toggleMinimap",
       label: "切换缩略图",

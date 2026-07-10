@@ -13,7 +13,7 @@
 - 选择能力：单选、多选、框选、全选、删除、键盘微移。
 - 排版能力：对齐、分布、层级前移 / 后移 / 置顶 / 置底。
 - 元素管理：剪切、复制、粘贴、原位复制、编组、取消编组、锁定、解锁、显示 / 隐藏。
-- 文件能力：保存、加载、自动恢复、导出 PNG/SVG。
+- 文件能力：保存、加载、自动恢复、导出 PNG/SVG/PDF。
 - 画布搜索：按文字内容搜索元素并定位选中。
 - 图片插入：从本地选择图片插入画布。
 - 模板能力：业务流程、BPMN、系统架构、泳道协作等图形模板。
@@ -107,7 +107,7 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 
 - `Editor` 负责 Leafer 画布生命周期、history、autosave、序列化和连接线同步等核心能力。
 - `PluginManager` 负责插件激活 / 停用。
-- `ToolRegistry`、`CommandRegistry`、`MenuRegistry`、`ActionButtonRegistry`、`ViewControlRegistry` 负责收集插件贡献。
+- `ToolRegistry`、`CommandRegistry`、`MenuRegistry`、`ActionButtonRegistry`、`ViewControlRegistry`、`PropertyPanelRegistry` 负责收集插件贡献。
 - 工具栏、图形库、右键菜单、顶部按钮和视图控件优先从 registry 派生。
 - 插件市场当前管理内置插件源，可即时启用 / 禁用非必需插件。
 
@@ -170,8 +170,9 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 
 ## 后续重点
 
-- 收敛 history / autosave / connector label sync 等 mutation side effects。
-- 为 connector label / custom data / group 建立 round-trip 验收。
+- 审计所有 action 是否统一通过 `commitMutation()` 提交 mutation。
+- 为 connector label / custom data / group 建立 round-trip 验收用例。
 - 补充 action/core 层自动化测试，覆盖剪贴板、编组、文件保存和自动恢复链路。
-- 深化插件化能力，例如属性面板 contribution、插件配置入口和插件源抽象。
-- 扩展高级能力，例如导出 PDF、导入 Draw.io / Visio、多人协作与评论能力。
+- 完善插件配置 UI，支持更多插件的配置入口。
+- 扩展插件源：远程插件源与本地开发插件源。
+- 扩展高级能力：导入 Draw.io / Visio、多人协作与评论能力。

@@ -1,14 +1,14 @@
-import { computed, onUnmounted, shallowRef, ref, watch, type Ref } from "vue";
+import { onUnmounted, ref, watch, type Ref } from "vue";
 import { Text, type IUI } from "leafer";
 import { Connector } from "@/editor/core/connector";
 import type { ConnectorRouteType, ConnectorSide, ConnectorState } from "@/editor/core/connector";
-import { EditorEvent } from "leafer-editor";
 import type { Editor } from "@/editor";
 import { applyStylePreset } from "@/editor/core/style-presets";
 import type { StylePresetId } from "@/editor/core/style-presets";
 import { getConnectorLabelTarget } from "@/editor/core/connector-labels";
 import { resolveNodeById, CUSTOM_DATA_PROP } from "@/editor/core/flow-serialization";
 import { getFlowShapeKind, updateFlowNodeShape } from "@/editor/core/flow-node-shape";
+import { useSelectionInspector } from "./useSelectionInspector";
 
 interface EditorPanelStateOptions {
   editor: Ref<Editor | undefined>;
@@ -24,12 +24,7 @@ type ConnectorCustomData = Connector & {
 };
 
 export function useEditorPanelState(options: EditorPanelStateOptions) {
-  const selectedElement = shallowRef<IUI | null>(null);
-  const selectedElements = shallowRef<IUI[]>([]);
-  const selectedShape = shallowRef<IUI | null>(null);
-  const selectedText = shallowRef<Text | null>(null);
-  const selectedConnector = shallowRef<Connector | null>(null);
-  const selectedConnectorLabel = ref(false);
+  const inspector = useSelectionInspector(options);
 
   const x = ref(0);
   const y = ref(0);
@@ -57,94 +52,47 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   const connectorLabelText = ref("");
   const hasConnectorLabel = ref(false);
 
-  let cleanups: (() => void)[] = [];
-
-  const isMultiSelection = computed(() => selectedElements.value.length > 1);
-  const hasSelection = computed(() => Boolean(selectedElement.value));
-  const hasSelectedConnector = computed(() =>
-    selectedElements.value.some((el) => el instanceof Connector),
-  );
-
   watch(
-    () => options.editor.value,
-    (newEditor) => {
-      cleanupListeners();
-      if (!newEditor?.app?.editor) return;
-
-      const editorPlugin = newEditor.app.editor;
-      editorPlugin.on(EditorEvent.SELECT, onSelect);
-      editorPlugin.on("move.end", updateState);
-      editorPlugin.on("resize.end", updateState);
-      editorPlugin.on("rotate.end", updateState);
-      cleanups = [
-        () => editorPlugin.off(EditorEvent.SELECT, onSelect),
-        () => editorPlugin.off("move.end", updateState),
-        () => editorPlugin.off("resize.end", updateState),
-        () => editorPlugin.off("rotate.end", updateState),
-      ];
-    },
-    { immediate: true },
+    () => inspector.selectedElement.value,
+    () => updateState(),
   );
-
-  onUnmounted(cleanupListeners);
-
-  function cleanupListeners() {
-    cleanups.forEach((cleanup) => cleanup());
-    cleanups = [];
-  }
-
-  function onSelect(e: EditorEvent) {
-    const list = (e.editor.list || []) as IUI[];
-    selectedElements.value = [...list];
-    selectedElement.value = list[0] || null;
-    selectedConnectorLabel.value = Boolean(
-      selectedElement.value && getConnectorLabelTarget(selectedElement.value),
-    );
-    resolveSelectedParts();
-    updateState();
-  }
-
-  function resolveSelectedParts() {
-    const el = selectedElement.value;
-    selectedShape.value = null;
-    selectedText.value = null;
-    selectedConnector.value = null;
-    if (!el) return;
-
-    if (el instanceof Connector) {
-      selectedConnector.value = el;
-      selectedShape.value = el;
-      return;
-    }
-
-    if (el instanceof Text) {
-      selectedText.value = el;
-      selectedShape.value = el;
-      return;
-    }
-
-    const children = getChildren(el);
-    if (el.tag === "Group" && children?.length) {
-      selectedShape.value =
-        children.find((child) => !(child instanceof Text)) || children[0] || null;
-      selectedText.value =
-        (children.find((child) => child instanceof Text) as Text | undefined) || null;
-      return;
-    }
-
-    selectedShape.value = el;
-  }
 
   function updateState() {
-    const el = selectedElement.value;
-    if (!el) return;
+    const el = inspector.selectedElement.value;
+    if (!el) {
+      x.value = 0;
+      y.value = 0;
+      width.value = 0;
+      height.value = 0;
+      fill.value = "#ffffff";
+      stroke.value = "#2563eb";
+      strokeWidth.value = 2;
+      opacity.value = 1;
+      textContent.value = "";
+      fontSize.value = 14;
+      textColor.value = "#1f2937";
+      fontWeight.value = "normal";
+      fontStyle.value = "normal";
+      textAlign.value = "center";
+      cornerRadius.value = 0;
+      lineDashed.value = false;
+      arrowMode.value = "end";
+      routeType.value = "orthogonal";
+      lineCornerRadius.value = 10;
+      fromSide.value = "auto";
+      toSide.value = "auto";
+      connectorDescription.value = "";
+      connectorLabelText.value = "";
+      hasConnectorLabel.value = false;
+      return;
+    }
 
     x.value = Math.round(el.x || 0);
     y.value = Math.round(el.y || 0);
     width.value = Math.round(el.width || 0);
     height.value = Math.round(el.height || 0);
 
-    const shape = selectedShape.value;
+    const shape = inspector.selectedShape.value;
     if (shape) {
       fill.value = toHex(shape.fill, fill.value);
       stroke.value = toHex(shape.stroke, stroke.value);
@@ -157,17 +105,19 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
           : 0;
     }
 
-    const text = selectedText.value;
+    const text = inspector.selectedText.value;
     if (text) {
       textContent.value = String(text.text ?? "");
       fontSize.value = typeof text.fontSize === "number" ? text.fontSize : 14;
       textColor.value = toHex(text.fill, textColor.value);
-      fontWeight.value = String((text as unknown as { fontWeight?: string }).fontWeight ?? "normal");
+      fontWeight.value = String(
+        (text as unknown as { fontWeight?: string }).fontWeight ?? "normal",
+      );
       fontStyle.value = String((text as unknown as { fontStyle?: string }).fontStyle ?? "normal");
       textAlign.value = String((text as unknown as { textAlign?: string }).textAlign ?? "center");
     }
 
-    const connector = selectedConnector.value;
+    const connector = inspector.selectedConnector.value;
     if (connector) {
       const state = connector.getState() as ConnectorState;
       routeType.value = state.routeType || "orthogonal";
@@ -182,7 +132,6 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       else if (state.endArrow) arrowMode.value = "end";
       else arrowMode.value = "none";
 
-      // 查找连接线标签
       const label = findConnectorLabel(connector);
       hasConnectorLabel.value = !!label;
       connectorLabelText.value = label ? String(label.text ?? "") : "";
@@ -198,21 +147,19 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     updateState();
   }
 
-  function saveHistory() {
-    options.editor.value?.commitMutation();
-  }
-
   function updateX(value: number) {
     x.value = value;
-    if (!selectedElement.value) return;
-    selectedElement.value.x = value;
+    const el = inspector.selectedElement.value;
+    if (!el) return;
+    el.x = value;
     syncAfterChange();
   }
 
   function updateY(value: number) {
     y.value = value;
-    if (!selectedElement.value) return;
-    selectedElement.value.y = value;
+    const el = inspector.selectedElement.value;
+    if (!el) return;
+    el.y = value;
     syncAfterChange();
   }
 
@@ -256,8 +203,9 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function updateText(value: string) {
     textContent.value = value;
-    if (!selectedText.value) return;
-    selectedText.value.text = value;
+    const text = inspector.selectedText.value;
+    if (!text) return;
+    text.text = value;
     syncAfterChange();
   }
 
@@ -344,7 +292,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
     if (!options.editor.value) return;
 
-    const connectors = selectedElements.value.filter(
+    const connectors = inspector.selectedElements.value.filter(
       (el): el is Connector => el instanceof Connector,
     );
     if (!connectors.length) return;
@@ -375,8 +323,9 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function updateConnectorDescription(value: string) {
     connectorDescription.value = value;
-    if (!selectedConnector.value) return;
-    (selectedConnector.value as ConnectorCustomData)[CUSTOM_DATA_PROP] = value;
+    const connector = inspector.selectedConnector.value;
+    if (!connector) return;
+    (connector as ConnectorCustomData)[CUSTOM_DATA_PROP] = value;
     syncAfterChange();
   }
 
@@ -395,8 +344,9 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function updateConnectorLabelText(value: string) {
     connectorLabelText.value = value;
-    if (!selectedConnector.value) return;
-    const label = findConnectorLabel(selectedConnector.value);
+    const connector = inspector.selectedConnector.value;
+    if (!connector) return;
+    const label = findConnectorLabel(connector);
     if (!label) return;
     label.text = value;
     syncAfterChange();
@@ -407,7 +357,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   }
 
   function resizeSelected(nextWidth: number, nextHeight: number) {
-    const el = selectedElement.value;
+    const el = inspector.selectedElement.value;
     if (!el) return;
 
     const children = getChildren(el);
@@ -449,10 +399,10 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   }
 
   function applyToSelectedConnectors(updater: (connector: Connector) => void) {
-    const connectors = selectedElements.value.filter(
+    const connectors = inspector.selectedElements.value.filter(
       (el): el is Connector => el instanceof Connector,
     );
-    const currentConnector = selectedConnector.value;
+    const currentConnector = inspector.selectedConnector.value;
     if (!connectors.length && currentConnector) connectors.push(currentConnector);
     if (!connectors.length) return;
     connectors.forEach(updater);
@@ -466,7 +416,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function getSelectedShapes() {
     const shapes: IUI[] = [];
-    selectedElements.value.forEach((element) => {
+    inspector.selectedElements.value.forEach((element) => {
       if (element instanceof Connector) {
         shapes.push(element);
         return;
@@ -484,7 +434,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function getSelectedTexts() {
     const texts: Text[] = [];
-    selectedElements.value.forEach((element) => {
+    inspector.selectedElements.value.forEach((element) => {
       if (element instanceof Text) {
         texts.push(element);
         return;
@@ -497,12 +447,7 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   }
 
   return {
-    selectedElement,
-    selectedElements,
-    selectedShape,
-    selectedText,
-    selectedConnector,
-    selectedConnectorLabel,
+    ...inspector,
     x,
     y,
     width,
@@ -528,9 +473,6 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
     connectorDescription,
     connectorLabelText,
     hasConnectorLabel,
-    isMultiSelection,
-    hasSelection,
-    hasSelectedConnector,
     handleStylePreset,
     updateX,
     updateY,

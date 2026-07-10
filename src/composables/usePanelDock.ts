@@ -14,7 +14,8 @@ export type DockPanelId =
     | "minimap-panel"
     | "multi-layer-panel"
     | "diagram-lint"
-    | "shortcut-help";
+    | "shortcut-help"
+    | "status-bar";
 
 interface DockPanelMeta {
     id: DockPanelId;
@@ -38,6 +39,7 @@ const panelMetaMap: Record<DockPanelId, DockPanelMeta> = {
     "multi-layer-panel": { id: "multi-layer-panel", label: "多图层", icon: "layer" },
     "diagram-lint": { id: "diagram-lint", label: "规范检查", icon: "warning" },
     "shortcut-help": { id: "shortcut-help", label: "快捷键", icon: "info" },
+    "status-bar": { id: "status-bar", label: "状态信息", icon: "info" },
 };
 
 const dockedIds = ref<DockPanelId[]>([]);

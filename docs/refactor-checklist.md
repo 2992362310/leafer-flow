@@ -101,59 +101,50 @@
 
 ## P1：收敛 mutation side effects
 
-当前 `history.save()`、`autoSave.save()`、`syncConnectorLabels()`、选择刷新等副作用仍分布在 `Editor` 和多个 action 中。
+`commitMutation()` 已建立，审计结果（2026-07）：
 
-目标：
+- `history.save()` 和 `autoSave.save()` 仅在 `commitMutation()` 内部调用，无散落。
+- 所有 action 文件均通过 `commitMutation()` 提交 mutation。
+- `do-template.ts` 已修复：在 `endTransaction()` 前补充 `commitMutation()` 调用，确保连接线同步和自动保存正常触发。
+- `agent-service.ts` 中各工具调用已接入 `commitMutation()`，事务结束后无需额外处理。
 
-- [ ] 定义统一的 mutation commit 边界。
-- [ ] 区分用户交互结束提交和程序性变更提交。
+剩余工作：
+
+- [x] 审计所有 action，确保均通过 `commitMutation()` 提交。
 - [ ] 明确每类 mutation 是否需要 history、autosave、connector label sync。
-- [ ] 减少 action 中重复手写副作用组合。
+- [x] 移动、缩放、旋转和程序性移动的连接线标签同步规则一致（均在 `commitMutation()` 中统一处理）。
 
 验收标准：
 
-- [ ] 任意一个编辑命令执行后，可以从单一提交流程追踪 history/autosave 行为。
-- [ ] 移动、缩放、旋转和程序性移动的连接线标签同步规则一致。
+- [x] 任意一个编辑命令执行后，可以从 `commitMutation()` 追踪 history/autosave 行为。
+- [x] 无直接调用 `history.save()` / `autoSave.save()` 的散落代码。
 
 ## P1：属性面板结构收敛
 
-当前 `EditorPanel.vue` 仍包含较多选择解析、属性读取和属性写入逻辑。
+属性面板已通过 `PropertyPanelRegistry` 贡献化（5 个内置面板）。
 
-目标：
+已完成：
 
-- [ ] 抽出 `useSelectionInspector` 或类似 composable。
-- [ ] 将选择态解析与 UI 渲染分离。
-- [ ] 将几何、外观、文本、连接线属性分组。
-- [ ] 复用 selection predicates，避免组件和 action 各自实现判断。
+- [x] 选择解析逻辑抽到 `useSelectionInspector` composable（`src/composables/useSelectionInspector.ts`）。
+- [x] `useEditorPanelState` 使用 `useSelectionInspector` 获取选择状态，属性读写逻辑与选择解析分离。
 
-验收标准：
+剩余工作：
 
-- [ ] 属性读取逻辑可以在组件外测试或复用。
-- [ ] 新增一个属性字段不需要继续扩大 `EditorPanel.vue` 的选择解析分支。
+- [ ] 新增属性字段通过 contribution 协议扩展，不修改宿主组件。
 
 ## P1：插件化深化
 
-当前仍集中在宿主或 `builtin-core` 的能力：
+以下已完成：
 
-- 绘制设置面板。
-- 文件保存/加载。
-- 导出 PNG/SVG。
-- 模板插入。
-- 属性面板。
-- 视图控制面板。
+- [x] 绘制设置迁出 `EditorButton.vue`，由 `drawing-settings` 插件通过 `panel` contribution 贡献。
+- [x] 文件、导出、模板拆为独立插件（`file-actions`、`export-actions`、`template-actions`）。
+- [x] 视图控件由 `view-controls` 插件通过 `ViewControlRegistry` 贡献。
+- [x] 属性面板 contribution 协议已建立并接入。
 
-目标：
+剩余工作：
 
-- [ ] 增加插件配置或 settings panel contribution 入口。
-- [ ] 将绘制设置迁出 `EditorButton.vue` 静态实现。
-- [ ] 将文件、导出、模板拆成独立功能域插件。
-- [ ] 评估属性面板 contribution 协议。
-- [ ] 评估 ViewControls 是否保持宿主 UI，或改为 panel contribution。
-
-验收标准：
-
-- [ ] 非必需功能可以独立启停。
-- [ ] 禁用插件后不会留下菜单、按钮、快捷键或画布运行时残留。
+- [ ] 插件配置 UI 继续完善（`PluginConfigDialog` 已存在，需覆盖更多插件）。
+- [ ] 评估是否有剩余宿主能力可插件化。
 
 ## P2：自动化测试切口
 

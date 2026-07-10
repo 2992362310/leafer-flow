@@ -39,6 +39,7 @@
 - `MenuRegistry`。
 - `ActionButtonRegistry`。
 - `ViewControlRegistry`。
+- `PropertyPanelRegistry`。
 - history / autosave 基础服务。
 - serialization / connector label 等编辑器内部数据机制。
 - 插件启用状态读取与内置插件激活。
@@ -108,7 +109,7 @@ leafer-flow.plugin.${pluginId}.
   - 提供保存和打开流程文件能力。
 - `leafer-flow.export-actions`
   - 导出操作。
-  - 提供 PNG 和 SVG 导出能力。
+  - 提供 PNG、SVG 和 PDF 导出能力。
 - `leafer-flow.template-actions`
   - 模板操作。
   - 提供业务流程、BPMN、系统架构和泳道协作等模板插入能力。
@@ -202,6 +203,9 @@ flowchart TD
 - `src/components/ViewControls.vue`
   - 使用 `editor.viewControls.list()` 的贡献。
   - 视图控件按钮和命令由 `leafer-flow.view-controls` 插件贡献。
+- `src/components/EditorPanel.vue`
+  - 使用 `editor.propertyPanels.listMatched(context)` 动态获取匹配的面板。
+  - 属性面板通过 `PropertyPanelRegistry` 贡献化，内置 5 个面板（样式预设、位置尺寸、形状样式、连接线、文本）。
 - `src/components/StatusBar.vue`
   - 工具名称由 `App.vue` 从 `editor.toolRegistry.list()` 派生后传入。
 - `src/editor/shortcuts.ts`
@@ -322,14 +326,15 @@ leafer-flow.enabled-plugins.default-migrations
 - `src/editor/action/do-ungroup.ts`
 - `src/editor/action/do-file.ts`
 
-## 仍未插件化或仍需收敛的区域
+## 仍需收敛或扩展的区域
 
-- `EditorPanel.vue` 属性面板 UI 仍由宿主组件承载；状态解析与属性写入已抽到 `src/composables/useEditorPanelState.ts`。当前已有 `custom-data-panel` 作为 property panel contribution 示例，后续仍可继续插件化。
+- 属性面板 contribution 继续扩展（当前已有 5 个内置面板：样式预设、位置尺寸、形状样式、连接线、文本）。
 - 远程插件、本地开发插件源、权限、沙箱、签名等仍未实现。
 - serialization round-trip 自动化测试尚未建立。
 
 已完成收敛：
 
+- 属性面板已通过 `PropertyPanelRegistry` 贡献化，`EditorPanel.vue` 使用 `editor.propertyPanels.listMatched(context)` 动态渲染匹配的面板。
 - `EditorButton.vue` 的绘制设置面板已改为 action button `panel` contribution，宿主组件不再直接调用 drawing settings getter/setter。
 - 绘制设置面板已从 `builtin-core` 拆为独立内置插件 `leafer-flow.drawing-settings`，可在插件市场单独启用或禁用。
 - `ViewControls.vue` 已改为 `ViewControlRegistry` 驱动，并由 `leafer-flow.view-controls` 插件贡献命令和控件。

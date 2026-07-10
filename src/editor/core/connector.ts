@@ -425,11 +425,7 @@ export class Connector extends Group {
 
       if (this.waypoints.length > 0) {
         // 有中间点时，路径经过所有中间点
-        const allPoints = [
-          endpoints.from.linkPoint,
-          ...this.waypoints,
-          endpoints.to.linkPoint,
-        ];
+        const allPoints = [endpoints.from.linkPoint, ...this.waypoints, endpoints.to.linkPoint];
         points = allPoints;
         path = this.buildWaypointPath(allPoints);
         // 更新中间点 handle 位置
@@ -452,7 +448,11 @@ export class Connector extends Group {
           this.getRouteCornerRadius(),
           this.options.bezierCurvature ?? DEFAULT_BEZIER_CURVATURE,
         );
-        const override = this.options.onDraw?.({ s: endpoints.from, e: endpoints.to, defaultResult });
+        const override = this.options.onDraw?.({
+          s: endpoints.from,
+          e: endpoints.to,
+          defaultResult,
+        });
         points = override?.points || defaultResult.points;
         path = override?.path || defaultResult.path;
       }
@@ -566,8 +566,11 @@ export class Connector extends Group {
 
   private resolveEndpoints() {
     if (this.mode === "node" && this.fromNode && this.toNode) {
-      const fromCenter = getBoundsCenter(this.fromNode.getBounds("box", "page"));
-      const toCenter = getBoundsCenter(this.toNode.getBounds("box", "page"));
+      const fromBounds = this.fromNode.getBounds("box", "page");
+      const toBounds = this.toNode.getBounds("box", "page");
+      if (!fromBounds || !toBounds) return null;
+      const fromCenter = getBoundsCenter(fromBounds);
+      const toCenter = getBoundsCenter(toBounds);
       return {
         from: resolveNodeEndpoint(
           this.fromNode,
@@ -587,11 +590,17 @@ export class Connector extends Group {
     }
 
     if (this.mode === "mixed") {
+      const fromBounds = this.fromNode?.getBounds("box", "page");
+      const toBounds = this.toNode?.getBounds("box", "page");
       const fromReference = this.fromNode
-        ? getBoundsCenter(this.fromNode.getBounds("box", "page"))
+        ? fromBounds
+          ? getBoundsCenter(fromBounds)
+          : null
         : this.fromPoint;
       const toReference = this.toNode
-        ? getBoundsCenter(this.toNode.getBounds("box", "page"))
+        ? toBounds
+          ? getBoundsCenter(toBounds)
+          : null
         : this.toPoint;
       if (!fromReference || !toReference) return null;
 

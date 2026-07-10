@@ -56,6 +56,7 @@ export interface PluginContributionPreview {
   buttons?: string[];
   viewControls?: string[];
   propertyPanels?: string[];
+  overlayPanels?: string[];
 }
 
 export interface EditorPluginModule {

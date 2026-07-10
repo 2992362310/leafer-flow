@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.multi-layer";
@@ -21,41 +22,52 @@ export const multiLayerPlugin: EditorPluginModule = {
     version: "1.0.0",
     description: "支持多个图层，可独立控制显示、锁定和透明度",
     category: "utility",
-    capabilities: ["command", "action-button"],
+    capabilities: ["command", "action-button", "overlay-panel"],
     enabledByDefault: false,
     configurable: true,
   },
   contributes: {
-    commands: ["切换图层面板"],
-    buttons: ["图层"],
+    commands: ["切换多图层"],
+    buttons: ["多图层"],
+    overlayPanels: ["多图层"],
   },
   activate(ctx) {
     const config = getConfig(ctx);
 
+    ctx.editor.overlayPanels.register({
+      id: "multi-layer-panel",
+      pluginId: PLUGIN_ID,
+      component: defineAsyncComponent(() => import("./LayerPanel.vue")),
+      visibilityMode: "self-visible",
+      needsEditor: true,
+      order: 60,
+      toggleEvent: "leafer-flow:toggle-multi-layer-panel",
+    });
+
     ctx.editor.commands.register({
-      id: "toggleLayerPanel",
-      label: "切换图层面板",
+      id: "toggleMultiLayerPanel",
+      label: "切换多图层",
       pluginId: PLUGIN_ID,
       run: () => {
         window.dispatchEvent(
-          new CustomEvent("leafer-flow:toggle-layer-panel", { detail: config }),
+          new CustomEvent("leafer-flow:toggle-multi-layer-panel", { detail: config }),
         );
-        return { success: true, message: "已切换图层面板" };
+        return { success: true, message: "已切换多图层面板" };
       },
     });
 
     ctx.editor.actionButtons.register({
       id: "multi-layer",
-      label: "图层",
+      label: "多图层",
       icon: "layer",
       pluginId: PLUGIN_ID,
       kind: "button",
       order: 77,
       items: [
         {
-          id: "toggle-layer-panel",
-          label: "图层面板",
-          command: "toggleLayerPanel",
+          id: "toggle-multi-layer-panel",
+          label: "多图层面板",
+          command: "toggleMultiLayerPanel",
           icon: "layer",
           order: 10,
         },

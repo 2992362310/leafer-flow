@@ -1,13 +1,8 @@
+import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
 
 const PLUGIN_ID = "leafer-flow.agent";
 
-/**
- * 通过 CustomEvent 与 Vue 层通信。
- * 这是一种松耦合模式：编辑器核心不依赖 Vue 组件树，
- * Vue 层通过 addEventListener 监听这些事件来响应命令。
- * 注意：命令始终返回 success，因为无法同步获知 Vue 层是否已响应。
- */
 function dispatchToggle(eventName: string) {
   window.dispatchEvent(new CustomEvent(eventName));
   return { success: true, message: "已执行" };
@@ -20,14 +15,25 @@ export const agentPlugin: EditorPluginModule = {
     version: "1.0.0",
     description: "通过自然语言指令快速编辑流程图",
     category: "utility",
-    capabilities: ["command", "action-button"],
+    capabilities: ["command", "action-button", "overlay-panel"],
     enabledByDefault: true,
   },
   contributes: {
     commands: ["打开 AI 助手"],
     buttons: ["AI 助手"],
+    overlayPanels: ["AI 助手"],
   },
   activate(ctx) {
+    ctx.editor.overlayPanels.register({
+      id: "agent-chat",
+      pluginId: PLUGIN_ID,
+      component: defineAsyncComponent(() => import("./AgentChatPanel.vue")),
+      visibilityMode: "self-visible",
+      needsEditor: true,
+      order: 40,
+      toggleEvent: "leafer-flow:toggle-agent",
+    });
+
     ctx.editor.commands.register({
       id: "openAgent",
       label: "打开 AI 助手",

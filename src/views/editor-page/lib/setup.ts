@@ -5,8 +5,9 @@ import { useSelectionMarquee } from "@/composables/useSelectionMarquee";
 import { useShapeDrop } from "@/composables/useShapeDrop";
 import { useEditorCommands } from "@/composables/useEditorCommands";
 import { useEditorAppInit } from "@/composables/useEditorAppInit";
-import { useEditorPageEvents } from "@/composables/useEditorPageEvents";
-import type { EditorPageState } from "@/views/editor-page/editor-page.state";
+import { usePageEvents } from "@/composables/usePageEvents";
+import type { PanelVisibility } from "./panel-visibility";
+import type { PageState } from "./state";
 
 type LogLevel = "info" | "success" | "warning" | "error";
 
@@ -14,17 +15,18 @@ interface EditorLogRef {
   addLog(options: { message: string; level?: LogLevel; command?: string }): void;
 }
 
-interface UseEditorPageLogicRegistryOptions {
+interface UsePageSetupOptions {
   editor: Ref<Editor | undefined>;
   editorElement: Ref<HTMLElement | null>;
   logRef: Ref<EditorLogRef | null>;
-  state: EditorPageState;
+  state: PageState;
+  panelVisibility: PanelVisibility;
 }
 
-export function useEditorPageLogicRegistry(options: UseEditorPageLogicRegistryOptions) {
+export function usePageSetup(options: UsePageSetupOptions) {
   const runtime = useRuntimeContributions();
 
-  const { handleTool, handleAction, resetToSelectTool } = useEditorCommands({
+  const { resetToSelectTool } = useEditorCommands({
     editor: options.editor,
     logRef: options.logRef,
     activeTool: options.state.activeTool,
@@ -60,13 +62,10 @@ export function useEditorPageLogicRegistry(options: UseEditorPageLogicRegistryOp
     refreshEditorStats: options.state.refreshEditorStats,
   });
 
-  const { bindEvents } = useEditorPageEvents({
-    agentOpen: options.state.agentOpen,
-    minimapOpen: options.state.minimapOpen,
-    multiLayerOpen: options.state.multiLayerOpen,
-    searchOpen: options.state.searchOpen,
-    historyOpen: options.state.historyOpen,
-    diagramLintOpen: options.state.diagramLintOpen,
+  const { bindEvents } = usePageEvents({
+    editor: options.editor,
+    togglePanel: options.panelVisibility.toggle,
+    openPanel: options.panelVisibility.open,
     diagramLintIssues: options.state.diagramLintIssues,
     diagramLintGeneratedAt: options.state.diagramLintGeneratedAt,
     addCleanup: options.state.addCleanup,
@@ -90,10 +89,6 @@ export function useEditorPageLogicRegistry(options: UseEditorPageLogicRegistryOp
   });
 
   return {
-    runtime,
-    handleTool,
-    handleAction,
-    resetToSelectTool,
     initializeApp,
     bindEvents,
   };

@@ -3,6 +3,7 @@ import { registerDefaultActionButtons } from "../../commands/default-action-butt
 import { registerDefaultCommands } from "../../commands/default-commands";
 import { registerDefaultMenus } from "../../commands/default-menus";
 import { registerDefaultPropertyPanels } from "../../property-panels";
+import { registerHostOverlayPanels } from "../../overlay-panels/register-host-overlay-panels";
 
 const PLUGIN_ID = "leafer-flow.builtin-core";
 
@@ -13,7 +14,7 @@ export const builtinCorePlugin: EditorPluginModule = {
     version: "1.0.0",
     description: "提供默认命令、右键菜单、顶部操作按钮和属性面板。",
     category: "utility",
-    capabilities: ["command", "menu", "action-button", "property-panel"],
+    capabilities: ["command", "menu", "action-button", "property-panel", "overlay-panel"],
     enabledByDefault: true,
     required: true,
   },
@@ -28,5 +29,6 @@ export const builtinCorePlugin: EditorPluginModule = {
     registerDefaultMenus(ctx.editor);
     registerDefaultActionButtons(ctx.editor);
     registerDefaultPropertyPanels(ctx.editor);
+    registerHostOverlayPanels(ctx.editor);
   },
 };

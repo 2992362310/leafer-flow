@@ -77,6 +77,7 @@ export class PluginManager {
     this.editor.actionButtons.unregisterByPlugin(pluginId);
     this.editor.viewControls.unregisterByPlugin(pluginId);
     this.editor.propertyPanels.unregisterByPlugin(pluginId);
+    this.editor.overlayPanels.unregisterByPlugin(pluginId);
     this.activePlugins.delete(pluginId);
   }
 
