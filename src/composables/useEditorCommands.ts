@@ -11,6 +11,14 @@ interface EditorLogRef {
   addLog(options: { message: string; level?: LogLevel; command?: string }): void;
 }
 
+export interface PageCommands {
+  activateTool(command: string, pre?: string): void;
+  handleTool(evt: IExecuteCommand): void;
+  handleAction(action: string): Promise<void>;
+  resetToSelectTool(): void;
+  setCurrentTool(tool: string): void;
+}
+
 interface UseEditorCommandsOptions {
   editor: Ref<Editor | undefined>;
   logRef: Ref<EditorLogRef | null>;
@@ -25,7 +33,7 @@ export function useEditorCommands({
   activeTool,
   toolShortcuts,
   refreshEditorStats,
-}: UseEditorCommandsOptions) {
+}: UseEditorCommandsOptions): PageCommands {
   const { syncCurrentTool } = useEditorShortcuts({
     onTool: handleTool,
     onAction: handleAction,
@@ -55,6 +63,13 @@ export function useEditorCommands({
     logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: "info" });
   }
 
+  function activateTool(command: string, pre?: string) {
+    handleTool({
+      command,
+      pre: pre ?? activeTool.value,
+    });
+  }
+
   function logResult(result: CommandResult, warning = true) {
     logRef.value?.addLog({
       message: result.message,
@@ -77,8 +92,10 @@ export function useEditorCommands({
   }
 
   return {
+    activateTool,
     handleTool,
     handleAction,
     resetToSelectTool,
+    setCurrentTool,
   };
 }

@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { ref, watch } from "vue";
 import { getShortcutConfig } from "@/editor/core/shortcut-config";
 import { useDraggable } from "@/composables/useDraggable";
 import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
 import PanelFlyoutWrapper from "@/components/PanelFlyoutWrapper.vue";
 
-const EVENT_NAME = "leafer-flow:toggle-shortcut-help";
+const props = defineProps<{
+  open: boolean;
+}>();
+
+const emit = defineEmits<{
+  close: [];
+}>();
 
 const config = getShortcutConfig();
-const open = ref(false);
 const editing = ref(false);
 const editingAction = ref<string | null>(null);
 const editingKey = ref("");
@@ -40,6 +45,7 @@ const groups: ShortcutGroup[] = [
       { action: "save", label: "保存文件" },
       { action: "find", label: "搜索元素" },
       { action: "toggleShortcutHelp", label: "快捷键帮助" },
+      { action: "openAgent", label: "AI 助手" },
     ],
   },
   {
@@ -186,26 +192,24 @@ function handleReset() {
 }
 
 function closePanel() {
-  open.value = false;
   editing.value = false;
   editingAction.value = null;
+  emit("close");
 }
 
-function handleToggle() {
-  open.value = !open.value;
-}
-
-onMounted(() => {
-  window.addEventListener(EVENT_NAME, handleToggle);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener(EVENT_NAME, handleToggle);
-});
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (!isOpen) {
+      editing.value = false;
+      editingAction.value = null;
+    }
+  },
+);
 </script>
 
 <template>
-  <div v-if="open && mode === 'float'" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
+  <div v-if="props.open && mode === 'float'" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
     @keydown="handleCaptureKey" tabindex="0">
     <div class="bg-base-100 shadow-2xl border border-base-200 rounded-xl w-[520px] max-h-[80vh] overflow-hidden fixed"
       :style="{ left: `${position.x}px`, top: `${position.y}px` }">

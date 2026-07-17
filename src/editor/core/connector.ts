@@ -8,6 +8,7 @@ import {
   type ITextInputData,
   type IUI,
 } from "leafer";
+import { FLOW_BOX_SIZE_PROP } from "./flow-node-shape";
 
 export type ConnectorRouteType = "orthogonal" | "bezier" | "straight" | "custom";
 export type ConnectorScaleMode = "world" | "pixel";
@@ -245,7 +246,12 @@ export class Connector extends Group {
   switchToNodeMode(
     from: IUI,
     to: IUI,
-    opts: { autoUpdateMode?: boolean; updateMode?: "event" | "render" | "manual" } = {},
+    opts: {
+      autoUpdateMode?: boolean;
+      updateMode?: "event" | "render" | "manual";
+      /** Defer geometry update to the next frame (avoids Layouter races on fresh nodes). */
+      defer?: boolean;
+    } = {},
   ) {
     this.mode = "node";
     this.fromNode = from;
@@ -254,7 +260,8 @@ export class Connector extends Group {
     this.toPoint = undefined;
     this.bindEndpointListeners();
     if (opts.updateMode) this.options.updateMode = opts.updateMode;
-    this.update();
+    if (opts.defer) this.scheduleUpdate();
+    else this.update();
   }
 
   switchToPointMode(
@@ -418,7 +425,7 @@ export class Connector extends Group {
     try {
       syncConnectorStyle(this);
       const endpoints = this.resolveEndpoints();
-      if (!endpoints) return;
+      if (!endpoints?.from?.linkPoint || !endpoints?.to?.linkPoint) return;
 
       let points: IPointData[];
       let path: string;
@@ -462,6 +469,8 @@ export class Connector extends Group {
       this.hitArea.strokeWidth = Math.max(getNumericProperty(this.wire, "strokeWidth", 2) + 10, 12);
       this.wire.path = path;
       this.positionHandles(endpoints.from.linkPoint, endpoints.to.linkPoint);
+    } catch {
+      // Never let Layouter / bounds races break the editor.
     } finally {
       this.isUpdating = false;
     }
@@ -566,8 +575,28 @@ export class Connector extends Group {
 
   private resolveEndpoints() {
     if (this.mode === "node" && this.fromNode && this.toNode) {
-      const fromBounds = this.fromNode.getBounds("box", "page");
-      const toBounds = this.toNode.getBounds("box", "page");
+      // Prefer explicit linkPoints — no Layouter / getBounds needed.
+      if (this.options.opt1?.linkPoint && this.options.opt2?.linkPoint) {
+        return {
+          from: resolveNodeEndpoint(
+            this.fromNode,
+            this.options.opt1,
+            this.options.opt2.linkPoint,
+            this.options.padding,
+            this.options.margin,
+          ),
+          to: resolveNodeEndpoint(
+            this.toNode,
+            this.options.opt2,
+            this.options.opt1.linkPoint,
+            this.options.padding,
+            this.options.margin,
+          ),
+        };
+      }
+
+      const fromBounds = getNodeBoundsBox(this.fromNode);
+      const toBounds = getNodeBoundsBox(this.toNode);
       if (!fromBounds || !toBounds) return null;
       const fromCenter = getBoundsCenter(fromBounds);
       const toCenter = getBoundsCenter(toBounds);
@@ -590,8 +619,8 @@ export class Connector extends Group {
     }
 
     if (this.mode === "mixed") {
-      const fromBounds = this.fromNode?.getBounds("box", "page");
-      const toBounds = this.toNode?.getBounds("box", "page");
+      const fromBounds = this.fromNode ? getNodeBoundsBox(this.fromNode) : null;
+      const toBounds = this.toNode ? getNodeBoundsBox(this.toNode) : null;
       const fromReference = this.fromNode
         ? fromBounds
           ? getBoundsCenter(fromBounds)
@@ -799,10 +828,15 @@ function resolveNodeEndpoint(
   globalPadding = DEFAULT_PADDING,
   globalMargin = DEFAULT_MARGIN,
 ): ConnectorPoint {
-  if (option?.linkPoint)
-    return pointEndpoint(option.linkPoint, inferSideByBounds(node, option.linkPoint));
+  if (option?.linkPoint) {
+    const side =
+      option.side && option.side !== "auto"
+        ? option.side
+        : inferSideByBounds(node, option.linkPoint);
+    return pointEndpoint(option.linkPoint, side);
+  }
 
-  const bounds = node.getBounds("box", "page");
+  const bounds = getNodeBoundsBox(node) ?? { x: 0, y: 0, width: 0, height: 0 };
   const side =
     option?.side && option.side !== "auto" ? option.side : inferSideFromBounds(bounds, toward);
   const percent = clamp(option?.percent ?? 0.5, 0, 1);
@@ -820,6 +854,72 @@ function resolveNodeEndpoint(
     linkPoint,
     paddingPoint: { x: linkPoint.x + dir.x * padding, y: linkPoint.y + dir.y * padding },
   };
+}
+
+type BoundsBox = { x: number; y: number; width: number; height: number };
+
+/** Page-space box; prefer local geometry to avoid Leafer Layouter races. */
+function getNodeBoundsBox(node: IUI): BoundsBox | null {
+  const local = readLocalBoundsBox(node);
+  if (local && local.width > 0 && local.height > 0) return local;
+
+  try {
+    const bounds = node.getBounds("box", "page");
+    if (
+      bounds &&
+      Number.isFinite(bounds.x) &&
+      Number.isFinite(bounds.y) &&
+      Number.isFinite(bounds.width) &&
+      Number.isFinite(bounds.height)
+    ) {
+      return bounds;
+    }
+  } catch {
+    // Layouter may throw before the first layout pass.
+  }
+
+  return local;
+}
+
+function readLocalBoundsBox(node: IUI): BoundsBox | null {
+  try {
+    const x = typeof node.x === "number" ? node.x : 0;
+    const y = typeof node.y === "number" ? node.y : 0;
+    const stored = (node as unknown as Record<string, unknown>)[FLOW_BOX_SIZE_PROP] as
+      | { width?: number; height?: number }
+      | undefined;
+    let width =
+      typeof stored?.width === "number"
+        ? stored.width
+        : typeof node.width === "number"
+          ? node.width
+          : 0;
+    let height =
+      typeof stored?.height === "number"
+        ? stored.height
+        : typeof node.height === "number"
+          ? node.height
+          : 0;
+
+    const children = (node as unknown as { children?: IUI[] }).children;
+    if ((!width || !height) && Array.isArray(children)) {
+      for (const child of children) {
+        const childX = typeof child.x === "number" ? child.x : 0;
+        const childY = typeof child.y === "number" ? child.y : 0;
+        const childW = typeof child.width === "number" ? child.width : 0;
+        const childH = typeof child.height === "number" ? child.height : 0;
+        if (childW > 0 || childH > 0) {
+          width = Math.max(width, childX + childW);
+          height = Math.max(height, childY + childH);
+        }
+      }
+    }
+
+    if (!width && !height) return null;
+    return { x, y, width, height };
+  } catch {
+    return null;
+  }
 }
 
 function pointEndpoint(point: IPointData, side: ConnectorSide): ConnectorPoint {
@@ -980,7 +1080,8 @@ function inferSideFromBounds(
 }
 
 function inferSideByBounds(node: IUI, point: IPointData): ConnectorSide {
-  const bounds = node.getBounds("box", "page");
+  const bounds = getNodeBoundsBox(node);
+  if (!bounds) return "right";
   const left = Math.abs(point.x - bounds.x);
   const right = Math.abs(point.x - (bounds.x + bounds.width));
   const top = Math.abs(point.y - bounds.y);

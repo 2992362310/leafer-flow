@@ -1,6 +1,10 @@
 import type { IconName } from "../../assets/icons";
+import type { PanelToggleId } from "./panel-toggle";
 
 export type ActionButtonKind = "button" | "dropdown" | "panel";
+
+/** edit = mutate/file/export; panel = toggle/open UI panels */
+export type ActionButtonSurface = "edit" | "panel";
 
 export interface ActionButtonItemContribution {
   id: string;
@@ -9,6 +13,8 @@ export interface ActionButtonItemContribution {
   icon?: IconName;
   order?: number;
   danger?: boolean;
+  /** When set, ActionBar can highlight the button if this panel is open or docked. */
+  panelId?: PanelToggleId;
 }
 
 export interface ActionButtonSelectOption<T extends string | boolean = string | boolean> {
@@ -51,6 +57,8 @@ export interface ActionButtonGroupContribution {
   icon: IconName;
   pluginId?: string;
   kind?: ActionButtonKind;
+  /** Defaults to "edit" when omitted. */
+  surface?: ActionButtonSurface;
   order?: number;
   items: ActionButtonItemContribution[];
   panelItems?: ActionButtonPanelItemContribution[];

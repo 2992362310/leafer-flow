@@ -18,6 +18,7 @@ const DRAWING_SETTINGS_PANEL: ActionButtonGroupContribution = {
   icon: "template",
   pluginId: PLUGIN_ID,
   kind: "panel",
+  surface: "panel",
   order: 75,
   items: [],
   panelItems: [

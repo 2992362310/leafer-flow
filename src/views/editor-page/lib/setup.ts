@@ -6,6 +6,7 @@ import { useShapeDrop } from "@/composables/useShapeDrop";
 import { useEditorCommands } from "@/composables/useEditorCommands";
 import { useEditorAppInit } from "@/composables/useEditorAppInit";
 import { usePageEvents } from "@/composables/usePageEvents";
+import { providePageCommands } from "./page-commands";
 import type { PanelVisibility } from "./panel-visibility";
 import type { PageState } from "./state";
 
@@ -26,13 +27,16 @@ interface UsePageSetupOptions {
 export function usePageSetup(options: UsePageSetupOptions) {
   const runtime = useRuntimeContributions();
 
-  const { resetToSelectTool } = useEditorCommands({
-    editor: options.editor,
-    logRef: options.logRef,
-    activeTool: options.state.activeTool,
-    toolShortcuts: runtime.toolShortcuts,
-    refreshEditorStats: options.state.refreshEditorStats,
-  });
+  const pageCommands = providePageCommands(
+    useEditorCommands({
+      editor: options.editor,
+      logRef: options.logRef,
+      activeTool: options.state.activeTool,
+      toolShortcuts: runtime.toolShortcuts,
+      refreshEditorStats: options.state.refreshEditorStats,
+    }),
+  );
+  const { resetToSelectTool } = pageCommands;
 
   const { bind: bindSelectionMarquee } = useSelectionMarquee({
     editor: options.editor,
@@ -62,7 +66,7 @@ export function usePageSetup(options: UsePageSetupOptions) {
     refreshEditorStats: options.state.refreshEditorStats,
   });
 
-  const { bindEvents } = usePageEvents({
+  const { bindEvents, bindHostEvents } = usePageEvents({
     editor: options.editor,
     togglePanel: options.panelVisibility.toggle,
     openPanel: options.panelVisibility.open,
@@ -70,6 +74,9 @@ export function usePageSetup(options: UsePageSetupOptions) {
     diagramLintGeneratedAt: options.state.diagramLintGeneratedAt,
     addCleanup: options.state.addCleanup,
   });
+
+  // Host panels (e.g. layer tree) must work even while editor async init is in flight.
+  bindHostEvents();
 
   function handlePluginMarketChanged() {
     const currentEditor = options.editor.value;
@@ -91,5 +98,7 @@ export function usePageSetup(options: UsePageSetupOptions) {
   return {
     initializeApp,
     bindEvents,
+    pageCommands,
+    runtime,
   };
 }

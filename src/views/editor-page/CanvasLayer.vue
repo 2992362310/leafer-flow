@@ -4,14 +4,15 @@ import SelectionMarquee from "@/components/SelectionMarquee.vue";
 import ShapeLibrary from "@/components/ShapeLibrary.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import type { Editor } from "@/editor";
-import { TOOL_NAME } from "@/editor/constants";
-import type { IExecuteArg } from "@/editor/types";
-import type { PageState } from "@/views/editor-page";
+import type { PageState } from "@/views/editor-page/lib";
+import { useInjectedPageCommands } from "@/views/editor-page/lib";
 
 const props = defineProps<{
   editor: Editor | undefined;
   state: PageState;
 }>();
+
+const { activateTool, handleAction } = useInjectedPageCommands();
 
 const activeTool = computed(() => props.state.activeTool.value);
 const shapeLibraryGroups = computed(() => {
@@ -19,25 +20,12 @@ const shapeLibraryGroups = computed(() => {
   return props.editor.toolRegistry.getShapeLibraryGroups();
 });
 
-function setCurrentTool(tool: string) {
-  props.state.activeTool.value = tool;
-}
-
-function executeCallback<T>(arg: T) {
-  const { next } = arg as IExecuteArg;
-  setCurrentTool(next ?? TOOL_NAME.SELECT);
-}
-
 function handleLibraryTool(tool: string) {
-  if (!props.editor) return;
-  const command = { command: tool, pre: props.state.activeTool.value };
-  setCurrentTool(tool);
-  props.editor.execute(command, executeCallback);
+  activateTool(tool);
 }
 
 async function handleContextAction(action: string) {
-  if (!props.editor) return;
-  await props.editor.commands.execute(action);
+  await handleAction(action);
 }
 </script>
 

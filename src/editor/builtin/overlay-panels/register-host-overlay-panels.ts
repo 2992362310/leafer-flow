@@ -1,6 +1,7 @@
 import { defineAsyncComponent } from "vue";
 import type Editor from "@/editor/editor";
 import { BUILTIN_PLUGIN_ID } from "../../constants";
+import { getPanelToggleEvent } from "../../api/panel-toggle";
 
 export function registerHostOverlayPanels(editor: Editor) {
   editor.overlayPanels.register({
@@ -10,7 +11,7 @@ export function registerHostOverlayPanels(editor: Editor) {
     visibilityMode: "open-prop",
     needsEditor: true,
     order: 10,
-    toggleEvent: "leafer-flow:toggle-search",
+    toggleEvent: getPanelToggleEvent("canvas-search"),
   });
 
   editor.overlayPanels.register({
@@ -20,7 +21,7 @@ export function registerHostOverlayPanels(editor: Editor) {
     visibilityMode: "open-prop",
     needsEditor: true,
     order: 20,
-    toggleEvent: "leafer-flow:toggle-history",
+    toggleEvent: getPanelToggleEvent("history-panel"),
   });
 
   editor.overlayPanels.register({
@@ -32,6 +33,16 @@ export function registerHostOverlayPanels(editor: Editor) {
     visibilityMode: "open-prop",
     needsEditor: false,
     order: 30,
-    toggleEvent: "leafer-flow:toggle-plugin-market",
+    toggleEvent: getPanelToggleEvent("plugin-market"),
+  });
+
+  editor.overlayPanels.register({
+    id: "shortcut-help",
+    pluginId: BUILTIN_PLUGIN_ID,
+    component: defineAsyncComponent(() => import("@/components/ShortcutHelp.vue")),
+    visibilityMode: "open-prop",
+    needsEditor: false,
+    order: 35,
+    toggleEvent: getPanelToggleEvent("shortcut-help"),
   });
 }

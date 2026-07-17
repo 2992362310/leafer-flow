@@ -1,5 +1,6 @@
 import type { DockPanelId } from "@/composables/usePanelDock";
 import type { OverlayPanelDockId } from "@/editor/api/overlay-panel";
+import { getPanelToggleEvent, PANEL_TOGGLE_EVENT } from "@/editor/api/panel-toggle";
 
 /** Overlay panels rendered by Overlays.vue and managed through OverlayPanelRegistry. */
 export type OverlayPanelId = OverlayPanelDockId;
@@ -18,17 +19,22 @@ export const OVERLAY_PANEL_IDS = [
   "history-panel",
   "diagram-lint",
   "plugin-market",
+  "shortcut-help",
 ] as const satisfies readonly OverlayPanelId[];
 
 export const HOST_PANEL_IDS = ["layer-panel"] as const satisfies readonly HostPanelId[];
 
 export const PAGE_PANEL_IDS = [...HOST_PANEL_IDS, ...OVERLAY_PANEL_IDS] as const satisfies readonly PagePanelId[];
 
-/** Toggle events for host panels and panels without registry metadata. */
+/**
+ * Toggle events for host panels that are not registered in OverlayPanelRegistry.
+ * Overlay panels contribute their own toggleEvent via the registry.
+ */
 export const HOST_PANEL_TOGGLE_EVENTS: Partial<Record<PagePanelId, string>> = {
-  "layer-panel": "leafer-flow:toggle-layer-panel",
-  "plugin-market": "leafer-flow:toggle-plugin-market",
+  "layer-panel": getPanelToggleEvent("layer-panel"),
 };
+
+export { PANEL_TOGGLE_EVENT };
 
 export function isPagePanelId(id: DockPanelId): id is PagePanelId {
   return (PAGE_PANEL_IDS as readonly string[]).includes(id);

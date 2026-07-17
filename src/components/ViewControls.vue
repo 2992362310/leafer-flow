@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { ViewControlContribution } from "@/editor/api/view-control";
+import { useInjectedPageCommands } from "@/views/editor-page/lib";
 
 defineProps<{
   zoomPercent: number;
   controls: ViewControlContribution[];
 }>();
 
-const emits = defineEmits<{
-  action: [action: string];
-}>();
+const { handleAction } = useInjectedPageCommands();
 
 function handleClick(action: string) {
-  emits("action", action);
+  void handleAction(action);
 }
 </script>
 

@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted } from "vue";
 import type { IExecuteCommand } from "./types";
-import { TOOL_NAME, ACTION_NAME } from "./constants";
+import { TOOL_NAME } from "./constants";
 import { getShortcutConfig } from "./core/shortcut-config";
 
 type ToolHandler = (cmd: IExecuteCommand) => void;
@@ -10,6 +10,7 @@ type ToolShortcutResolver = (key: string) => string | undefined;
 interface ShortcutOptions {
   onTool: ToolHandler;
   onAction: ActionHandler;
+  /** Fallback for tool keys contributed by the tool registry (e.g. plugins). */
   resolveToolShortcut?: ToolShortcutResolver;
 }
 
@@ -34,6 +35,13 @@ export function useEditorShortcuts(options: ShortcutOptions) {
       } else if (entry.type === "tool") {
         switchTool(entry.action);
       }
+      return;
+    }
+
+    const resolvedTool = resolveToolShortcut?.(key);
+    if (resolvedTool) {
+      e.preventDefault();
+      switchTool(resolvedTool);
       return;
     }
 

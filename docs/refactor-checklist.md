@@ -140,6 +140,7 @@
 - [x] 文件、导出、模板拆为独立插件（`file-actions`、`export-actions`、`template-actions`）。
 - [x] 视图控件由 `view-controls` 插件通过 `ViewControlRegistry` 贡献。
 - [x] 属性面板 contribution 协议已建立并接入。
+- [x] 工具/动作分发已收敛到 page commands（`useEditorCommands` + `providePageCommands`），TopBar/图形库/ActionBar/快捷键共用同一入口。
 
 剩余工作：
 

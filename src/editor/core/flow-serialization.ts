@@ -1,6 +1,8 @@
 import { App, type IUI } from "leafer";
 import { Connector } from "./connector";
 import {
+  CONNECTOR_LABEL_OFFSET_X_PROP,
+  CONNECTOR_LABEL_OFFSET_Y_PROP,
   CONNECTOR_LABEL_PROP,
   persistConnectorLabel,
   restoreConnectorLabelRuntimeProps,
@@ -148,9 +150,24 @@ function isSerializedTree(value: unknown): value is SerializedTree {
 }
 
 export function applySerializedChildren(app: App, children: SerializedChild[]): DeserializeResult {
-  let failedConnectors = 0;
   app.tree.clear();
-  if (!Array.isArray(children)) return { failedConnectors: 0 };
+  return hydrateSerializedChildren(app, children);
+}
+
+/** Append serialized nodes/connectors without clearing the current tree. */
+export function appendSerializedChildren(
+  app: App,
+  children: SerializedChild[],
+): DeserializeResult {
+  return hydrateSerializedChildren(app, children);
+}
+
+function hydrateSerializedChildren(
+  app: App,
+  children: SerializedChild[],
+): DeserializeResult {
+  let failedConnectors = 0;
+  if (!Array.isArray(children) || children.length === 0) return { failedConnectors: 0 };
 
   const connectors: SerializedChild[] = [];
   const idMap = new Map<string | number, IUI>();
@@ -162,7 +179,8 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
       return;
     }
 
-    app.tree.add(child as object);
+    const leaferJson = stripSerializationMeta(child);
+    app.tree.add(leaferJson as object);
     const added = app.tree.children?.[app.tree.children.length - 1] as IUI | undefined;
     if (!added) return;
 
@@ -189,6 +207,10 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
     const connector = createConnector(app);
     app.tree.add(connector);
 
+    if (state.fromPoint && state.toPoint) {
+      connector.setPoints(state.fromPoint, state.toPoint);
+    }
+
     try {
       connector.setState(state as never, (id: string | number) => resolveNodeById(app, id));
     } catch (e) {
@@ -208,8 +230,32 @@ export function applySerializedChildren(app: App, children: SerializedChild[]): 
 
   remapConnectorLabels(app, connectorMap);
   normalizeAtomicGroups(app.tree.children as IUI[] | undefined);
-  syncConnectorLabels(app);
+  try {
+    syncConnectorLabels(app);
+  } catch (e) {
+    console.warn("同步连接线标签失败:", e);
+  }
   return { failedConnectors };
+}
+
+const SERIALIZATION_META_KEYS = new Set([
+  "__flowNodeId",
+  "__flowConnectorId",
+  "__isConnector",
+  "__connectorState",
+  CUSTOM_DATA_PROP,
+  CONNECTOR_LABEL_PROP,
+  CONNECTOR_LABEL_OFFSET_X_PROP,
+  CONNECTOR_LABEL_OFFSET_Y_PROP,
+]);
+
+function stripSerializationMeta(child: SerializedChild): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(child)) {
+    if (SERIALIZATION_META_KEYS.has(key)) continue;
+    next[key] = value;
+  }
+  return next;
 }
 
 export function createConnector(app: App) {

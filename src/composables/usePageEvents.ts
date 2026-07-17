@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
 import type { Editor } from "@/editor";
 import type { DiagramLintUpdatedEventDetail, LintIssue } from "@/editor/builtin/plugins/diagram-lint/types";
-import { HOST_PANEL_TOGGLE_EVENTS, type PagePanelId, type PageState } from "@/views/editor-page";
+import { HOST_PANEL_TOGGLE_EVENTS, type PagePanelId } from "@/views/editor-page/lib/panels";
+import type { PageState } from "@/views/editor-page/lib/state";
 
 interface UsePageEventsOptions {
   editor: Ref<Editor | undefined>;
@@ -23,6 +24,8 @@ function collectToggleEvents(editor: Editor | undefined): Partial<Record<PagePan
 }
 
 export function usePageEvents(options: UsePageEventsOptions) {
+  const boundEvents = new Set<string>();
+
   function bindEvents() {
     const toggleEvents = collectToggleEvents(options.editor.value);
 
@@ -33,10 +36,21 @@ export function usePageEvents(options: UsePageEventsOptions) {
     }
 
     bindLintUpdatedEvent();
-    bindAgentShortcut();
+  }
+
+  /** Bind host-only panel toggles immediately (before editor async init finishes). */
+  function bindHostEvents() {
+    for (const [panelId, eventName] of Object.entries(HOST_PANEL_TOGGLE_EVENTS) as Array<
+      [PagePanelId, string]
+    >) {
+      bindToggleEvent(eventName, panelId);
+    }
   }
 
   function bindToggleEvent(eventName: string, panelId: PagePanelId) {
+    if (boundEvents.has(eventName)) return;
+    boundEvents.add(eventName);
+
     const handler = () => {
       options.togglePanel(panelId);
     };
@@ -44,10 +58,15 @@ export function usePageEvents(options: UsePageEventsOptions) {
     window.addEventListener(eventName, handler);
     options.addCleanup(() => {
       window.removeEventListener(eventName, handler);
+      boundEvents.delete(eventName);
     });
   }
 
   function bindLintUpdatedEvent() {
+    const eventName = "leafer-flow:diagram-lint-updated";
+    if (boundEvents.has(eventName)) return;
+    boundEvents.add(eventName);
+
     const handleLintUpdated = (event: Event) => {
       const customEvent = event as CustomEvent<DiagramLintUpdatedEventDetail>;
       options.diagramLintIssues.value = customEvent.detail?.issues ?? [];
@@ -55,34 +74,15 @@ export function usePageEvents(options: UsePageEventsOptions) {
       options.openPanel("diagram-lint");
     };
 
-    window.addEventListener("leafer-flow:diagram-lint-updated", handleLintUpdated);
+    window.addEventListener(eventName, handleLintUpdated);
     options.addCleanup(() => {
-      window.removeEventListener("leafer-flow:diagram-lint-updated", handleLintUpdated);
-    });
-  }
-
-  function bindAgentShortcut() {
-    const handleKeydown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
-        return;
-      }
-
-      const { ctrlKey, metaKey, shiftKey, key } = event;
-      const isCmd = ctrlKey || metaKey;
-      if (isCmd && shiftKey && key.toLowerCase() === "a") {
-        event.preventDefault();
-        options.togglePanel("agent-chat");
-      }
-    };
-
-    window.addEventListener("keydown", handleKeydown);
-    options.addCleanup(() => {
-      window.removeEventListener("keydown", handleKeydown);
+      window.removeEventListener(eventName, handleLintUpdated);
+      boundEvents.delete(eventName);
     });
   }
 
   return {
     bindEvents,
+    bindHostEvents,
   };
 }

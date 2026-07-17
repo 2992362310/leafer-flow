@@ -1,6 +1,6 @@
 /**
  * Shared utilities for creating and resizing flow node shapes.
- * Used by DrawFlowNode (interactive drawing), do-template (batch insertion),
+ * Used by DrawFlowNode (interactive drawing), template builders,
  * and useEditorPanelState (property-panel resize).
  */
 import { Ellipse, Path, Rect, type IUI } from "leafer";
@@ -53,6 +53,9 @@ export type FlowNodeKind =
 
 /** Property key that stores the FlowNodeKind on the inner shape element. */
 export const FLOW_SHAPE_KIND_PROP = "__flowShapeKind";
+
+/** Explicit box size on a flow Group (not Leafer width/height — those enable auto-layout). */
+export const FLOW_BOX_SIZE_PROP = "__flowBoxSize";
 
 export interface FlowNodeShapeStyle {
   fill?: string;

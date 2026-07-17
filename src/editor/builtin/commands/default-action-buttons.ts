@@ -9,6 +9,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     icon: "undo",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
+    surface: "edit",
     order: 10,
     items: [
       { id: "undo", label: "撤销 (Ctrl+Z)", command: ACTION_NAME.UNDO, icon: "undo", order: 10 },
@@ -19,13 +20,6 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         icon: "redo",
         order: 20,
       },
-      {
-        id: "history-panel",
-        label: "历史面板",
-        command: "toggleHistoryPanel",
-        icon: "undo",
-        order: 30,
-      },
     ],
   },
   {
@@ -34,6 +28,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     icon: "align_center",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "dropdown",
+    surface: "edit",
     order: 20,
     items: [
       { id: "align-left", command: ACTION_NAME.ALIGN_LEFT, icon: "align_left", label: "左对齐" },
@@ -77,6 +72,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     icon: "layer",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "dropdown",
+    surface: "edit",
     order: 30,
     items: [
       {
@@ -148,6 +144,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     icon: "connector_label",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
+    surface: "edit",
     order: 50,
     items: [
       {
@@ -164,6 +161,7 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     icon: "insert_image",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
+    surface: "edit",
     order: 60,
     items: [
       {
@@ -181,11 +179,55 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     ],
   },
   {
+    id: "panels",
+    label: "面板",
+    icon: "settings",
+    pluginId: BUILTIN_PLUGIN_ID,
+    kind: "button",
+    surface: "panel",
+    order: 72,
+    items: [
+      {
+        id: "history-panel",
+        label: "历史面板",
+        command: "toggleHistoryPanel",
+        icon: "undo",
+        panelId: "history-panel",
+        order: 10,
+      },
+      {
+        id: "layer-panel",
+        label: "图层树",
+        command: "toggleLayerPanel",
+        icon: "layer",
+        panelId: "layer-panel",
+        order: 20,
+      },
+      {
+        id: "canvas-search",
+        label: "搜索",
+        command: ACTION_NAME.FIND,
+        icon: "select",
+        panelId: "canvas-search",
+        order: 30,
+      },
+      {
+        id: "shortcut-help",
+        label: "快捷键帮助",
+        command: "toggleShortcutHelp",
+        icon: "info",
+        panelId: "shortcut-help",
+        order: 40,
+      },
+    ],
+  },
+  {
     id: "danger",
     label: "危险操作",
     icon: "clear",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
+    surface: "edit",
     order: 100,
     items: [
       {

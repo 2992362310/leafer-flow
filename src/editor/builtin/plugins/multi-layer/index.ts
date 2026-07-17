@@ -1,5 +1,6 @@
 import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
+import { dispatchPanelToggle, getPanelToggleEvent } from "../../../api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.multi-layer";
 
@@ -41,7 +42,7 @@ export const multiLayerPlugin: EditorPluginModule = {
       visibilityMode: "self-visible",
       needsEditor: true,
       order: 60,
-      toggleEvent: "leafer-flow:toggle-multi-layer-panel",
+      toggleEvent: getPanelToggleEvent("multi-layer-panel"),
     });
 
     ctx.editor.commands.register({
@@ -49,9 +50,7 @@ export const multiLayerPlugin: EditorPluginModule = {
       label: "切换多图层",
       pluginId: PLUGIN_ID,
       run: () => {
-        window.dispatchEvent(
-          new CustomEvent("leafer-flow:toggle-multi-layer-panel", { detail: config }),
-        );
+        dispatchPanelToggle("multi-layer-panel", config);
         return { success: true, message: "已切换多图层面板" };
       },
     });
@@ -62,6 +61,7 @@ export const multiLayerPlugin: EditorPluginModule = {
       icon: "layer",
       pluginId: PLUGIN_ID,
       kind: "button",
+      surface: "panel",
       order: 77,
       items: [
         {
@@ -69,6 +69,7 @@ export const multiLayerPlugin: EditorPluginModule = {
           label: "多图层面板",
           command: "toggleMultiLayerPanel",
           icon: "layer",
+          panelId: "multi-layer-panel",
           order: 10,
         },
       ],

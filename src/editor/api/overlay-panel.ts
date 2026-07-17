@@ -5,6 +5,7 @@ export type OverlayPanelDockId =
   | "canvas-search"
   | "history-panel"
   | "plugin-market"
+  | "shortcut-help"
   | "agent-chat"
   | "minimap-panel"
   | "multi-layer-panel"

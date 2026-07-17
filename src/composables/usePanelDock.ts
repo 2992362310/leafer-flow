@@ -87,6 +87,8 @@ export function usePanelDock() {
   function dockPanel(id: DockPanelId) {
     if (isPanelDocked(id)) return;
     dockedIds.value = [...dockedIds.value, id];
+    // Keep the panel visible as a flyout after docking; otherwise it becomes "hidden".
+    activeFlyoutId.value = id;
     persist();
   }
 

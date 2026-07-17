@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef } from "vue";
-import { TOOL_NAME } from "@/editor/constants";
 import { type Editor } from "@/editor";
 import EditorTopBar from "@/components/EditorTopBar.vue";
 import EditorActionBar from "@/components/EditorActionBar.vue";
@@ -39,22 +38,8 @@ const viewControls = computed(() => {
   if (!editor.value) return [];
   return editor.value.viewControls.list();
 });
-const toolLabels = computed<Record<string, string>>(() => {
-  if (!editor.value) {
-    return { [TOOL_NAME.SELECT]: "选择" };
-  }
 
-  return {
-    [TOOL_NAME.SELECT]: "选择",
-    ...Object.fromEntries(
-      editor.value.toolRegistry
-        .list()
-        .map((contribution) => [contribution.id, contribution.label]),
-    ),
-  };
-});
-
-const { initializeApp, bindEvents } = usePageSetup({
+const { initializeApp, bindEvents, runtime } = usePageSetup({
   editor,
   editorElement: editorRef,
   logRef,
@@ -62,22 +47,21 @@ const { initializeApp, bindEvents } = usePageSetup({
   panelVisibility,
 });
 
+const toolLabels = computed(() => runtime.toolLabels.value);
+
 const { handleTemplateFromRoute } = useTemplateRoute({ editor, logRef });
 
 onMounted(() => {
-  initializeApp();
-  void handleTemplateFromRoute();
-  bindEvents();
+  void (async () => {
+    await initializeApp();
+    bindEvents();
+    await handleTemplateFromRoute();
+  })();
 });
 
 onUnmounted(() => {
   cleanupAll();
 });
-
-async function handleViewAction(action: string) {
-  if (!editor.value) return;
-  await editor.value.commands.execute(action);
-}
 </script>
 
 <template>
@@ -86,20 +70,16 @@ async function handleViewAction(action: string) {
   <StatusBar :selected-tool="selectedTool" :tool-labels="toolLabels" :element-count="elementCount" />
   <PanelDockRail />
 
-  <EditorTopBar
-    :editor="editor"
-    v-model:selected-tool="state.activeTool.value"
-    :show-action-buttons="false"
-  />
+  <EditorTopBar :editor="editor" v-model:selected-tool="state.activeTool.value" />
   <EditorActionBar :editor="editor" />
 
   <LayerPanel v-if="showLayerPanel" :editor="editor" :open="layerPanelOpen" />
-  <EditorPanel :editor="editor" class="z-10" />
+  <EditorPanel :editor="editor" />
 
   <CanvasLayer :editor="editor" :state="state" />
 
   <div class="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
-    <ViewControls :zoom-percent="zoomPercent" :controls="viewControls" @action="handleViewAction" />
+    <ViewControls :zoom-percent="zoomPercent" :controls="viewControls" />
   </div>
 
   <Overlays :editor="editor" :state="state" />

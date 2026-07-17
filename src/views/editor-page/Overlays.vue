@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { Editor } from "@/editor";
-import ShortcutHelp from "@/components/ShortcutHelp.vue";
 import { resolveOverlayPanelDefs, type OverlayPanelContext } from "@/views/editor-page";
 import { useInjectedPanelVisibility } from "@/views/editor-page";
 import type { PageState } from "@/views/editor-page";
@@ -27,8 +26,6 @@ const panelContext = computed<OverlayPanelContext>(() => ({
 </script>
 
 <template>
-  <ShortcutHelp />
-
   <template v-for="def in overlayPanelDefs" :key="def.id">
     <component
       :is="def.component"

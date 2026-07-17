@@ -17,6 +17,13 @@ export {
 export type { PanelVisibility } from "./panel-visibility";
 
 export {
+  providePageCommands,
+  useInjectedPageCommands,
+  PAGE_COMMANDS_KEY,
+} from "./page-commands";
+export type { PageCommands } from "./page-commands";
+
+export {
   HOST_PANEL_IDS,
   HOST_PANEL_TOGGLE_EVENTS,
   OVERLAY_PANEL_IDS,

@@ -170,13 +170,13 @@ const { position, isDragging, startDrag } = useDraggable({
   panelHeight: 560,
   margin: 8,
 });
-const { isCollapsed, toggleCollapse } = useCollapsible(true);
+const { isCollapsed, toggleCollapse } = useCollapsible(false);
 const { togglePanelDock } = usePanelDock();
 const mode = usePanelMode("layer-panel");
 </script>
 
 <template>
-  <div v-show="(props.open ?? true) && mode === 'float'"
+  <div v-show="mode === 'float' && (props.open ?? true)"
     class="layer-panel card bg-base-100 shadow-xl border border-base-200 backdrop-blur-sm fixed overflow-hidden transition-[height,width] z-30"
     :style="{
       left: position.x + 'px',

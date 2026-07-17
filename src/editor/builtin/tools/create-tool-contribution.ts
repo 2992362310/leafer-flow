@@ -1,4 +1,5 @@
 import { TOOL_NAME } from "../../constants";
+import { getToolShortcutLabel } from "../../core/tool-shortcuts";
 import { DrawArrow } from "../../tools/draw-arrow";
 import { DrawCircle } from "../../tools/draw-circle";
 import { DrawDiamond } from "../../tools/draw-diamond";
@@ -44,7 +45,7 @@ function createToolbarContribution(definition: ToolDefinition, order: number) {
     groupTitle: getToolbarGroupTitle(definition),
     icon,
     tip: createToolTip(definition),
-    shortcut: getToolShortcut(definition.tool),
+    shortcut: getToolShortcutLabel(definition.tool),
     order,
   };
 }
@@ -64,7 +65,7 @@ function getToolbarGroupTitle(definition: ToolDefinition) {
 }
 
 function createToolTip(definition: ToolDefinition) {
-  const shortcut = getToolShortcut(definition.tool);
+  const shortcut = getToolShortcutLabel(definition.tool);
   return shortcut ? `${definition.label} (${shortcut})` : definition.label;
 }
 
@@ -85,34 +86,6 @@ function getClassToolIcon(definition: ToolDefinition) {
     case "freehand":
       return "draw_freehand";
   }
-}
-
-function getToolShortcut(tool: string) {
-  const shortcuts: Partial<Record<string, string>> = {
-    [TOOL_NAME.DRAW_RECT]: "R",
-    [TOOL_NAME.DRAW_CIRCLE]: "C",
-    [TOOL_NAME.DRAW_DIAMOND]: "D",
-    [TOOL_NAME.DRAW_TRIANGLE]: "U",
-    [TOOL_NAME.DRAW_PARALLELOGRAM]: "G",
-    [TOOL_NAME.DRAW_STAR]: "Y",
-    [TOOL_NAME.DRAW_NOTE]: "N",
-    [TOOL_NAME.DRAW_CYLINDER]: "O",
-    [TOOL_NAME.DRAW_HEXAGON]: "X",
-    [TOOL_NAME.DRAW_ARROW]: "A",
-    [TOOL_NAME.DRAW_TEXT]: "T",
-    [TOOL_NAME.DRAW_FREEHAND]: "P",
-    [TOOL_NAME.FLOW_START_END]: "1",
-    [TOOL_NAME.FLOW_PROCESS]: "2",
-    [TOOL_NAME.FLOW_DECISION]: "3",
-    [TOOL_NAME.FLOW_IO]: "4",
-    [TOOL_NAME.FLOW_DOCUMENT]: "5",
-    [TOOL_NAME.FLOW_DATABASE]: "6",
-    [TOOL_NAME.FLOW_SUBPROCESS]: "7",
-    [TOOL_NAME.FLOW_CONNECTOR]: "8",
-    [TOOL_NAME.FLOW_SWIMLANE]: "9",
-  };
-
-  return shortcuts[tool];
 }
 
 function createTool(definition: ToolDefinition) {

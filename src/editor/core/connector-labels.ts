@@ -166,11 +166,25 @@ function getConnectorCenter(connector: Connector) {
     // wire.path not available, fall through to bounds
   }
 
-  const bounds = connector.getBounds("box", "page");
-  return {
-    x: bounds.x + bounds.width / 2,
-    y: bounds.y + bounds.height / 2,
-  };
+  try {
+    const bounds = connector.getBounds("box", "page");
+    if (
+      bounds &&
+      Number.isFinite(bounds.x) &&
+      Number.isFinite(bounds.y) &&
+      Number.isFinite(bounds.width) &&
+      Number.isFinite(bounds.height)
+    ) {
+      return {
+        x: bounds.x + bounds.width / 2,
+        y: bounds.y + bounds.height / 2,
+      };
+    }
+  } catch {
+    // ignore Layouter errors
+  }
+
+  return { x: 0, y: 0 };
 }
 
 type IPoint = { x: number; y: number };

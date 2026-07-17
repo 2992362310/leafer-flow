@@ -1,4 +1,5 @@
-import { TOOL_NAME, ACTION_NAME } from "../constants";
+import { ACTION_NAME } from "../constants";
+import { buildDefaultToolShortcutEntries } from "./tool-shortcuts";
 
 const STORAGE_KEY = "leafer-flow-shortcuts";
 
@@ -35,27 +36,10 @@ const DEFAULT_SHORTCUTS: ShortcutEntry[] = [
   { key: "delete", action: ACTION_NAME.DELETE, type: "action" },
   { key: "backspace", action: ACTION_NAME.DELETE, type: "action" },
   { key: "f1", action: "toggleShortcutHelp", type: "action" },
+  { key: "ctrl+shift+a", action: "openAgent", type: "action" },
 
-  // 工具快捷键
-  { key: "v", action: TOOL_NAME.SELECT, type: "tool" },
-  { key: "escape", action: TOOL_NAME.SELECT, type: "tool" },
-  { key: "r", action: TOOL_NAME.DRAW_RECT, type: "tool" },
-  { key: "c", action: TOOL_NAME.DRAW_CIRCLE, type: "tool" },
-  { key: "d", action: TOOL_NAME.DRAW_DIAMOND, type: "tool" },
-  { key: "u", action: TOOL_NAME.DRAW_TRIANGLE, type: "tool" },
-  { key: "x", action: TOOL_NAME.DRAW_HEXAGON, type: "tool" },
-  { key: "a", action: TOOL_NAME.DRAW_ARROW, type: "tool" },
-  { key: "t", action: TOOL_NAME.DRAW_TEXT, type: "tool" },
-  { key: "p", action: TOOL_NAME.DRAW_FREEHAND, type: "tool" },
-  { key: "1", action: TOOL_NAME.FLOW_START_END, type: "tool" },
-  { key: "2", action: TOOL_NAME.FLOW_PROCESS, type: "tool" },
-  { key: "3", action: TOOL_NAME.FLOW_DECISION, type: "tool" },
-  { key: "4", action: TOOL_NAME.FLOW_IO, type: "tool" },
-  { key: "5", action: TOOL_NAME.FLOW_DOCUMENT, type: "tool" },
-  { key: "6", action: TOOL_NAME.FLOW_DATABASE, type: "tool" },
-  { key: "7", action: TOOL_NAME.FLOW_SUBPROCESS, type: "tool" },
-  { key: "8", action: TOOL_NAME.FLOW_CONNECTOR, type: "tool" },
-  { key: "9", action: TOOL_NAME.FLOW_SWIMLANE, type: "tool" },
+  // 工具快捷键（与 tool-shortcuts / toolbar tip 同源）
+  ...buildDefaultToolShortcutEntries(),
 ];
 
 export class ShortcutConfig {

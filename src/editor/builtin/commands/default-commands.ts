@@ -24,6 +24,7 @@ import { doSelectByType } from "../../action/do-select-by-type";
 import { doUndo } from "../../action/do-undo";
 import { doUnGroup } from "../../action/do-ungroup";
 import { getSnapEnabled, setSnapEnabled } from "../../core/drawing-settings";
+import { dispatchPanelToggle } from "../../api/panel-toggle";
 
 const CORE_COMMANDS: CommandContribution[] = [
   {
@@ -96,8 +97,7 @@ const CORE_COMMANDS: CommandContribution[] = [
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: () => {
-      // 搜索 UI 由 CanvasSearch 组件处理，此命令仅触发打开
-      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-search"));
+      dispatchPanelToggle("canvas-search");
       return { success: true, message: "已打开搜索" };
     },
   },
@@ -107,7 +107,7 @@ const CORE_COMMANDS: CommandContribution[] = [
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: () => {
-      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-layer-panel"));
+      dispatchPanelToggle("layer-panel");
       return { success: true, message: "已切换图层树" };
     },
   },
@@ -117,7 +117,7 @@ const CORE_COMMANDS: CommandContribution[] = [
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: () => {
-      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-plugin-market"));
+      dispatchPanelToggle("plugin-market");
       return { success: true, message: "已切换插件市场" };
     },
   },
@@ -127,7 +127,7 @@ const CORE_COMMANDS: CommandContribution[] = [
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: () => {
-      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-history"));
+      dispatchPanelToggle("history-panel");
       return { success: true, message: "已切换历史面板" };
     },
   },
@@ -137,7 +137,7 @@ const CORE_COMMANDS: CommandContribution[] = [
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
     run: () => {
-      window.dispatchEvent(new CustomEvent("leafer-flow:toggle-shortcut-help"));
+      dispatchPanelToggle("shortcut-help");
       return { success: true, message: "" };
     },
   },

@@ -1,12 +1,8 @@
 import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
+import { dispatchPanelToggle, getPanelToggleEvent } from "../../../api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.agent";
-
-function dispatchToggle(eventName: string) {
-  window.dispatchEvent(new CustomEvent(eventName));
-  return { success: true, message: "已执行" };
-}
 
 export const agentPlugin: EditorPluginModule = {
   manifest: {
@@ -31,14 +27,17 @@ export const agentPlugin: EditorPluginModule = {
       visibilityMode: "self-visible",
       needsEditor: true,
       order: 40,
-      toggleEvent: "leafer-flow:toggle-agent",
+      toggleEvent: getPanelToggleEvent("agent-chat"),
     });
 
     ctx.editor.commands.register({
       id: "openAgent",
       label: "打开 AI 助手",
       pluginId: PLUGIN_ID,
-      run: () => dispatchToggle("leafer-flow:toggle-agent"),
+      run: () => {
+        dispatchPanelToggle("agent-chat");
+        return { success: true, message: "已执行" };
+      },
     });
 
     ctx.editor.actionButtons.register({
@@ -47,6 +46,7 @@ export const agentPlugin: EditorPluginModule = {
       icon: "agent",
       pluginId: PLUGIN_ID,
       kind: "button",
+      surface: "panel",
       order: 85,
       items: [
         {
@@ -54,6 +54,7 @@ export const agentPlugin: EditorPluginModule = {
           label: "AI 助手",
           command: "openAgent",
           icon: "agent",
+          panelId: "agent-chat",
           order: 10,
         },
       ],

@@ -1,12 +1,8 @@
 import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "../../../api/plugin";
+import { dispatchPanelToggle, getPanelToggleEvent } from "../../../api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.minimap";
-
-function dispatchToggle(eventName: string) {
-  window.dispatchEvent(new CustomEvent(eventName));
-  return { success: true, message: "已执行" };
-}
 
 export const minimapPlugin: EditorPluginModule = {
   manifest: {
@@ -31,14 +27,17 @@ export const minimapPlugin: EditorPluginModule = {
       visibilityMode: "self-visible",
       needsEditor: true,
       order: 50,
-      toggleEvent: "leafer-flow:toggle-minimap",
+      toggleEvent: getPanelToggleEvent("minimap-panel"),
     });
 
     ctx.editor.commands.register({
       id: "toggleMinimap",
       label: "切换缩略图",
       pluginId: PLUGIN_ID,
-      run: () => dispatchToggle("leafer-flow:toggle-minimap"),
+      run: () => {
+        dispatchPanelToggle("minimap-panel");
+        return { success: true, message: "已执行" };
+      },
     });
 
     ctx.editor.actionButtons.register({
@@ -47,6 +46,7 @@ export const minimapPlugin: EditorPluginModule = {
       icon: "select",
       pluginId: PLUGIN_ID,
       kind: "button",
+      surface: "panel",
       order: 76,
       items: [
         {
@@ -54,6 +54,7 @@ export const minimapPlugin: EditorPluginModule = {
           label: "切换缩略图",
           command: "toggleMinimap",
           icon: "select",
+          panelId: "minimap-panel",
           order: 10,
         },
       ],
