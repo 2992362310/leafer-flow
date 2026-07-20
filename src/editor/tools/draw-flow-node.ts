@@ -33,6 +33,9 @@ export class DrawFlowNode extends DrawBase {
       opacity: this.options.opacity,
       cornerRadius: this.options.cornerRadius,
     });
+    // Size shape before parenting — Group({ children }) with empty geometry trips Layouter.
+    updateFlowNodeShape(shape, this.options.kind, 1, 1);
+
     const text = new Text({
       draggable: false,
       editable: true,
@@ -44,6 +47,8 @@ export class DrawFlowNode extends DrawBase {
       verticalAlign: "middle",
       x: 12,
       y: 10,
+      width: 1,
+      height: 1,
     });
 
     const group = new Group({
@@ -51,8 +56,8 @@ export class DrawFlowNode extends DrawBase {
       x: startPoint.x,
       y: startPoint.y,
       name: this.options.label,
-      children: [shape, text],
     });
+    group.add([shape, text]);
     makeGroupSelectionAtomic(group);
     return group;
   }

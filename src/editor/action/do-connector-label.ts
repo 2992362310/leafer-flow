@@ -5,7 +5,7 @@ import { createConnectorLabel, findSelectedConnector } from "../core/connector-l
 export function doAddConnectorLabel(editor: Editor): { success: boolean; message: string } {
   const connector = findSelectedConnector(editor.app.editor.list as IUI[]);
   if (!connector) {
-    return { success: false, message: "请先选择一条连接线" };
+    return { success: false, message: "请先选中一条连接线，再添加标签", warning: true };
   }
 
   const label = createConnectorLabel(connector);

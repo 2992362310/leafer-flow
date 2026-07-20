@@ -1,10 +1,14 @@
 import type { IconName } from "../../assets/icons";
 import type { PanelToggleId } from "./panel-toggle";
 
+/** `dropdown` is treated as `panel` (kept for backward compatibility). */
 export type ActionButtonKind = "button" | "dropdown" | "panel";
 
-/** edit = mutate/file/export; panel = toggle/open UI panels */
-export type ActionButtonSurface = "edit" | "panel";
+/** file / edit / arrange = toolbar sections; panel = toggle/open UI panels */
+export type ActionButtonSurface = "file" | "edit" | "arrange" | "panel";
+
+/** How action items inside a popup panel are laid out. */
+export type ActionButtonMenuLayout = "list" | "grid";
 
 export interface ActionButtonItemContribution {
   id: string;
@@ -13,6 +17,8 @@ export interface ActionButtonItemContribution {
   icon?: IconName;
   order?: number;
   danger?: boolean;
+  /** Optional section title inside popup panels. */
+  section?: string;
   /** When set, ActionBar can highlight the button if this panel is open or docked. */
   panelId?: PanelToggleId;
 }
@@ -59,6 +65,8 @@ export interface ActionButtonGroupContribution {
   kind?: ActionButtonKind;
   /** Defaults to "edit" when omitted. */
   surface?: ActionButtonSurface;
+  /** Action-item layout inside popup panels. Defaults to "list". */
+  menuLayout?: ActionButtonMenuLayout;
   order?: number;
   items: ActionButtonItemContribution[];
   panelItems?: ActionButtonPanelItemContribution[];

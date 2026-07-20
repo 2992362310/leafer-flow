@@ -20,6 +20,12 @@ export const OVERLAY_PANEL_IDS = [
   "diagram-lint",
   "plugin-market",
   "shortcut-help",
+  "drawing-settings",
+  "template-market",
+  "align-panel",
+  "layer-tools-panel",
+  "export-panel",
+  "auto-layout-panel",
 ] as const satisfies readonly OverlayPanelId[];
 
 export const HOST_PANEL_IDS = ["layer-panel"] as const satisfies readonly HostPanelId[];

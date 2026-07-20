@@ -34,7 +34,7 @@ const { position, startDrag } = useDraggable({
 });
 
 watch(
-  () => props.open,
+  () => props.open || mode.value === "flyout",
   async (isOpen) => {
     if (isOpen) {
       query.value = "";
@@ -97,7 +97,6 @@ function selectResult(index: number) {
 
   props.editor.app.editor.select(el);
 
-  // 居中到选中元素
   const bounds = el.getBounds("box", "world");
   if (bounds) {
     const app = props.editor.app;
@@ -146,23 +145,54 @@ function getElementLabel(el: IUI): string {
 </script>
 
 <template>
-  <div v-if="open && mode === 'float'" class="fixed z-50 w-80"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
-    <div class="bg-base-100 shadow-xl border border-base-200 rounded-lg p-3">
-      <div class="flex items-center gap-2 mb-2 cursor-move select-none" @mousedown="startDrag">
-        <input ref="inputRef" v-model="query" @input="search" @keydown="handleKeydown" type="search"
-          placeholder="搜索元素..." class="input input-sm input-bordered flex-1" @mousedown.stop />
-        <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('canvas-search')"
-          @mousedown.stop>
+  <div
+    v-if="open && mode === 'float'"
+    class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 w-80"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
+    @click.stop
+  >
+    <div
+      class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
+      @mousedown="startDrag"
+    >
+      <div class="flex items-center gap-2">
+        <Icon name="select" class="h-4 w-4" />
+        <span class="text-xs font-bold">搜索</span>
+      </div>
+      <div class="flex gap-1">
+        <button
+          class="btn btn-ghost btn-xs btn-square"
+          title="收纳到右侧槽"
+          @click.stop="togglePanelDock('canvas-search')"
+          @mousedown.stop
+        >
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
-        <button class="btn btn-xs btn-ghost btn-square" @click="emit('close')" @mousedown.stop>✕</button>
+        <button class="btn btn-ghost btn-xs btn-square" title="关闭" @click.stop="emit('close')" @mousedown.stop>
+          ✕
+        </button>
       </div>
+    </div>
+
+    <div class="p-3">
+      <input
+        ref="inputRef"
+        v-model="query"
+        type="search"
+        placeholder="搜索元素..."
+        class="input input-sm input-bordered w-full mb-2"
+        @input="search"
+        @keydown="handleKeydown"
+      />
 
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
-        <div v-for="(el, index) in results" :key="index"
+        <div
+          v-for="(el, index) in results"
+          :key="index"
           class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
-          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
+          :class="{ 'bg-primary/10': index === selectedIndex }"
+          @click="selectResult(index)"
+        >
           <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
           <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
           <span class="text-[10px] opacity-50">
@@ -171,23 +201,40 @@ function getElementLabel(el: IUI): string {
         </div>
       </div>
 
-      <div v-else-if="query.trim()" class="text-xs opacity-50 text-center py-2">
-        未找到匹配元素
-      </div>
+      <div v-else-if="query.trim()" class="text-xs opacity-50 text-center py-2">未找到匹配元素</div>
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="canvas-search" title="画布搜索" icon="select" :width="320">
+  <PanelFlyoutWrapper
+    v-else-if="mode === 'flyout'"
+    panel-id="canvas-search"
+    title="搜索"
+    icon="select"
+    :width="320"
+  >
     <div class="p-3">
-      <input ref="inputRef" v-model="query" @input="search" @keydown="handleKeydown" type="search" placeholder="搜索元素..."
-        class="input input-sm input-bordered w-full mb-2" />
+      <input
+        ref="inputRef"
+        v-model="query"
+        type="search"
+        placeholder="搜索元素..."
+        class="input input-sm input-bordered w-full mb-2"
+        @input="search"
+        @keydown="handleKeydown"
+      />
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
-        <div v-for="(el, index) in results" :key="index"
+        <div
+          v-for="(el, index) in results"
+          :key="index"
           class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
-          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
+          :class="{ 'bg-primary/10': index === selectedIndex }"
+          @click="selectResult(index)"
+        >
           <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
           <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
-          <span class="text-[10px] opacity-50">({{ Math.round(el.x || 0) }}, {{ Math.round(el.y || 0) }})</span>
+          <span class="text-[10px] opacity-50">
+            ({{ Math.round(el.x || 0) }}, {{ Math.round(el.y || 0) }})
+          </span>
         </div>
       </div>
       <div v-else-if="query.trim()" class="text-xs opacity-50 text-center py-2">未找到匹配元素</div>

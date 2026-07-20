@@ -9,7 +9,13 @@ export type OverlayPanelDockId =
   | "agent-chat"
   | "minimap-panel"
   | "multi-layer-panel"
-  | "diagram-lint";
+  | "diagram-lint"
+  | "drawing-settings"
+  | "template-market"
+  | "align-panel"
+  | "layer-tools-panel"
+  | "export-panel"
+  | "auto-layout-panel";
 
 export type OverlayPanelVisibilityMode = "open-prop" | "self-visible";
 
@@ -22,4 +28,6 @@ export interface OverlayPanelContribution {
   order?: number;
   /** Window event name used by the Vue page layer to toggle float visibility. */
   toggleEvent?: string;
+  /** Extra props merged into the overlay component bindings. */
+  props?: Record<string, unknown>;
 }

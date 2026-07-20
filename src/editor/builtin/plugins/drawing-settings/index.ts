@@ -1,63 +1,37 @@
 import type { ActionButtonGroupContribution } from "../../../api/action-button";
+import type { CommandContribution } from "../../../api/command";
 import type { EditorPluginModule } from "../../../api/plugin";
-import {
-  getConnectorRouteType,
-  getFreehandSmoothness,
-  getSnapEnabled,
-  setConnectorRouteType,
-  setFreehandSmoothness,
-  setSnapEnabled,
-  type ConnectorRouteType,
-} from "../../../core/drawing-settings";
+import { dispatchPanelToggle } from "../../../api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.drawing-settings";
 
-const DRAWING_SETTINGS_PANEL: ActionButtonGroupContribution = {
+const DRAWING_SETTINGS_COMMAND: CommandContribution = {
+  id: "toggleDrawingSettings",
+  label: "绘图设置",
+  pluginId: PLUGIN_ID,
+  warning: false,
+  run: () => {
+    dispatchPanelToggle("drawing-settings");
+    return { success: true, message: "已切换绘图设置" };
+  },
+};
+
+const DRAWING_SETTINGS_BUTTON: ActionButtonGroupContribution = {
   id: "drawing-settings",
-  label: "绘制设置",
+  label: "绘图设置",
   icon: "template",
   pluginId: PLUGIN_ID,
-  kind: "panel",
+  kind: "button",
   surface: "panel",
-  order: 75,
-  items: [],
-  panelItems: [
+  order: 20,
+  items: [
     {
-      id: "connector-route-type",
-      label: "连线样式",
-      kind: "select",
-      options: [
-        { value: "orthogonal", label: "直角线" },
-        { value: "bezier", label: "曲线" },
-        { value: "straight", label: "直线" },
-      ],
-      getValue: getConnectorRouteType,
-      setValue: (value) => setConnectorRouteType(value as ConnectorRouteType),
+      id: "drawing-settings-toggle",
+      label: "绘图设置",
+      command: "toggleDrawingSettings",
+      icon: "template",
+      panelId: "drawing-settings",
       order: 10,
-    },
-    {
-      id: "freehand-smoothness",
-      label: "自由绘制平滑度",
-      kind: "range",
-      min: 0.5,
-      max: 4,
-      step: 0.5,
-      getValue: getFreehandSmoothness,
-      setValue: setFreehandSmoothness,
-      formatValue: (value) => value.toFixed(1),
-      order: 20,
-    },
-    {
-      id: "snap-enabled",
-      label: "吸附",
-      kind: "select",
-      options: [
-        { value: true, label: "开启吸附" },
-        { value: false, label: "关闭吸附" },
-      ],
-      getValue: getSnapEnabled,
-      setValue: (value) => setSnapEnabled(Boolean(value)),
-      order: 30,
     },
   ],
 };
@@ -66,16 +40,18 @@ export const drawingSettingsPlugin: EditorPluginModule = {
   manifest: {
     id: PLUGIN_ID,
     name: "绘制设置",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "提供连线样式、自由绘制平滑度和吸附开关设置面板。",
     category: "panel",
-    capabilities: ["action-button", "settings"],
+    capabilities: ["command", "action-button", "settings"],
     enabledByDefault: true,
   },
   contributes: {
-    buttons: ["绘制设置面板"],
+    buttons: ["绘图设置面板"],
+    commands: ["切换绘图设置"],
   },
   activate(ctx) {
-    ctx.editor.actionButtons.register(DRAWING_SETTINGS_PANEL);
+    ctx.editor.commands.register(DRAWING_SETTINGS_COMMAND);
+    ctx.editor.actionButtons.register(DRAWING_SETTINGS_BUTTON);
   },
 };

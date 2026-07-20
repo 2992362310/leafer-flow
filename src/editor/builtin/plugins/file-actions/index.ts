@@ -29,7 +29,8 @@ const FILE_BUTTONS: ActionButtonGroupContribution = {
   icon: "save",
   pluginId: PLUGIN_ID,
   kind: "button",
-  order: 80,
+  surface: "file",
+  order: 10,
   items: [
     { id: "save", label: "保存 (Ctrl+S)", command: ACTION_NAME.SAVE, icon: "save", order: 10 },
     { id: "load", label: "打开文件", command: ACTION_NAME.LOAD, icon: "load", order: 20 },

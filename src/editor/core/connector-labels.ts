@@ -5,15 +5,19 @@ export const CONNECTOR_LABEL_PROP = "__connectorLabelFor";
 export const CONNECTOR_LABEL_OFFSET_X_PROP = "__connectorLabelOffsetX";
 export const CONNECTOR_LABEL_OFFSET_Y_PROP = "__connectorLabelOffsetY";
 
-type ConnectorLabel = Text & {
+type ConnectorLabel = IUI & {
   [CONNECTOR_LABEL_PROP]?: string | number;
   [CONNECTOR_LABEL_OFFSET_X_PROP]?: number;
   [CONNECTOR_LABEL_OFFSET_Y_PROP]?: number;
+  text?: string;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
 };
 
 export function getConnectorLabelTarget(label: IUI): string | number | undefined {
-  const connectorLabel = label as ConnectorLabel;
-  return connectorLabel[CONNECTOR_LABEL_PROP];
+  return readLabelProp(label, CONNECTOR_LABEL_PROP);
 }
 
 export function createConnectorLabel(connector: Connector): ConnectorLabel {
@@ -30,31 +34,37 @@ export function createConnectorLabel(connector: Connector): ConnectorLabel {
     textAlign: "center",
     verticalAlign: "middle",
     padding: 2,
-    around: "white",
+    boxStyle: { fill: "#ffffff" },
     name: "连接线标签",
   }) as ConnectorLabel;
 
-  label[CONNECTOR_LABEL_PROP] = connector.innerId;
-  label[CONNECTOR_LABEL_OFFSET_X_PROP] = 0;
-  label[CONNECTOR_LABEL_OFFSET_Y_PROP] = 0;
+  bindConnectorLabel(connector, label);
   return label;
 }
 
-export function syncConnectorLabels(app: App) {
-  const { connectors, labels } = collectConnectorLabels(app);
+/** Bind label ↔ connector for live follow during connector.update(). */
+export function bindConnectorLabel(connector: Connector, label: IUI) {
+  const id = String(connector.innerId);
+  writeLabelProp(label, CONNECTOR_LABEL_PROP, id);
+  if (readLabelProp(label, CONNECTOR_LABEL_OFFSET_X_PROP) == null) {
+    writeLabelProp(label, CONNECTOR_LABEL_OFFSET_X_PROP, 0);
+  }
+  if (readLabelProp(label, CONNECTOR_LABEL_OFFSET_Y_PROP) == null) {
+    writeLabelProp(label, CONNECTOR_LABEL_OFFSET_Y_PROP, 0);
+  }
+  connector.attachLabel(label);
+}
 
-  labels.forEach((label) => {
-    const connectorId = label[CONNECTOR_LABEL_PROP];
-    if (!connectorId) return;
+export function syncConnectorLabels(app: App, only?: Connector) {
+  rebindConnectorLabelsFromTree(app);
 
-    const connector = connectors.get(connectorId);
-    if (!connector) return;
+  if (only) {
+    only.syncAttachedLabels();
+    return;
+  }
 
-    const center = getConnectorCenter(connector);
-    const offsetX = label[CONNECTOR_LABEL_OFFSET_X_PROP] || 0;
-    const offsetY = label[CONNECTOR_LABEL_OFFSET_Y_PROP] || 0;
-    label.x = center.x + offsetX - (label.width || 36) / 2;
-    label.y = center.y + offsetY - (label.height || 20) / 2;
+  app.tree.children?.forEach((child) => {
+    if (child instanceof Connector) child.syncAttachedLabels();
   });
 }
 
@@ -64,45 +74,58 @@ export function captureSelectedConnectorLabelOffsets(app: App) {
 
   const { connectors } = collectConnectorLabels(app);
   selected.forEach((item) => {
-    const label = item as ConnectorLabel;
-    if (!(label instanceof Text) || !label[CONNECTOR_LABEL_PROP]) return;
+    const connectorId = readLabelProp(item, CONNECTOR_LABEL_PROP);
+    if (connectorId == null) return;
 
-    const connector = connectors.get(label[CONNECTOR_LABEL_PROP]);
+    const connector = resolveConnector(connectors, connectorId);
     if (!connector) return;
 
     const center = getConnectorCenter(connector);
+    const label = item as ConnectorLabel;
     const labelCenterX = (label.x || 0) + (label.width || 36) / 2;
     const labelCenterY = (label.y || 0) + (label.height || 20) / 2;
-    label[CONNECTOR_LABEL_OFFSET_X_PROP] = labelCenterX - center.x;
-    label[CONNECTOR_LABEL_OFFSET_Y_PROP] = labelCenterY - center.y;
+    writeLabelProp(label, CONNECTOR_LABEL_OFFSET_X_PROP, labelCenterX - center.x);
+    writeLabelProp(label, CONNECTOR_LABEL_OFFSET_Y_PROP, labelCenterY - center.y);
   });
 }
 
 export function persistConnectorLabel(child: IUI, json: Record<string, unknown>) {
-  const label = child as ConnectorLabel;
-  if (label instanceof Text && label[CONNECTOR_LABEL_PROP]) {
-    json[CONNECTOR_LABEL_PROP] = label[CONNECTOR_LABEL_PROP];
-    json[CONNECTOR_LABEL_OFFSET_X_PROP] = label[CONNECTOR_LABEL_OFFSET_X_PROP] || 0;
-    json[CONNECTOR_LABEL_OFFSET_Y_PROP] = label[CONNECTOR_LABEL_OFFSET_Y_PROP] || 0;
-  }
+  const connectorId = readLabelProp(child, CONNECTOR_LABEL_PROP);
+  if (connectorId == null) return;
+
+  json[CONNECTOR_LABEL_PROP] = connectorId;
+  json[CONNECTOR_LABEL_OFFSET_X_PROP] = readLabelProp(child, CONNECTOR_LABEL_OFFSET_X_PROP) || 0;
+  json[CONNECTOR_LABEL_OFFSET_Y_PROP] = readLabelProp(child, CONNECTOR_LABEL_OFFSET_Y_PROP) || 0;
 }
 
 export function restoreConnectorLabelRuntimeProps(
   node: IUI | undefined,
   data: Record<string, unknown>,
 ) {
-  if (!node || !data[CONNECTOR_LABEL_PROP]) return;
+  if (!node || data[CONNECTOR_LABEL_PROP] == null) return;
 
-  const label = node as ConnectorLabel;
-  label[CONNECTOR_LABEL_PROP] = data[CONNECTOR_LABEL_PROP] as string | number;
-  label[CONNECTOR_LABEL_OFFSET_X_PROP] =
-    typeof data[CONNECTOR_LABEL_OFFSET_X_PROP] === "number"
-      ? data[CONNECTOR_LABEL_OFFSET_X_PROP]
-      : 0;
-  label[CONNECTOR_LABEL_OFFSET_Y_PROP] =
-    typeof data[CONNECTOR_LABEL_OFFSET_Y_PROP] === "number"
-      ? data[CONNECTOR_LABEL_OFFSET_Y_PROP]
-      : 0;
+  writeLabelProp(node, CONNECTOR_LABEL_PROP, data[CONNECTOR_LABEL_PROP] as string | number);
+  writeLabelProp(
+    node,
+    CONNECTOR_LABEL_OFFSET_X_PROP,
+    typeof data[CONNECTOR_LABEL_OFFSET_X_PROP] === "number" ? data[CONNECTOR_LABEL_OFFSET_X_PROP] : 0,
+  );
+  writeLabelProp(
+    node,
+    CONNECTOR_LABEL_OFFSET_Y_PROP,
+    typeof data[CONNECTOR_LABEL_OFFSET_Y_PROP] === "number" ? data[CONNECTOR_LABEL_OFFSET_Y_PROP] : 0,
+  );
+}
+
+/** After load/remap, re-attach labels to live Connector instances. */
+export function rebindConnectorLabelsFromTree(app: App) {
+  const { connectors, labels } = collectConnectorLabels(app);
+  labels.forEach((label) => {
+    const connectorId = readLabelProp(label, CONNECTOR_LABEL_PROP);
+    if (connectorId == null) return;
+    const connector = resolveConnector(connectors, connectorId);
+    if (connector) connector.attachLabel(label);
+  });
 }
 
 export function findSelectedConnector(list: IUI[]): Connector | null {
@@ -132,16 +155,47 @@ function collectConnectorLabels(app: App) {
   app.tree.children?.forEach((child) => {
     if (child instanceof Connector) {
       connectors.set(child.innerId, child);
+      connectors.set(String(child.innerId), child);
       return;
     }
 
-    const label = child as ConnectorLabel;
-    if (label instanceof Text && label[CONNECTOR_LABEL_PROP]) {
-      labels.push(label);
+    // Do not rely on `instanceof Text` (duplicate leafer copies break it).
+    if (readLabelProp(child, CONNECTOR_LABEL_PROP) != null || child.name === "连接线标签") {
+      labels.push(child as ConnectorLabel);
     }
   });
 
   return { connectors, labels };
+}
+
+function resolveConnector(
+  connectors: Map<string | number, Connector>,
+  connectorId: string | number,
+) {
+  return (
+    connectors.get(connectorId) ||
+    connectors.get(String(connectorId)) ||
+    (typeof connectorId === "string" && connectorId !== ""
+      ? connectors.get(Number(connectorId))
+      : undefined)
+  );
+}
+
+function readLabelProp(target: IUI, key: string): string | number | undefined {
+  const direct = (target as unknown as Record<string, unknown>)[key];
+  if (direct !== undefined && direct !== null) return direct as string | number;
+  const data = (target as unknown as { __?: Record<string, unknown> }).__;
+  const nested = data?.[key];
+  if (nested !== undefined && nested !== null) return nested as string | number;
+  return undefined;
+}
+
+function writeLabelProp(target: IUI, key: string, value: string | number) {
+  (target as unknown as Record<string, unknown>)[key] = value;
+  const data = (target as unknown as { __?: Record<string, unknown> }).__;
+  if (data && typeof data === "object") {
+    data[key] = value;
+  }
 }
 
 function getConnectorCenter(connector: Connector) {
@@ -163,7 +217,7 @@ function getConnectorCenter(connector: Connector) {
       if (mid) return mid;
     }
   } catch {
-    // wire.path not available, fall through to bounds
+    // wire.path not available
   }
 
   try {
@@ -231,14 +285,6 @@ function sampleSvgPathMid(d: string): IPoint | null {
   const commands = parseSvgPath(d);
   if (!commands.length) return null;
 
-  if (commands.length === 1) {
-    const cmd = commands[0];
-    if (cmd.type === "L" && cmd.args.length === 4) {
-      return { x: (cmd.args[0] + cmd.args[2]) / 2, y: (cmd.args[1] + cmd.args[3]) / 2 };
-    }
-  }
-
-  // Collect all segment lengths and total length for polyline (M/L only)
   const isAllLinear = commands.every((c) => c.type === "L" || c.type === "M");
   if (isAllLinear) {
     const vertices: IPoint[] = [];
@@ -247,44 +293,10 @@ function sampleSvgPathMid(d: string): IPoint | null {
         vertices.push({ x: cmd.args[0], y: cmd.args[1] });
       }
     }
-    if (vertices.length < 2) return null;
-
-    // Find the midpoint along the polyline
-    let totalLen = 0;
-    const segLens: number[] = [];
-    for (let i = 1; i < vertices.length; i++) {
-      const dx = vertices[i].x - vertices[i - 1].x;
-      const dy = vertices[i].y - vertices[i - 1].y;
-      const len = Math.hypot(dx, dy);
-      segLens.push(len);
-      totalLen += len;
-    }
-
-    if (totalLen === 0) return vertices[Math.floor(vertices.length / 2)];
-
-    const halfLen = totalLen / 2;
-    let accumulated = 0;
-    for (let i = 0; i < segLens.length; i++) {
-      if (accumulated + segLens[i] >= halfLen) {
-        const remaining = halfLen - accumulated;
-        const t = segLens[i] > 0 ? remaining / segLens[i] : 0;
-        return {
-          x: vertices[i].x + t * (vertices[i + 1].x - vertices[i].x),
-          y: vertices[i].y + t * (vertices[i + 1].y - vertices[i].y),
-        };
-      }
-      accumulated += segLens[i];
-    }
-    return vertices[vertices.length - 1];
+    return getPolylineMidpoint(vertices);
   }
 
-  // For bezier curves (C/Q), sample at t=0.5
   const firstCmd = commands[0];
-  if (firstCmd.type === "M") {
-    // Start from first command
-  }
-
-  // Collect points to determine segments
   const pts: number[] = [];
   for (const cmd of commands) {
     pts.push(...cmd.args);
@@ -311,7 +323,6 @@ function sampleSvgPathMid(d: string): IPoint | null {
     commands[1].type === "Q" &&
     pts.length === 8
   ) {
-    // Quadratic bezier at t=0.5: B(t) = (1-t)^2*P0 + 2*(1-t)*t*P1 + t^2*P2
     const p0 = { x: pts[0], y: pts[1] };
     const p1 = { x: pts[2], y: pts[3] };
     const p2 = { x: pts[4], y: pts[5] };
@@ -321,7 +332,6 @@ function sampleSvgPathMid(d: string): IPoint | null {
     };
   }
 
-  // Fallback: bounding box center
   return null;
 }
 

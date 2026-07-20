@@ -62,7 +62,7 @@ export const multiLayerPlugin: EditorPluginModule = {
       pluginId: PLUGIN_ID,
       kind: "button",
       surface: "panel",
-      order: 77,
+      order: 40,
       items: [
         {
           id: "toggle-multi-layer-panel",

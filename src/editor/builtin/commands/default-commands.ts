@@ -122,6 +122,16 @@ const CORE_COMMANDS: CommandContribution[] = [
     },
   },
   {
+    id: "toggleTemplateMarket",
+    label: "模板市场",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      dispatchPanelToggle("template-market");
+      return { success: true, message: "已切换模板市场" };
+    },
+  },
+  {
     id: "toggleHistoryPanel",
     label: "历史面板",
     pluginId: BUILTIN_PLUGIN_ID,
@@ -139,6 +149,26 @@ const CORE_COMMANDS: CommandContribution[] = [
     run: () => {
       dispatchPanelToggle("shortcut-help");
       return { success: true, message: "" };
+    },
+  },
+  {
+    id: "toggleAlignPanel",
+    label: "对齐与分布",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      dispatchPanelToggle("align-panel");
+      return { success: true, message: "已切换对齐与分布" };
+    },
+  },
+  {
+    id: "toggleLayerToolsPanel",
+    label: "图层与状态",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      dispatchPanelToggle("layer-tools-panel");
+      return { success: true, message: "已切换图层与状态" };
     },
   },
   {

@@ -103,6 +103,9 @@ const DEFAULT_MARGIN = 0;
 const DEFAULT_CORNER_RADIUS = 10;
 const DEFAULT_BEZIER_CURVATURE = 0.45;
 const HANDLE_SIZE = 8;
+/** Keep in sync with connector-labels.ts (avoid circular import). */
+const CONNECTOR_LABEL_OFFSET_X = "__connectorLabelOffsetX";
+const CONNECTOR_LABEL_OFFSET_Y = "__connectorLabelOffsetY";
 
 export class Connector extends Group {
   readonly wire: Path;
@@ -122,8 +125,11 @@ export class Connector extends Group {
   private isUpdating = false;
   private waypoints: IPointData[] = [];
   private waypointHandles: Rect[] = [];
+  private readonly app: App;
+  /** Labels that should follow this connector's geometry on every update(). */
+  private readonly attachedLabels = new Set<IUI>();
 
-  constructor(_app: App, options: ConnectorOptions) {
+  constructor(app: App, options: ConnectorOptions) {
     super({
       name: "连接线",
       editable: false,
@@ -135,6 +141,7 @@ export class Connector extends Group {
       endArrow: options.endArrow,
       cornerRadius: options.cornerRadius ?? DEFAULT_CORNER_RADIUS,
     });
+    this.app = app;
     this.options = normalizeOptions(options);
     this.mode = hasNodeEndpoints(options) ? "node" : "point";
 
@@ -469,10 +476,44 @@ export class Connector extends Group {
       this.hitArea.strokeWidth = Math.max(getNumericProperty(this.wire, "strokeWidth", 2) + 10, 12);
       this.wire.path = path;
       this.positionHandles(endpoints.from.linkPoint, endpoints.to.linkPoint);
+      this.syncAttachedLabels();
+      notifyConnectorGeometryUpdated(this);
     } catch {
       // Never let Layouter / bounds races break the editor.
     } finally {
       this.isUpdating = false;
+    }
+  }
+
+  attachLabel(label: IUI) {
+    this.attachedLabels.add(label);
+  }
+
+  detachLabel(label: IUI) {
+    this.attachedLabels.delete(label);
+  }
+
+  /** Reposition bound labels to the current route midpoint (+ stored offsets). */
+  syncAttachedLabels() {
+    if (this.attachedLabels.size === 0) return;
+
+    const center = routeLabelAnchor(this.lastRoutePoints);
+    if (!center) return;
+
+    for (const label of this.attachedLabels) {
+      if ((label as unknown as { destroyed?: boolean }).destroyed) {
+        this.attachedLabels.delete(label);
+        continue;
+      }
+
+      const offsetX = getNumericProperty(label, CONNECTOR_LABEL_OFFSET_X, 0);
+      const offsetY = getNumericProperty(label, CONNECTOR_LABEL_OFFSET_Y, 0);
+      const width = getNumericProperty(label, "width", 36);
+      const height = getNumericProperty(label, "height", 20);
+      const nextX = center.x + offsetX - width / 2;
+      const nextY = center.y + offsetY - height / 2;
+      if (label.x !== nextX) label.x = nextX;
+      if (label.y !== nextY) label.y = nextY;
     }
   }
 
@@ -788,6 +829,20 @@ export function hasConnectors(app: App) {
 
 export function isConnector(value: unknown): value is Connector {
   return value instanceof Connector;
+}
+
+type ConnectorGeometryUpdatedHandler = (connector: Connector) => void;
+const geometryUpdatedHandlers = new Set<ConnectorGeometryUpdatedHandler>();
+
+/** Register a listener for connector path/geometry updates (e.g. label follow). */
+export function onConnectorGeometryUpdated(handler: ConnectorGeometryUpdatedHandler) {
+  geometryUpdatedHandlers.add(handler);
+  return () => geometryUpdatedHandlers.delete(handler);
+}
+
+function notifyConnectorGeometryUpdated(connector: Connector) {
+  if (geometryUpdatedHandlers.size === 0) return;
+  geometryUpdatedHandlers.forEach((handler) => handler(connector));
 }
 
 function hasNodeEndpoints(
@@ -1147,4 +1202,35 @@ function syncConnectorStyle(connector: Connector) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+/** Midpoint along a polyline — used to park connector labels. */
+function routeLabelAnchor(points: IPointData[]): IPointData | null {
+  if (points.length < 2) return null;
+
+  let totalLength = 0;
+  const segmentLengths: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const length = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    segmentLengths.push(length);
+    totalLength += length;
+  }
+
+  if (totalLength === 0) return clonePoint(points[Math.floor(points.length / 2)]);
+
+  const halfLength = totalLength / 2;
+  let accumulated = 0;
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segmentLength = segmentLengths[i];
+    if (accumulated + segmentLength >= halfLength) {
+      const t = segmentLength > 0 ? (halfLength - accumulated) / segmentLength : 0;
+      return {
+        x: points[i].x + t * (points[i + 1].x - points[i].x),
+        y: points[i].y + t * (points[i + 1].y - points[i].y),
+      };
+    }
+    accumulated += segmentLength;
+  }
+
+  return clonePoint(points[points.length - 1]);
 }

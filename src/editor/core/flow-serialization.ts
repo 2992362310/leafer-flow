@@ -4,7 +4,9 @@ import {
   CONNECTOR_LABEL_OFFSET_X_PROP,
   CONNECTOR_LABEL_OFFSET_Y_PROP,
   CONNECTOR_LABEL_PROP,
+  bindConnectorLabel,
   persistConnectorLabel,
+  rebindConnectorLabelsFromTree,
   restoreConnectorLabelRuntimeProps,
   syncConnectorLabels,
 } from "./connector-labels";
@@ -166,12 +168,10 @@ function hydrateSerializedChildren(
   app: App,
   children: SerializedChild[],
 ): DeserializeResult {
-  let failedConnectors = 0;
   if (!Array.isArray(children) || children.length === 0) return { failedConnectors: 0 };
 
   const connectors: SerializedChild[] = [];
   const idMap = new Map<string | number, IUI>();
-  const connectorMap = new Map<string | number, Connector>();
 
   children.forEach((child) => {
     if (child.__isConnector) {
@@ -197,7 +197,40 @@ function hydrateSerializedChildren(
     restoreConnectorLabelRuntimeProps(added, child);
   });
 
+  const { failedConnectors, connectorMap } = restoreConnectors(app, connectors, idMap);
+
+  remapConnectorLabels(app, connectorMap);
+  rebindConnectorLabelsFromTree(app);
+  normalizeAtomicGroups(app.tree.children as IUI[] | undefined);
+  try {
+    syncConnectorLabels(app);
+  } catch (e) {
+    console.warn("同步连接线标签失败:", e);
+  }
+  return { failedConnectors };
+}
+
+export type RestoreConnectorsOptions = {
+  /** Fresh DrawFlowNode groups may need a next-frame geometry pass. */
+  deferUpdate?: boolean;
+};
+
+/**
+ * Shared connector restore for file load, clipboard, and FlowGraph apply.
+ * Expects idMap to already contain graph/legacy ids → live nodes.
+ */
+export function restoreConnectors(
+  app: App,
+  connectors: SerializedChild[],
+  idMap: Map<string | number, IUI>,
+  options: RestoreConnectorsOptions = {},
+): { failedConnectors: number; connectorMap: Map<string | number, Connector> } {
+  let failedConnectors = 0;
+  const connectorMap = new Map<string | number, Connector>();
+
   connectors.forEach((child) => {
+    if (!child.__isConnector) return;
+
     const state = remapConnectorState(
       child.__connectorState as ConnectorStateLike | undefined,
       idMap,
@@ -212,7 +245,12 @@ function hydrateSerializedChildren(
     }
 
     try {
-      connector.setState(state as never, (id: string | number) => resolveNodeById(app, id));
+      connector.setState(state as never, (id: string | number) => {
+        return getMappedNode(idMap, id) || resolveNodeById(app, id);
+      });
+      if (options.deferUpdate && state.mode === "node") {
+        requestAnimationFrame(() => connector.requestUpdate());
+      }
     } catch (e) {
       console.warn("恢复 Connector 状态失败:", e);
       restoreConnectorPoints(connector, state);
@@ -221,6 +259,7 @@ function hydrateSerializedChildren(
 
     if (child.__flowConnectorId !== undefined) {
       connectorMap.set(child.__flowConnectorId, connector);
+      connectorMap.set(String(child.__flowConnectorId), connector);
     }
 
     if (child[CUSTOM_DATA_PROP]) {
@@ -228,14 +267,7 @@ function hydrateSerializedChildren(
     }
   });
 
-  remapConnectorLabels(app, connectorMap);
-  normalizeAtomicGroups(app.tree.children as IUI[] | undefined);
-  try {
-    syncConnectorLabels(app);
-  } catch (e) {
-    console.warn("同步连接线标签失败:", e);
-  }
-  return { failedConnectors };
+  return { failedConnectors, connectorMap };
 }
 
 const SERIALIZATION_META_KEYS = new Set([
@@ -355,11 +387,14 @@ function remapConnectorLabels(app: App, connectorMap: Map<string | number, Conne
   app.tree.children?.forEach((child) => {
     const label = child as IUI & { [CONNECTOR_LABEL_PROP]?: string | number };
     const oldConnectorId = label[CONNECTOR_LABEL_PROP];
-    if (oldConnectorId === undefined) return;
+    if (oldConnectorId === undefined || oldConnectorId === null) return;
 
-    const connector = connectorMap.get(oldConnectorId);
+    const connector =
+      connectorMap.get(oldConnectorId) ||
+      connectorMap.get(String(oldConnectorId)) ||
+      (typeof oldConnectorId === "string" ? connectorMap.get(Number(oldConnectorId)) : undefined);
     if (connector) {
-      label[CONNECTOR_LABEL_PROP] = connector.innerId;
+      bindConnectorLabel(connector, child);
     }
   });
 }

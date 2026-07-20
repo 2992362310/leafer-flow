@@ -11,7 +11,7 @@ export function doInsertTemplate(
   editor.beginTransaction();
 
   const data = templateMap[kind]();
-  insertTemplateFlow(editor.app, data.nodes, data.edges, getTemplateStyle);
+  insertTemplateFlow(editor.app, data.graph, getTemplateStyle);
 
   editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
   editor.endTransaction();

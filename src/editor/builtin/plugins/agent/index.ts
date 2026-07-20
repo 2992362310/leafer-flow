@@ -47,7 +47,7 @@ export const agentPlugin: EditorPluginModule = {
       pluginId: PLUGIN_ID,
       kind: "button",
       surface: "panel",
-      order: 85,
+      order: 50,
       items: [
         {
           id: "open-agent",

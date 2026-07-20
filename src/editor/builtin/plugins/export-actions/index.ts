@@ -2,6 +2,7 @@ import { ACTION_NAME } from "../../../constants";
 import type { ActionButtonGroupContribution } from "../../../api/action-button";
 import type { CommandContribution } from "../../../api/command";
 import type { EditorPluginModule } from "../../../api/plugin";
+import { dispatchPanelToggle } from "../../../api/panel-toggle";
 import { doExportPNG, doExportSVG, doExportPDF } from "../../../action/do-file";
 
 const PLUGIN_ID = "leafer-flow.export-actions";
@@ -28,6 +29,16 @@ const EXPORT_COMMANDS: CommandContribution[] = [
     warning: false,
     run: doExportPDF,
   },
+  {
+    id: "toggleExportPanel",
+    label: "导出",
+    pluginId: PLUGIN_ID,
+    warning: false,
+    run: () => {
+      dispatchPanelToggle("export-panel");
+      return { success: true, message: "已切换导出面板" };
+    },
+  },
 ];
 
 const EXPORT_BUTTONS: ActionButtonGroupContribution = {
@@ -35,12 +46,17 @@ const EXPORT_BUTTONS: ActionButtonGroupContribution = {
   label: "导出",
   icon: "export",
   pluginId: PLUGIN_ID,
-  kind: "dropdown",
-  order: 90,
+  kind: "button",
+  surface: "file",
+  order: 20,
   items: [
-    { id: "export-png", command: ACTION_NAME.EXPORT_PNG, icon: "export", label: "导出 PNG" },
-    { id: "export-svg", command: ACTION_NAME.EXPORT_SVG, icon: "export", label: "导出 SVG" },
-    { id: "export-pdf", command: ACTION_NAME.EXPORT_PDF, icon: "export", label: "导出 PDF" },
+    {
+      id: "toggle-export-panel",
+      label: "导出",
+      command: "toggleExportPanel",
+      icon: "export",
+      panelId: "export-panel",
+    },
   ],
 };
 
@@ -48,15 +64,15 @@ export const exportActionsPlugin: EditorPluginModule = {
   manifest: {
     id: PLUGIN_ID,
     name: "导出操作",
-    version: "1.0.0",
-    description: "提供 PNG 和 SVG 导出能力。",
+    version: "1.1.0",
+    description: "提供 PNG、SVG、PDF 导出能力。",
     category: "export",
     capabilities: ["command", "action-button", "export"],
     enabledByDefault: true,
   },
   contributes: {
-    commands: ["导出 PNG", "导出 SVG"],
-    buttons: ["导出 PNG", "导出 SVG"],
+    commands: ["导出 PNG", "导出 SVG", "导出 PDF"],
+    buttons: ["导出"],
   },
   activate(ctx) {
     EXPORT_COMMANDS.forEach((command) => ctx.editor.commands.register(command));

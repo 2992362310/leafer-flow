@@ -91,7 +91,7 @@ export function createFlowNodeShape(kind: FlowNodeKind, style: FlowNodeShapeStyl
     kind === "bpmnEndEvent" ||
     kind === "archUseCase"
   ) {
-    shape = new Ellipse(base);
+    shape = new Ellipse({ ...base, width: 1, height: 1 });
   } else if (
     kind === "decision" ||
     kind === "io" ||
@@ -130,10 +130,11 @@ export function createFlowNodeShape(kind: FlowNodeKind, style: FlowNodeShapeStyl
     kind === "archService" ||
     kind === "archDevice"
   ) {
-    shape = new Path(base);
+    // Non-empty path required before tree attach — empty Path + Group layout crashes Layouter.
+    shape = new Path({ ...base, path: "M 0 0 Z" });
   } else {
     // process, bpmnTask, and other rectangle-based kinds
-    shape = new Rect({ ...base, cornerRadius: style.cornerRadius ?? 6 });
+    shape = new Rect({ ...base, width: 1, height: 1, cornerRadius: style.cornerRadius ?? 6 });
   }
 
   (shape as unknown as Record<string, unknown>)[FLOW_SHAPE_KIND_PROP] = kind;

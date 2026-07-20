@@ -15,7 +15,13 @@ export type DockPanelId =
   | "multi-layer-panel"
   | "diagram-lint"
   | "shortcut-help"
-  | "status-bar";
+  | "status-bar"
+  | "drawing-settings"
+  | "template-market"
+  | "align-panel"
+  | "layer-tools-panel"
+  | "export-panel"
+  | "auto-layout-panel";
 
 interface DockPanelMeta {
   id: DockPanelId;
@@ -40,6 +46,12 @@ const panelMetaMap: Record<DockPanelId, DockPanelMeta> = {
   "diagram-lint": { id: "diagram-lint", label: "规范检查", icon: "warning" },
   "shortcut-help": { id: "shortcut-help", label: "快捷键", icon: "info" },
   "status-bar": { id: "status-bar", label: "状态信息", icon: "load" },
+  "drawing-settings": { id: "drawing-settings", label: "绘图设置", icon: "template" },
+  "template-market": { id: "template-market", label: "模板市场", icon: "template" },
+  "align-panel": { id: "align-panel", label: "对齐与分布", icon: "align_center" },
+  "layer-tools-panel": { id: "layer-tools-panel", label: "图层与状态", icon: "layer" },
+  "export-panel": { id: "export-panel", label: "导出", icon: "export" },
+  "auto-layout-panel": { id: "auto-layout-panel", label: "智能布局", icon: "distribute_vertical" },
 };
 
 const dockedIds = ref<DockPanelId[]>([]);

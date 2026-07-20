@@ -22,14 +22,14 @@ export interface OverlayPanelDef {
 }
 
 function toOverlayPanelDef(contribution: OverlayPanelContribution): OverlayPanelDef {
-  const { id, component, visibilityMode, needsEditor = true } = contribution;
+  const { id, component, visibilityMode, needsEditor = true, props: staticProps } = contribution;
 
   if (visibilityMode === "self-visible") {
     return {
       id,
       component,
       shouldMount: (ctx) => Boolean(ctx.editor) && ctx.visibility.isMounted(id),
-      getBindings: (ctx) => ({ editor: ctx.editor }),
+      getBindings: (ctx) => ({ editor: ctx.editor, ...(staticProps ?? {}) }),
     };
   }
 
@@ -43,6 +43,7 @@ function toOverlayPanelDef(contribution: OverlayPanelContribution): OverlayPanel
     getBindings: (ctx) => {
       const bindings: Record<string, unknown> = {
         open: ctx.visibility.shouldShowFloat(id),
+        ...(staticProps ?? {}),
       };
       if (needsEditor) bindings.editor = ctx.editor;
       return bindings;

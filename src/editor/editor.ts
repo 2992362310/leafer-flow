@@ -14,7 +14,7 @@ import { OverlayPanelRegistry } from "./core/overlay-panel-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
-import { hasConnectors, syncConnectors } from "./core/connector";
+import { hasConnectors, onConnectorGeometryUpdated, syncConnectors } from "./core/connector";
 
 const INIT_CONFIG = {
   view: window,
@@ -76,6 +76,11 @@ export default class Editor {
     this.app.editor.on("move.end", () => this.saveAfterTransform());
     this.app.editor.on("resize.end", () => this.saveAfterTransform());
     this.app.editor.on("rotate.end", () => this.saveAfterTransform());
+    // Labels follow inside Connector.update via attachLabel; this is a safety net.
+    onConnectorGeometryUpdated((connector) => {
+      if (this.syncingConnectors) return;
+      connector.syncAttachedLabels();
+    });
   }
 
   private syncConnectorsAfterRender() {

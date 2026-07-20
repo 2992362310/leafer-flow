@@ -209,52 +209,78 @@ watch(
 </script>
 
 <template>
-  <div v-if="props.open && mode === 'float'" class="fixed inset-0 z-[100] bg-black/30" @click.self="closePanel"
-    @keydown="handleCaptureKey" tabindex="0">
-    <div class="bg-base-100 shadow-2xl border border-base-200 rounded-xl w-[520px] max-h-[80vh] overflow-hidden fixed"
-      :style="{ left: `${position.x}px`, top: `${position.y}px` }">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-base-200 cursor-move select-none"
-        @mousedown="startDrag">
-        <h3 class="text-sm font-semibold">快捷键</h3>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('shortcut-help')"
-            @mousedown.stop>
-            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
-          </button>
-          <button class="btn btn-xs" :class="editing ? 'btn-primary' : 'btn-ghost'"
-            @click="editing = !editing; editingAction = null" @mousedown.stop>
-            {{ editing ? "完成" : "自定义" }}
-          </button>
-          <button v-if="editing" class="btn btn-xs btn-ghost" title="重置为默认" @click="handleReset" @mousedown.stop>
-            重置
-          </button>
-          <button class="btn btn-xs btn-ghost" @click="closePanel" @mousedown.stop>✕</button>
-        </div>
+  <!-- 浮动面板：与 AI 助手一致，无全屏遮罩 -->
+  <div
+    v-if="props.open && mode === 'float'"
+    class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 w-[32rem] max-h-[80vh] flex flex-col"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
+    tabindex="0"
+    @keydown="handleCaptureKey"
+    @click.stop
+  >
+    <div
+      class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200 shrink-0"
+      @mousedown="startDrag"
+    >
+      <div class="flex items-center gap-2">
+        <Icon name="info" class="h-4 w-4" />
+        <span class="text-xs font-bold">快捷键</span>
       </div>
-
-      <!-- 编辑提示 -->
-      <div v-if="editing" class="px-5 py-2 bg-primary/5 text-xs text-primary border-b border-base-200">
-        {{ editingAction ? "请按下新的快捷键组合（Esc 取消）" : "点击快捷键进行修改" }}
+      <div class="flex gap-1">
+        <button
+          class="btn btn-ghost btn-xs btn-square"
+          title="收纳到右侧槽"
+          @click.stop="togglePanelDock('shortcut-help')"
+          @mousedown.stop
+        >
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <button
+          class="btn btn-xs"
+          :class="editing ? 'btn-primary' : 'btn-ghost'"
+          @click.stop="editing = !editing; editingAction = null"
+          @mousedown.stop
+        >
+          {{ editing ? "完成" : "自定义" }}
+        </button>
+        <button
+          v-if="editing"
+          class="btn btn-ghost btn-xs"
+          title="重置为默认"
+          @click.stop="handleReset"
+          @mousedown.stop
+        >
+          重置
+        </button>
+        <button class="btn btn-ghost btn-xs btn-square" title="关闭" @click.stop="closePanel" @mousedown.stop>
+          ✕
+        </button>
       </div>
+    </div>
 
-      <div class="overflow-y-auto max-h-[calc(80vh-96px)] p-4 space-y-4">
-        <div v-for="group in groups" :key="group.title">
-          <h4 class="text-xs font-medium opacity-60 mb-2">{{ group.title }}</h4>
-          <div class="space-y-1">
-            <div v-for="item in group.items" :key="item.action" class="flex items-center justify-between text-xs py-1">
-              <span>{{ item.label }}</span>
-              <div class="flex items-center gap-2">
-                <!-- 正在编辑此项 -->
-                <template v-if="editingAction === item.action">
-                  <span class="text-xs text-primary animate-pulse">按下快捷键...</span>
-                  <span v-if="conflictError" class="text-xs text-error">{{ conflictError }}</span>
-                </template>
-                <!-- 显示快捷键 -->
-                <kbd v-else class="kbd kbd-xs bg-base-200" :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
-                  @click="startEdit(item.action)">
-                  {{ getKeyForAction(item.action) }}
-                </kbd>
-              </div>
+    <div v-if="editing" class="px-4 py-2 bg-primary/5 text-xs text-primary border-b border-base-200 shrink-0">
+      {{ editingAction ? "请按下新的快捷键组合（Esc 取消）" : "点击快捷键进行修改" }}
+    </div>
+
+    <div class="overflow-y-auto flex-1 p-4 space-y-4">
+      <div v-for="group in groups" :key="group.title">
+        <h4 class="text-xs font-medium opacity-60 mb-2">{{ group.title }}</h4>
+        <div class="space-y-1">
+          <div v-for="item in group.items" :key="item.action" class="flex items-center justify-between text-xs py-1">
+            <span>{{ item.label }}</span>
+            <div class="flex items-center gap-2">
+              <template v-if="editingAction === item.action">
+                <span class="text-xs text-primary animate-pulse">按下快捷键...</span>
+                <span v-if="conflictError" class="text-xs text-error">{{ conflictError }}</span>
+              </template>
+              <kbd
+                v-else
+                class="kbd kbd-xs bg-base-200"
+                :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
+                @click="startEdit(item.action)"
+              >
+                {{ getKeyForAction(item.action) }}
+              </kbd>
             </div>
           </div>
         </div>

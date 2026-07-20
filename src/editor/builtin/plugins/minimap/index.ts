@@ -47,7 +47,7 @@ export const minimapPlugin: EditorPluginModule = {
       pluginId: PLUGIN_ID,
       kind: "button",
       surface: "panel",
-      order: 76,
+      order: 30,
       items: [
         {
           id: "toggle-minimap",

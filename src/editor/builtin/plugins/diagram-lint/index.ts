@@ -1,6 +1,7 @@
 import type { EditorPluginModule } from "../../../api/plugin";
 import type { IUI } from "leafer";
 import { defineAsyncComponent } from "vue";
+import { dispatchPanelToggle, getPanelToggleEvent } from "../../../api/panel-toggle";
 import { fixNodeOverlaps, fixTextTooLong, runDiagramLint } from "./lint-engine";
 import type { DiagramLintCachePayload, DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "./types";
 
@@ -118,6 +119,17 @@ export const diagramLintPlugin: EditorPluginModule = {
       visibilityMode: "open-prop",
       needsEditor: false,
       order: 70,
+      toggleEvent: getPanelToggleEvent("diagram-lint"),
+    });
+
+    ctx.editor.commands.register({
+      id: "toggleDiagramLint",
+      label: "规范检查",
+      pluginId: PLUGIN_ID,
+      run: () => {
+        dispatchPanelToggle("diagram-lint");
+        return { success: true, message: "已切换规范检查" };
+      },
     });
 
     const executeIssueFix = (
@@ -587,50 +599,17 @@ export const diagramLintPlugin: EditorPluginModule = {
       label: "规范检查 Pro",
       icon: "warning",
       pluginId: PLUGIN_ID,
-      kind: "dropdown",
-      order: 66,
+      kind: "button",
+      surface: "arrange",
+      order: 40,
       items: [
         {
-          id: "diagram-lint-run",
-          label: "执行规范检查",
-          command: "diagramLint.run",
+          id: "toggle-diagram-lint",
+          label: "规范检查",
+          command: "toggleDiagramLint",
           icon: "warning",
+          panelId: "diagram-lint",
           order: 10,
-        },
-        {
-          id: "diagram-lint-fix-overlap",
-          label: "修复节点重叠",
-          command: "diagramLint.fix.overlap",
-          icon: "success",
-          order: 20,
-        },
-        {
-          id: "diagram-lint-fix-text",
-          label: "修复长文本",
-          command: "diagramLint.fix.text",
-          icon: "success",
-          order: 25,
-        },
-        {
-          id: "diagram-lint-fix-all",
-          label: "修复全部可修复问题",
-          command: "diagramLint.fix.all",
-          icon: "success",
-          order: 26,
-        },
-        {
-          id: "diagram-lint-fix-pipeline",
-          label: "自动修复流水线",
-          command: "diagramLint.fix.pipeline",
-          icon: "success",
-          order: 27,
-        },
-        {
-          id: "diagram-lint-report",
-          label: "查看最近检查结果",
-          command: "diagramLint.report",
-          icon: "info",
-          order: 30,
         },
       ],
     });
