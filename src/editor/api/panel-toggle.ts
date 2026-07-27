@@ -10,6 +10,7 @@ export const PANEL_TOGGLE_EVENT = {
   "multi-layer-panel": "leafer-flow:toggle-multi-layer-panel",
   "drawing-settings": "leafer-flow:toggle-drawing-settings",
   "template-market": "leafer-flow:toggle-template-market",
+  "connector-panel": "leafer-flow:toggle-connector-panel",
   "align-panel": "leafer-flow:toggle-align-panel",
   "layer-tools-panel": "leafer-flow:toggle-layer-tools-panel",
   "export-panel": "leafer-flow:toggle-export-panel",

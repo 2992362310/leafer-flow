@@ -43,6 +43,9 @@ export function useEditorCommands({
   function setCurrentTool(tool: string) {
     activeTool.value = tool;
     syncCurrentTool(tool);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("leafer-flow:tool-changed", { detail: { tool } }));
+    }
   }
 
   function executeCallback<T>(arg: T) {
@@ -58,6 +61,9 @@ export function useEditorCommands({
 
   function handleTool(evt: IExecuteCommand) {
     if (!editor.value) return;
+    if (evt.command === TOOL_NAME.DRAW_ARROW) {
+      window.dispatchEvent(new CustomEvent("leafer-flow:open-connector-panel"));
+    }
     setCurrentTool(evt.command);
     editor.value.execute(evt, executeCallback);
     logRef.value?.addLog({ message: `开始执行工具: ${evt.command}`, level: "info" });

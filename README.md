@@ -10,6 +10,8 @@
 - BPMN 节点：开始事件、中间事件、结束事件、网关、任务、数据对象、数据存储。
 - 架构图节点：Actor、Use Case、Component、Package、Node、Queue、Cache、Cloud、Service、Device。
 - 连接线增强：直线、折线、贝塞尔路径，支持连接线标签和标签位置同步。
+- 连线中心：独立面板集中管理连线工具、样式、动画与常用编辑操作。
+- 连线动画：支持流动动画开关、速度、作用范围（全局/仅选中）、方向（正向/反向）。
 - 选择能力：单选、多选、框选、全选、删除、键盘微移。
 - 排版能力：对齐、分布、层级前移 / 后移 / 置顶 / 置底。
 - 元素管理：剪切、复制、粘贴、原位复制、编组、取消编组、锁定、解锁、显示 / 隐藏。
@@ -17,6 +19,7 @@
 - 画布搜索：按文字内容搜索元素并定位选中。
 - 图片插入：从本地选择图片插入画布。
 - 模板能力：业务流程、BPMN、系统架构、泳道协作等图形模板。
+- 模板策略：模板插入可自动应用连线策略（支持模板显式配置与 routeType 推断）。
 - 绘制体验：画布标尺、智能吸附、点阵背景、自由绘制平滑度、事件日志、右键菜单和状态栏。
 - 高级辅助：自动布局（选区/全图 + TB/LR/BT/RL）、规范检查 Pro、缩略图导航。
 - 插件市场：支持内置插件列表、启用 / 禁用非必需插件、查看插件贡献摘要。
@@ -131,6 +134,7 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 | `file-actions`        | 文件操作                             |
 | `export-actions`      | 导出操作                             |
 | `template-actions`    | 模板插入                             |
+| `connector-animation` | 连线流动动画                         |
 | `basic-tools`         | 基础绘制工具                         |
 | `flow-shapes`         | 流程图节点                           |
 | `bpmn-shapes`         | BPMN 节点                            |
@@ -152,13 +156,22 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
   "schemaVersion": 1,
   "documentType": "file",
   "savedAt": "2026-06-09T00:00:00.000Z",
+  "settings": {
+    "connectorRouteType": "orthogonal",
+    "connectorFlowAnimation": {
+      "enabled": false,
+      "speed": 1,
+      "scope": "all",
+      "direction": "forward"
+    }
+  },
   "tree": {
     "children": []
   }
 }
 ```
 
-其中 `documentType` 用于区分手动保存文件和自动保存数据。
+其中 `documentType` 用于区分手动保存文件和自动保存数据；`settings` 用于保存连线中心相关配置，确保加载与自动恢复后行为一致。
 
 ## 技术栈
 

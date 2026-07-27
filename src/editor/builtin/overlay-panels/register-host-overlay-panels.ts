@@ -91,6 +91,16 @@ export function registerHostOverlayPanels(editor: Editor) {
   });
 
   editor.overlayPanels.register({
+    id: "connector-panel",
+    pluginId: BUILTIN_PLUGIN_ID,
+    component: defineAsyncComponent(() => import("@/components/ConnectorPanel.vue")),
+    visibilityMode: "open-prop",
+    needsEditor: true,
+    order: 39,
+    toggleEvent: getPanelToggleEvent("connector-panel"),
+  });
+
+  editor.overlayPanels.register({
     id: "layer-tools-panel",
     pluginId: BUILTIN_PLUGIN_ID,
     component: defineAsyncComponent(() => import("@/components/ActionToolPanel.vue")),

@@ -49,7 +49,7 @@ export default class Editor {
     const app = new App(config);
     this.app = app;
     this.history = new HistoryManager(app);
-    this.autoSave = new AutoSave(app);
+    this.autoSave = new AutoSave(app, this);
     this.pluginManager = new PluginManager(this);
     this.toolRegistry = new ToolRegistry(this);
     this.commands = new CommandRegistry(this);

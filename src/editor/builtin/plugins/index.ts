@@ -18,6 +18,7 @@ import { autoLayoutPlugin } from "./auto-layout";
 import { diagramLintPlugin } from "./diagram-lint";
 import { minimapPlugin } from "./minimap";
 import { multiLayerPlugin } from "./multi-layer";
+import { connectorAnimationPlugin } from "./connector-animation";
 
 export const builtinPlugins: EditorPluginModule[] = [
   builtinCorePlugin,
@@ -36,6 +37,7 @@ export const builtinPlugins: EditorPluginModule[] = [
   architectureShapesPlugin,
   agentPlugin,
   autoLayoutPlugin,
+  connectorAnimationPlugin,
   diagramLintPlugin,
   minimapPlugin,
   multiLayerPlugin,

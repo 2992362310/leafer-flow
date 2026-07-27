@@ -23,8 +23,32 @@ import { doSelectAll } from "../../action/do-select-all";
 import { doSelectByType } from "../../action/do-select-by-type";
 import { doUndo } from "../../action/do-undo";
 import { doUnGroup } from "../../action/do-ungroup";
-import { getSnapEnabled, setSnapEnabled } from "../../core/drawing-settings";
+import {
+  getSnapEnabled,
+  setSnapEnabled,
+  setConnectorRouteType,
+  type ConnectorRouteType,
+} from "../../core/drawing-settings";
 import { dispatchPanelToggle } from "../../api/panel-toggle";
+
+function getSelectedConnectors(editor: Editor): Connector[] {
+  return ((editor.app.editor.list as IUI[] | undefined) ?? []).filter(
+    (item): item is Connector => item instanceof Connector,
+  );
+}
+
+function applyRouteTypeToSelection(editor: Editor, routeType: ConnectorRouteType) {
+  const selectedConnectors = getSelectedConnectors(editor);
+  if (selectedConnectors.length === 0) return 0;
+
+  selectedConnectors.forEach((connector) => {
+    connector.routeType = routeType;
+    connector.update();
+  });
+
+  editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
+  return selectedConnectors.length;
+}
 
 const CORE_COMMANDS: CommandContribution[] = [
   {
@@ -162,6 +186,26 @@ const CORE_COMMANDS: CommandContribution[] = [
     },
   },
   {
+    id: "toggleConnectorPanel",
+    label: "连线中心",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      dispatchPanelToggle("connector-panel");
+      return { success: true, message: "已切换连线中心" };
+    },
+  },
+  {
+    id: "openConnectorPanel",
+    label: "打开连线中心",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: () => {
+      window.dispatchEvent(new CustomEvent("leafer-flow:open-connector-panel"));
+      return { success: true, message: "已打开连线中心" };
+    },
+  },
+  {
     id: "toggleLayerToolsPanel",
     label: "图层与状态",
     pluginId: BUILTIN_PLUGIN_ID,
@@ -169,6 +213,57 @@ const CORE_COMMANDS: CommandContribution[] = [
     run: () => {
       dispatchPanelToggle("layer-tools-panel");
       return { success: true, message: "已切换图层与状态" };
+    },
+  },
+  {
+    id: ACTION_NAME.CONNECTOR_ROUTE_ORTHOGONAL,
+    label: "连线样式-直角",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: (editor) => {
+      setConnectorRouteType("orthogonal");
+      const affected = applyRouteTypeToSelection(editor, "orthogonal");
+      return {
+        success: true,
+        message:
+          affected > 0
+            ? `连线样式已切换为直角线（已应用 ${affected} 条选中连线）`
+            : "连线样式已切换为直角线",
+      };
+    },
+  },
+  {
+    id: ACTION_NAME.CONNECTOR_ROUTE_BEZIER,
+    label: "连线样式-曲线",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: (editor) => {
+      setConnectorRouteType("bezier");
+      const affected = applyRouteTypeToSelection(editor, "bezier");
+      return {
+        success: true,
+        message:
+          affected > 0
+            ? `连线样式已切换为曲线（已应用 ${affected} 条选中连线）`
+            : "连线样式已切换为曲线",
+      };
+    },
+  },
+  {
+    id: ACTION_NAME.CONNECTOR_ROUTE_STRAIGHT,
+    label: "连线样式-直线",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: (editor) => {
+      setConnectorRouteType("straight");
+      const affected = applyRouteTypeToSelection(editor, "straight");
+      return {
+        success: true,
+        message:
+          affected > 0
+            ? `连线样式已切换为直线（已应用 ${affected} 条选中连线）`
+            : "连线样式已切换为直线",
+      };
     },
   },
   {
@@ -212,6 +307,22 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "应用样式",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doFormatPainterApply,
+  },
+  {
+    id: ACTION_NAME.SELECT_ALL_CONNECTORS,
+    label: "选中全部连线",
+    pluginId: BUILTIN_PLUGIN_ID,
+    warning: false,
+    run: (editor) => {
+      const connectors = ((editor.app.tree.children as IUI[] | undefined) ?? []).filter(
+        (item): item is Connector => item instanceof Connector,
+      );
+      if (connectors.length === 0) {
+        return { success: false, message: "画布中没有连线" };
+      }
+      editor.app.editor.select(connectors);
+      return { success: true, message: `已选中 ${connectors.length} 条连线` };
+    },
   },
 ];
 

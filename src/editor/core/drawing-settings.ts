@@ -16,6 +16,13 @@ export function useDrawingSettings() {
 
 export function setConnectorRouteType(type: ConnectorRouteType) {
   connectorRouteType.value = type;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("leafer-flow:connector-route-type-changed", {
+        detail: { type },
+      }),
+    );
+  }
 }
 
 export function setFreehandSmoothness(value: number) {

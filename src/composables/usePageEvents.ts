@@ -81,6 +81,24 @@ export function usePageEvents(options: UsePageEventsOptions) {
     });
   }
 
+  function bindOpenConnectorPanelEvent() {
+    const eventName = "leafer-flow:open-connector-panel";
+    if (boundEvents.has(eventName)) return;
+    boundEvents.add(eventName);
+
+    const handler = () => {
+      options.openPanel("connector-panel");
+    };
+
+    window.addEventListener(eventName, handler);
+    options.addCleanup(() => {
+      window.removeEventListener(eventName, handler);
+      boundEvents.delete(eventName);
+    });
+  }
+
+  bindOpenConnectorPanelEvent();
+
   return {
     bindEvents,
     bindHostEvents,

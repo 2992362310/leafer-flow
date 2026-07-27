@@ -22,6 +22,7 @@ export const OVERLAY_PANEL_IDS = [
   "shortcut-help",
   "drawing-settings",
   "template-market",
+  "connector-panel",
   "align-panel",
   "layer-tools-panel",
   "export-panel",

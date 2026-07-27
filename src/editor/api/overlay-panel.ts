@@ -12,6 +12,7 @@ export type OverlayPanelDockId =
   | "diagram-lint"
   | "drawing-settings"
   | "template-market"
+  | "connector-panel"
   | "align-panel"
   | "layer-tools-panel"
   | "export-panel"

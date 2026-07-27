@@ -1,5 +1,12 @@
 import { App } from "leafer";
-import { deserializeTreeWithConnectors, migrateLegacyFormat, serializeTreeWithConnectors } from "./flow-serialization";
+import {
+  deserializeTreeWithConnectors,
+  getFlowDocumentSettings,
+  migrateLegacyFormat,
+  serializeTreeWithConnectors,
+} from "./flow-serialization";
+import { getConnectorWorkbenchSettings, applyConnectorWorkbenchSettings } from "./connector-workbench-settings";
+import type Editor from "../editor";
 
 const STORAGE_KEY = "leafer-flow-autosave";
 const IDB_DB_NAME = "leafer-flow";
@@ -10,14 +17,16 @@ const LOCALSTORAGE_SIZE_LIMIT = 3 * 1024 * 1024; // 3MB — localStorage 安全�
 
 export class AutoSave {
   private app: App;
+  private editor?: Editor;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private _lastSaveOk = true;
   private _saveError: string | null = null;
   private db: IDBDatabase | null = null;
   private dbReady: Promise<IDBDatabase | null>;
 
-  constructor(app: App) {
+  constructor(app: App, editor?: Editor) {
     this.app = app;
+    this.editor = editor;
     this.dbReady = this.openDB();
   }
 
@@ -43,7 +52,11 @@ export class AutoSave {
 
   async save(): Promise<boolean> {
     try {
-      const data = serializeTreeWithConnectors(this.app, "autosave");
+      const data = serializeTreeWithConnectors(
+        this.app,
+        "autosave",
+        getConnectorWorkbenchSettings(),
+      );
       const json = JSON.stringify(data);
       const sizeBytes = json.length * 2; // UTF-16
 
@@ -105,6 +118,10 @@ export class AutoSave {
       }
 
       const result = deserializeTreeWithConnectors(this.app, migrated);
+      if (this.editor) {
+        const settings = getFlowDocumentSettings(migrated);
+        await applyConnectorWorkbenchSettings(this.editor, settings);
+      }
       return { loaded: true, failedConnectors: result.failedConnectors };
     } catch (error) {
       console.warn("自动加载失败:", error);

@@ -117,6 +117,10 @@ export const ACTION_NAME = {
   SELECT_BY_TYPE: "selectByType",
   FORMAT_PAINTER_COPY: "formatPainterCopy",
   FORMAT_PAINTER_APPLY: "formatPainterApply",
+  SELECT_ALL_CONNECTORS: "selectAllConnectors",
+  CONNECTOR_ROUTE_ORTHOGONAL: "connectorRouteOrthogonal",
+  CONNECTOR_ROUTE_BEZIER: "connectorRouteBezier",
+  CONNECTOR_ROUTE_STRAIGHT: "connectorRouteStraight",
 } as const;
 
 export type ActionName = (typeof ACTION_NAME)[keyof typeof ACTION_NAME];

@@ -35,6 +35,16 @@ export interface DeserializeResult {
   failedConnectors: number;
 }
 
+export type FlowDocumentSettings = {
+  connectorRouteType?: "orthogonal" | "bezier" | "straight";
+  connectorFlowAnimation?: {
+    enabled?: boolean;
+    speed?: number;
+    scope?: "all" | "selected";
+    direction?: "forward" | "reverse";
+  };
+};
+
 export const CUSTOM_DATA_PROP = "__flowCustomData";
 export const FLOW_SERIALIZATION_SCHEMA = "leafer-flow.document";
 export const FLOW_SERIALIZATION_VERSION = 1;
@@ -51,6 +61,7 @@ export interface SerializedFlowDocument extends Record<string, unknown> {
   documentType: FlowDocumentType;
   savedAt: string;
   tree: SerializedTree;
+  settings?: FlowDocumentSettings;
 }
 
 export function isSerializedFlowDocument(
@@ -91,6 +102,7 @@ export function migrateLegacyFormat(
 export function serializeTreeWithConnectors(
   app: App,
   documentType: FlowDocumentType = "file",
+  settings?: FlowDocumentSettings,
 ): SerializedFlowDocument {
   const tree = app.tree.toJSON() as SerializedTree;
   return {
@@ -98,11 +110,21 @@ export function serializeTreeWithConnectors(
     schemaVersion: FLOW_SERIALIZATION_VERSION,
     documentType,
     savedAt: new Date().toISOString(),
+    ...(settings ? { settings } : {}),
     tree: {
       ...tree,
       children: serializeChildrenWithConnectors(app),
     },
   };
+}
+
+export function getFlowDocumentSettings(
+  json: Record<string, unknown>,
+): FlowDocumentSettings | undefined {
+  if (!isSerializedFlowDocument(json)) return undefined;
+  const settings = json.settings;
+  if (!settings || typeof settings !== "object") return undefined;
+  return settings as FlowDocumentSettings;
 }
 
 export function serializeChildrenWithConnectors(app: App): SerializedChild[] {

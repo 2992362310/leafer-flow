@@ -99,6 +99,24 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     ],
   },
   {
+    id: "connector-panel",
+    label: "连线中心",
+    icon: "draw_arrow",
+    pluginId: BUILTIN_PLUGIN_ID,
+    kind: "button",
+    surface: "arrange",
+    order: 15,
+    items: [
+      {
+        id: "toggle-connector-panel",
+        label: "连线中心",
+        command: "toggleConnectorPanel",
+        icon: "draw_arrow",
+        panelId: "connector-panel",
+      },
+    ],
+  },
+  {
     id: "layer",
     label: "图层与状态",
     icon: "layer",

@@ -18,6 +18,7 @@ export type DockPanelId =
   | "status-bar"
   | "drawing-settings"
   | "template-market"
+  | "connector-panel"
   | "align-panel"
   | "layer-tools-panel"
   | "export-panel"
@@ -48,6 +49,7 @@ const panelMetaMap: Record<DockPanelId, DockPanelMeta> = {
   "status-bar": { id: "status-bar", label: "状态信息", icon: "load" },
   "drawing-settings": { id: "drawing-settings", label: "绘图设置", icon: "template" },
   "template-market": { id: "template-market", label: "模板市场", icon: "template" },
+  "connector-panel": { id: "connector-panel", label: "连线中心", icon: "draw_arrow" },
   "align-panel": { id: "align-panel", label: "对齐与分布", icon: "align_center" },
   "layer-tools-panel": { id: "layer-tools-panel", label: "图层与状态", icon: "layer" },
   "export-panel": { id: "export-panel", label: "导出", icon: "export" },

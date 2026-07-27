@@ -1,5 +1,6 @@
 import type { FlowGraph, FlowGraphEdge, FlowGraphNode, FlowGraphNodeStyle } from "../core/flow-graph";
 import type { FlowNodeKind } from "../core/flow-node-shape";
+import type { FlowDocumentSettings } from "../core/flow-serialization";
 
 export type TemplateKind =
   | "approval"
@@ -15,6 +16,7 @@ export type TemplateKind =
 export type TemplateDefinition = {
   message: string;
   graph: FlowGraph;
+  settings?: FlowDocumentSettings;
 };
 
 export const templateMap: Record<TemplateKind, () => TemplateDefinition> = {
@@ -247,7 +249,7 @@ function bpmnOrderTemplate(): TemplateDefinition {
   const yTask = yOnRow(BOX.bpmnTask.height);
   const yEvent = yOnRow(BOX.bpmnEvent.height);
   const yGate = yOnRow(BOX.bpmnGateway.height);
-  return defineTemplate(
+  const definition = defineTemplate(
     "已插入 BPMN 订单流程模板",
     [
       node("bpmnOrder:start", "开始", "bpmnStartEvent", COL[0], yEvent, BOX.bpmnEvent),
@@ -266,6 +268,12 @@ function bpmnOrderTemplate(): TemplateDefinition {
       edge("bpmnOrder:e6", "bpmnOrder:reserve", "bpmnOrder:end", "right", "left"),
     ],
   );
+
+  definition.settings = {
+    connectorRouteType: "bezier",
+  };
+
+  return definition;
 }
 
 function systemArchitectureTemplate(): TemplateDefinition {

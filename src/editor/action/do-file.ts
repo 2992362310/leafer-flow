@@ -1,13 +1,18 @@
 import type Editor from "../editor";
 import {
   deserializeTreeWithConnectors,
+  getFlowDocumentSettings,
   migrateLegacyFormat,
   serializeTreeWithConnectors,
 } from "../core/flow-serialization";
+import {
+  applyConnectorWorkbenchSettings,
+  getConnectorWorkbenchSettings,
+} from "../core/connector-workbench-settings";
 
 export function doSave(editor: Editor): { success: boolean; message: string } {
   try {
-    const data = serializeTreeWithConnectors(editor.app);
+    const data = serializeTreeWithConnectors(editor.app, "file", getConnectorWorkbenchSettings());
     const text = JSON.stringify(data, null, 2);
     const blob = new Blob([text], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -47,9 +52,11 @@ export function doLoad(editor: Editor): Promise<{ success: boolean; message: str
         const text = await file.text();
         const json = JSON.parse(text) as Record<string, unknown>;
         const migrated = migrateLegacyFormat(json);
+        const settings = getFlowDocumentSettings(migrated);
 
         editor.app.editor.cancel();
         const result = deserializeTreeWithConnectors(editor.app, migrated);
+        await applyConnectorWorkbenchSettings(editor, settings);
         editor.commitMutation();
 
         let message = "文件已加载";
