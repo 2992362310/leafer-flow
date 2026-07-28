@@ -4,6 +4,8 @@ import { Connector } from "../../../core/connector";
 import { createConnector } from "../../../core/flow-serialization";
 import type Editor from "../../../editor";
 import { ACTION_NAME, TOOL_NAME } from "../../../constants";
+import { getTemplateStyle, templateMap } from "../../../templates/defs";
+import { insertTemplateFlow } from "../../../templates/insert";
 
 function getChildren(element: IUI): IUI[] | undefined {
   return (element as unknown as { children?: IUI[] }).children;
@@ -83,6 +85,109 @@ export interface AgentTool {
   description: string;
   parameters: Record<string, unknown>;
   execute: (editor: Editor, args: Record<string, unknown>) => Promise<string> | string;
+  category?: string;
+}
+
+/**
+ * 工具元数据缓存
+ * 用于支持工具查询和自省功能
+ */
+let toolsCache: AgentTool[] | null = null;
+
+/**
+ * 工具分类映射
+ */
+const TOOL_CATEGORIES: Record<string, string> = {
+  // 文件操作
+  save_file: "file",
+  load_file: "file",
+  export_png: "file",
+  export_svg: "file",
+
+  // 编辑操作
+  undo: "edit",
+  redo: "edit",
+  select_all: "edit",
+  deselect_all: "edit",
+  delete_selected: "edit",
+  duplicate_selected: "edit",
+
+  // 图形操作
+  create_shape: "shape",
+  batch_create_shapes: "shape",
+  delete_shape: "shape",
+  move_shape: "shape",
+  resize_shape: "shape",
+  set_shape_style: "shape",
+
+  // 布局操作
+  align_left: "layout",
+  align_right: "layout",
+  align_top: "layout",
+  align_bottom: "layout",
+  distribute_horizontally: "layout",
+  distribute_vertically: "layout",
+  auto_layout: "layout",
+
+  // 模板操作
+  insert_template: "template",
+
+  // 文字操作
+  edit_text: "text",
+  set_text_style: "text",
+
+  // 视图操作
+  zoom_fit: "view",
+  zoom_in: "view",
+  zoom_out: "view",
+  zoom_reset: "view",
+
+  // 画布操作
+  clear_canvas: "canvas",
+  get_canvas_info: "canvas",
+  list_elements: "canvas",
+  search_elements: "canvas",
+  connect_elements: "canvas",
+
+  // 系统工具
+  list_tools: "system",
+  get_tool_details: "system",
+};
+
+/**
+ * 获取所有工具的摘要信息（用于 list_tools）
+ */
+function getToolsSummary(): Array<{ name: string; description: string; category?: string }> {
+  if (!toolsCache) {
+    toolsCache = getAgentTools();
+  }
+  return toolsCache.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    category: TOOL_CATEGORIES[tool.name] || "other",
+  }));
+}
+
+/**
+ * 获取特定工具的详细信息（用于 get_tool_details）
+ */
+function getToolDetails(toolName: string): {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  category?: string;
+} | null {
+  if (!toolsCache) {
+    toolsCache = getAgentTools();
+  }
+  const tool = toolsCache.find((t) => t.name === toolName);
+  if (!tool) return null;
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+    category: TOOL_CATEGORIES[tool.name] || "other",
+  };
 }
 
 export function getAgentTools(): AgentTool[] {
@@ -397,6 +502,12 @@ export function getAgentTools(): AgentTool[] {
               "circle",
               "diamond",
               "triangle",
+              "pentagon",
+              "hexagon",
+              "parallelogram",
+              "star",
+              "note",
+              "cylinder",
               "text",
               "flow_start_end",
               "flow_process",
@@ -406,16 +517,36 @@ export function getAgentTools(): AgentTool[] {
               "flow_database",
               "flow_subprocess",
               "flow_swimlane",
+              "flow_delay",
+              "flow_preparation",
+              "flow_manual_input",
+              "flow_manual_operation",
+              "flow_stored_data",
+              "flow_display",
+              "flow_off_page",
+              "flow_merge",
+              "flow_annotation",
               "bpmn_start_event",
+              "bpmn_intermediate_event",
               "bpmn_end_event",
               "bpmn_task",
               "bpmn_exclusive_gateway",
+              "bpmn_parallel_gateway",
+              "bpmn_inclusive_gateway",
+              "bpmn_data_object",
+              "bpmn_data_store",
               "arch_actor",
+              "arch_use_case",
               "arch_component",
               "arch_package",
               "arch_node",
+              "arch_queue",
+              "arch_cache",
               "arch_cloud",
               "arch_service",
+              "arch_device",
+              "arrow",
+              "freehand",
             ],
             description: "图形类型",
           },
@@ -449,6 +580,12 @@ export function getAgentTools(): AgentTool[] {
           circle: TOOL_NAME.DRAW_CIRCLE,
           diamond: TOOL_NAME.DRAW_DIAMOND,
           triangle: TOOL_NAME.DRAW_TRIANGLE,
+          pentagon: TOOL_NAME.DRAW_PENTAGON,
+          hexagon: TOOL_NAME.DRAW_HEXAGON,
+          parallelogram: TOOL_NAME.DRAW_PARALLELOGRAM,
+          star: TOOL_NAME.DRAW_STAR,
+          note: TOOL_NAME.DRAW_NOTE,
+          cylinder: TOOL_NAME.DRAW_CYLINDER,
           text: TOOL_NAME.DRAW_TEXT,
           flow_start_end: TOOL_NAME.FLOW_START_END,
           flow_process: TOOL_NAME.FLOW_PROCESS,
@@ -458,16 +595,36 @@ export function getAgentTools(): AgentTool[] {
           flow_database: TOOL_NAME.FLOW_DATABASE,
           flow_subprocess: TOOL_NAME.FLOW_SUBPROCESS,
           flow_swimlane: TOOL_NAME.FLOW_SWIMLANE,
+          flow_delay: TOOL_NAME.FLOW_DELAY,
+          flow_preparation: TOOL_NAME.FLOW_PREPARATION,
+          flow_manual_input: TOOL_NAME.FLOW_MANUAL_INPUT,
+          flow_manual_operation: TOOL_NAME.FLOW_MANUAL_OPERATION,
+          flow_stored_data: TOOL_NAME.FLOW_STORED_DATA,
+          flow_display: TOOL_NAME.FLOW_DISPLAY,
+          flow_off_page: TOOL_NAME.FLOW_OFF_PAGE,
+          flow_merge: TOOL_NAME.FLOW_MERGE,
+          flow_annotation: TOOL_NAME.FLOW_ANNOTATION,
           bpmn_start_event: TOOL_NAME.BPMN_START_EVENT,
+          bpmn_intermediate_event: TOOL_NAME.BPMN_INTERMEDIATE_EVENT,
           bpmn_end_event: TOOL_NAME.BPMN_END_EVENT,
           bpmn_task: TOOL_NAME.BPMN_TASK,
           bpmn_exclusive_gateway: TOOL_NAME.BPMN_EXCLUSIVE_GATEWAY,
+          bpmn_parallel_gateway: TOOL_NAME.BPMN_PARALLEL_GATEWAY,
+          bpmn_inclusive_gateway: TOOL_NAME.BPMN_INCLUSIVE_GATEWAY,
+          bpmn_data_object: TOOL_NAME.BPMN_DATA_OBJECT,
+          bpmn_data_store: TOOL_NAME.BPMN_DATA_STORE,
           arch_actor: TOOL_NAME.ARCH_ACTOR,
+          arch_use_case: TOOL_NAME.ARCH_USE_CASE,
           arch_component: TOOL_NAME.ARCH_COMPONENT,
           arch_package: TOOL_NAME.ARCH_PACKAGE,
           arch_node: TOOL_NAME.ARCH_NODE,
+          arch_queue: TOOL_NAME.ARCH_QUEUE,
+          arch_cache: TOOL_NAME.ARCH_CACHE,
           arch_cloud: TOOL_NAME.ARCH_CLOUD,
           arch_service: TOOL_NAME.ARCH_SERVICE,
+          arch_device: TOOL_NAME.ARCH_DEVICE,
+          arrow: TOOL_NAME.DRAW_ARROW,
+          freehand: TOOL_NAME.DRAW_FREEHAND,
         };
 
         const tool = toolMap[shapeType];
@@ -486,10 +643,162 @@ export function getAgentTools(): AgentTool[] {
       },
     },
 
+    // 批量创建图形
+    {
+      name: "batch_create_shapes",
+      description: "批量创建多个图形。支持指定每个图形的类型、位置、文本等。网格排列时自动计算位置。",
+      parameters: {
+        type: "object",
+        properties: {
+          shape_type: {
+            type: "string",
+            description: "所有图形的类型（与 create_shape 相同的 enum）",
+          },
+          count: {
+            type: "number",
+            description: "创建数量（1-20）",
+          },
+          texts: {
+            type: "array",
+            description: "可选的文本数组，对应每个图形。如果少于 count，剩余图形无文本",
+            items: { type: "string" },
+          },
+          start_x: {
+            type: "number",
+            description: "起始 X 坐标（可选，默认 100）",
+          },
+          start_y: {
+            type: "number",
+            description: "起始 Y 坐标（可选，默认 100）",
+          },
+          width: {
+            type: "number",
+            description: "每个图形的宽度（可选，默认 120）",
+          },
+          height: {
+            type: "number",
+            description: "每个图形的高度（可选，默认 72）",
+          },
+          spacing_x: {
+            type: "number",
+            description: "水平间距（可选，默认 150）",
+          },
+          spacing_y: {
+            type: "number",
+            description: "垂直间距（可选，默认 100）",
+          },
+          columns: {
+            type: "number",
+            description: "网格列数。0 表示水平排列（可选，默认 5）",
+          },
+        },
+        required: ["shape_type", "count"],
+      },
+      execute: (editor, args) => {
+        const shapeType = args.shape_type as string;
+        const count = Math.max(1, Math.min(20, typeof args.count === "number" ? args.count : 1));
+        const texts = Array.isArray(args.texts) ? (args.texts as string[]) : [];
+        const startX = typeof args.start_x === "number" ? args.start_x : 100;
+        const startY = typeof args.start_y === "number" ? args.start_y : 100;
+        const width = typeof args.width === "number" ? args.width : 120;
+        const height = typeof args.height === "number" ? args.height : 72;
+        const spacingX = typeof args.spacing_x === "number" ? args.spacing_x : 150;
+        const spacingY = typeof args.spacing_y === "number" ? args.spacing_y : 100;
+        const columns = Math.max(1, typeof args.columns === "number" ? args.columns : 5);
+
+        const toolMap: Record<string, string> = {
+          rect: TOOL_NAME.DRAW_RECT,
+          circle: TOOL_NAME.DRAW_CIRCLE,
+          diamond: TOOL_NAME.DRAW_DIAMOND,
+          triangle: TOOL_NAME.DRAW_TRIANGLE,
+          pentagon: TOOL_NAME.DRAW_PENTAGON,
+          hexagon: TOOL_NAME.DRAW_HEXAGON,
+          parallelogram: TOOL_NAME.DRAW_PARALLELOGRAM,
+          star: TOOL_NAME.DRAW_STAR,
+          note: TOOL_NAME.DRAW_NOTE,
+          cylinder: TOOL_NAME.DRAW_CYLINDER,
+          text: TOOL_NAME.DRAW_TEXT,
+          flow_start_end: TOOL_NAME.FLOW_START_END,
+          flow_process: TOOL_NAME.FLOW_PROCESS,
+          flow_decision: TOOL_NAME.FLOW_DECISION,
+          flow_io: TOOL_NAME.FLOW_IO,
+          flow_document: TOOL_NAME.FLOW_DOCUMENT,
+          flow_database: TOOL_NAME.FLOW_DATABASE,
+          flow_subprocess: TOOL_NAME.FLOW_SUBPROCESS,
+          flow_swimlane: TOOL_NAME.FLOW_SWIMLANE,
+          flow_delay: TOOL_NAME.FLOW_DELAY,
+          flow_preparation: TOOL_NAME.FLOW_PREPARATION,
+          flow_manual_input: TOOL_NAME.FLOW_MANUAL_INPUT,
+          flow_manual_operation: TOOL_NAME.FLOW_MANUAL_OPERATION,
+          flow_stored_data: TOOL_NAME.FLOW_STORED_DATA,
+          flow_display: TOOL_NAME.FLOW_DISPLAY,
+          flow_off_page: TOOL_NAME.FLOW_OFF_PAGE,
+          flow_merge: TOOL_NAME.FLOW_MERGE,
+          flow_annotation: TOOL_NAME.FLOW_ANNOTATION,
+          bpmn_start_event: TOOL_NAME.BPMN_START_EVENT,
+          bpmn_intermediate_event: TOOL_NAME.BPMN_INTERMEDIATE_EVENT,
+          bpmn_end_event: TOOL_NAME.BPMN_END_EVENT,
+          bpmn_task: TOOL_NAME.BPMN_TASK,
+          bpmn_exclusive_gateway: TOOL_NAME.BPMN_EXCLUSIVE_GATEWAY,
+          bpmn_parallel_gateway: TOOL_NAME.BPMN_PARALLEL_GATEWAY,
+          bpmn_inclusive_gateway: TOOL_NAME.BPMN_INCLUSIVE_GATEWAY,
+          bpmn_data_object: TOOL_NAME.BPMN_DATA_OBJECT,
+          bpmn_data_store: TOOL_NAME.BPMN_DATA_STORE,
+          arch_actor: TOOL_NAME.ARCH_ACTOR,
+          arch_use_case: TOOL_NAME.ARCH_USE_CASE,
+          arch_component: TOOL_NAME.ARCH_COMPONENT,
+          arch_package: TOOL_NAME.ARCH_PACKAGE,
+          arch_node: TOOL_NAME.ARCH_NODE,
+          arch_queue: TOOL_NAME.ARCH_QUEUE,
+          arch_cache: TOOL_NAME.ARCH_CACHE,
+          arch_cloud: TOOL_NAME.ARCH_CLOUD,
+          arch_service: TOOL_NAME.ARCH_SERVICE,
+          arch_device: TOOL_NAME.ARCH_DEVICE,
+          arrow: TOOL_NAME.DRAW_ARROW,
+          freehand: TOOL_NAME.DRAW_FREEHAND,
+        };
+
+        const tool = toolMap[shapeType];
+        if (!tool) return `不支持的图形类型: ${shapeType}`;
+
+        let created = 0;
+        editor.beginTransaction();
+
+        try {
+          for (let i = 0; i < count; i++) {
+            const col = i % columns;
+            const row = Math.floor(i / columns);
+            const x = startX + col * spacingX;
+            const y = startY + row * spacingY;
+            const text = texts[i];
+
+            const element = editor.createElementFromTool(tool, { x, y }, { width, height });
+            if (element && text) {
+              // 设置文本：大部分图形是 Group，找到子元素中的 Text
+              const children = (element as unknown as { children?: unknown[] }).children;
+              if (children) {
+                const textChild = children.find((child) => (child as unknown as { text?: string }).text !== undefined);
+                if (textChild) {
+                  (textChild as unknown as { text: string }).text = text;
+                }
+              }
+            }
+            if (element) created++;
+          }
+
+          editor.commitMutation();
+          return `已批量创建 ${created}/${count} 个 ${shapeType} 图形`;
+        } catch (error) {
+          editor.endTransaction();
+          return `批量创建失败: ${error instanceof Error ? error.message : "未知错误"}`;
+        }
+      },
+    },
+
     // 模板插入
     {
       name: "insert_template",
-      description: "插入预设模板",
+      description: "插入预设模板，支持自定义位置和缩放",
       parameters: {
         type: "object",
         properties: {
@@ -508,26 +817,58 @@ export function getAgentTools(): AgentTool[] {
             ],
             description: "模板类型",
           },
+          offset_x: {
+            type: "number",
+            description: "水平位置偏移（可选，默认为 100）",
+          },
+          offset_y: {
+            type: "number",
+            description: "垂直位置偏移（可选，默认为 80）",
+          },
+          scale: {
+            type: "number",
+            description: "缩放因子（可选，默认为 1，范围 0.5-2）",
+          },
         },
         required: ["template_type"],
       },
       execute: async (editor, args) => {
         const templateType = args.template_type as string;
-        const actionMap: Record<string, string> = {
-          approval: ACTION_NAME.TEMPLATE_APPROVAL,
-          decision: ACTION_NAME.TEMPLATE_DECISION,
-          workOrder: ACTION_NAME.TEMPLATE_WORK_ORDER,
-          crm: ACTION_NAME.TEMPLATE_CRM,
-          login: ACTION_NAME.TEMPLATE_LOGIN,
-          payment: ACTION_NAME.TEMPLATE_PAYMENT,
-          bpmnOrder: ACTION_NAME.TEMPLATE_BPMN_ORDER,
-          systemArchitecture: ACTION_NAME.TEMPLATE_SYSTEM_ARCHITECTURE,
-          swimlaneCollaboration: ACTION_NAME.TEMPLATE_SWIMLANE_COLLABORATION,
-        };
-        const action = actionMap[templateType];
-        if (!action) return `不支持的模板类型: ${templateType}`;
-        const result = await editor.commands.execute(action);
-        return result.message;
+        const offsetX = typeof args.offset_x === "number" ? args.offset_x : 100;
+        const offsetY = typeof args.offset_y === "number" ? args.offset_y : 80;
+        const scale = Math.max(0.5, Math.min(2, typeof args.scale === "number" ? args.scale : 1));
+
+        if (!templateMap[templateType as never]) {
+          return `不支持的模板类型: ${templateType}`;
+        }
+
+        try {
+          editor.beginTransaction();
+          const data = templateMap[templateType as never]();
+
+          // 应用位置偏移和缩放
+          const transformedGraph = {
+            nodes: data.graph.nodes.map((node) => ({
+              ...node,
+              x: node.x * scale + offsetX,
+              y: node.y * scale + offsetY,
+              width: node.width * scale,
+              height: node.height * scale,
+            })),
+            edges: data.graph.edges.map((edge) => ({ ...edge })),
+          };
+
+          insertTemplateFlow(editor.app, transformedGraph, getTemplateStyle);
+          editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
+          editor.endTransaction();
+          await editor.autoSave.save();
+
+          const scaleStr = scale !== 1 ? ` (缩放 ${Math.round(scale * 100)}%)` : "";
+          return `已插入 ${templateType} 模板${scaleStr}`;
+        } catch (error) {
+          editor.endTransaction();
+          return `模板插入失败: ${error instanceof Error ? error.message : "未知错误"}`;
+        }
       },
     },
 
@@ -933,6 +1274,110 @@ export function getAgentTools(): AgentTool[] {
         editor.app.tree.add(connector);
         editor.commitMutation({ syncConnectorLabels: true });
         return `已连接 "${getElementLabel(fromEl)}" 和 "${getElementLabel(toEl)}"`;
+      },
+    },
+
+    // 工具查询与自省
+    {
+      name: "list_tools",
+      description: "列出所有可用的 Agent 工具及其简要描述。用于了解 Agent 的能力。",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description:
+              "可选：按分类筛选工具。可选值: file(文件), edit(编辑), shape(图形), layout(布局), template(模板), text(文字), view(视图), canvas(画布), system(系统)",
+          },
+        },
+        required: [],
+      },
+      category: "system",
+      execute: (editor, args) => {
+        const tools = getToolsSummary();
+        const filterCategory = args.category ? String(args.category).trim().toLowerCase() : null;
+
+        let filtered = tools;
+        if (filterCategory) {
+          filtered = tools.filter((t) => (t.category || "other").toLowerCase() === filterCategory);
+          if (filtered.length === 0) {
+            const available = [...new Set(tools.map((t) => t.category || "other"))].join(", ");
+            return `分类 "${filterCategory}" 中没有工具。\n可用分类: ${available}`;
+          }
+        }
+
+        const categories = [...new Set(filtered.map((t) => t.category || "other"))].sort();
+        const result = [
+          filterCategory
+            ? `【${filterCategory}】分类工具 (${filtered.length} 个):`
+            : `当前 Agent 拥有 ${tools.length} 个工具，分为 ${categories.length} 个分类:`,
+          "",
+          ...categories.map((cat) => {
+            const toolsInCat = filtered.filter((t) => (t.category || "other") === cat);
+            return `【${cat}】(${toolsInCat.length} 个)\n${toolsInCat.map((t) => `  ✓ ${t.name}: ${t.description}`).join("\n")}`;
+          }),
+          "",
+          "💡 用法:",
+          "  - 获取所有工具：list_tools",
+          "  - 按分类过滤：list_tools category=shape",
+          "  - 查看工具详情：get_tool_details tool_name=create_shape",
+        ];
+        return result.join("\n");
+      },
+    },
+    {
+      name: "get_tool_details",
+      description:
+        "获取指定工具的详细信息，包括参数说明和可选值。用于了解如何使用某个工具。",
+      parameters: {
+        type: "object",
+        properties: {
+          tool_name: {
+            type: "string",
+            description: "工具名称（如 'create_shape', 'insert_template'）",
+          },
+        },
+        required: ["tool_name"],
+      },
+      category: "system",
+      execute: (editor, args) => {
+        const toolName = String(args.tool_name || "").trim();
+        if (!toolName) {
+          return "错误：请指定工具名称";
+        }
+
+        const details = getToolDetails(toolName);
+        if (!details) {
+          return `未找到工具 "${toolName}"。使用 list_tools 查看所有可用工具。`;
+        }
+
+        const lines = [
+          `📋 工具详情: ${details.name}`,
+          `分类: ${details.category || "其他"}`,
+          `描述: ${details.description}`,
+          "",
+          "参数:",
+        ];
+
+        const props = (details.parameters as any)?.properties || {};
+        const required = (details.parameters as any)?.required || [];
+
+        if (Object.keys(props).length === 0) {
+          lines.push("  (无参数)");
+        } else {
+          Object.entries(props).forEach(([key, prop]: [string, any]) => {
+            const isRequired = required.includes(key) ? "✓ 必需" : "○ 可选";
+            const type = prop.type || "any";
+            const desc = prop.description || "无描述";
+            lines.push(`  - ${key} (${type}) ${isRequired}`);
+            lines.push(`    ${desc}`);
+            if (prop.enum) {
+              lines.push(`    可选值: ${prop.enum.join(", ")}`);
+            }
+          });
+        }
+
+        return lines.join("\n");
       },
     },
   ];

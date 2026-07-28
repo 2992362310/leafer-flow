@@ -1,10 +1,18 @@
 import { ACTION_NAME } from "../../../constants";
 import type { CommandContribution } from "../../../api/command";
 import type { EditorPluginModule } from "../../../api/plugin";
-import { doInsertTemplate } from "../../../action/do-template";
+import { TemplateRegistry, type TemplateKind } from "../../templates/registry";
 import { canUseTemplateAction } from "../../../plugins/market/plugin-market-service";
 
 const PLUGIN_ID = "leafer-flow.template-actions";
+
+/**
+ * Get template manager from editor context
+ * Set by the templatesPlugin during activation
+ */
+function getTemplateManager(editor: unknown) {
+  return (editor as Record<string, unknown>).__templateManager__;
+}
 
 const TEMPLATE_ACTIONS = {
   [ACTION_NAME.TEMPLATE_APPROVAL]: "approval",
@@ -24,11 +32,22 @@ const TEMPLATE_COMMANDS: CommandContribution[] = Object.entries(TEMPLATE_ACTIONS
     label: id,
     pluginId: PLUGIN_ID,
     refreshZoom: true,
-    run: (editor) => {
+    run: async (editor) => {
       if (!canUseTemplateAction(id)) {
         return { success: false, message: "该模板尚未购买，请先在模板市场购买" };
       }
-      return doInsertTemplate(editor, templateKind);
+
+      const manager = getTemplateManager(editor);
+      if (!manager) {
+        return {
+          success: false,
+          message: "模板管理器未初始化。请确保 leafer-flow.templates 插件已启用。",
+        };
+      }
+
+      return await (manager as unknown as { insertTemplate: Function }).insertTemplate(
+        templateKind as TemplateKind,
+      );
     },
   }),
 );
@@ -38,10 +57,12 @@ export const templateActionsPlugin: EditorPluginModule = {
     id: PLUGIN_ID,
     name: "模板操作",
     version: "1.1.2",
-    description: "提供业务流程与专业图模板插入命令；浏览与购买请使用模板市场。",
+    description:
+      "提供业务流程与专业图模板插入命令；依赖 leafer-flow.templates 插件；浏览与购买请使用模板市场。",
     category: "utility",
     capabilities: ["command", "template"],
     enabledByDefault: true,
+    dependencies: ["leafer-flow.templates"],
   },
   contributes: {
     commands: ["业务流程模板", "专业图模板"],

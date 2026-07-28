@@ -11,6 +11,7 @@ import { customDataPanelPlugin } from "./custom-data-panel";
 import { exportActionsPlugin } from "../plugins/export-actions";
 import { fileActionsPlugin } from "../plugins/file-actions";
 import { flowShapesPlugin } from "../plugins/flow-shapes";
+import { templatesPlugin } from "../templates";
 import { templateActionsPlugin } from "../plugins/template-actions";
 import { viewControlsPlugin } from "../plugins/view-controls";
 import { agentPlugin } from "./agent";
@@ -30,6 +31,7 @@ export const builtinPlugins: EditorPluginModule[] = [
   viewControlsPlugin,
   fileActionsPlugin,
   exportActionsPlugin,
+  templatesPlugin,
   templateActionsPlugin,
   basicToolsPlugin,
   flowShapesPlugin,

@@ -46,16 +46,23 @@ export interface StreamCallbacks {
 
 const SYSTEM_PROMPT = `你是 Leafer Flow 流程图编辑器的 AI 助手。你可以帮助用户：
 
-1. 创建各种图形（矩形、圆形、流程图节点、BPMN 节点、架构图节点等）
+1. 创建各种图形，包括：
+   - 基础形状：矩形、圆形、菱形、三角形、五边形、六边形、平行四边形、星形、便签、圆柱体
+   - 流程图节点：开始/结束、处理、决策、输入/输出、文档、数据库、子流程、泳道、延迟、预处理、手动输入、手动操作、存储数据、显示、界外连接、合并、注释
+   - BPMN 节点：开始事件、中间事件、结束事件、任务、排他网关、并行网关、包容网关、数据对象、数据存储
+   - 架构图节点：角色、用例、组件、包、节点、队列、缓存、云、服务、设备
+   - 其他：箭头、文字、手绘
 2. 执行编辑操作（删除、复制、剪切、粘贴、原位复制、撤销、重做等）
 3. 调整布局（对齐、分布、编组、图层顺序等）
 4. 修改元素属性（位置、尺寸、填充色、边框、透明度、圆角等）— 使用 set_style 工具
 5. 修改文字内容和文字样式（字号、颜色）— 使用 modify_text 工具
 6. 搜索画布上的元素 — 使用 search_elements 工具
 7. 连接两个元素 — 使用 connect_elements 工具
-8. 插入预设模板（审批流程、判断分支、系统架构等）
-9. 文件操作（保存、导出 PNG/SVG）
-10. 视图控制（缩放、适应画布）
+8. 批量创建图形（支持网格排列和自定义文本）— 使用 batch_create_shapes 工具
+9. 插入预设模板（审批流程、判断分支、系统架构等，支持位置和缩放）— 使用 insert_template 工具
+10. 文件操作（保存、导出 PNG/SVG）
+11. 视图控制（缩放、适应画布）
+12. 查询自己的工具能力 — 使用 list_tools 或 get_tool_details 工具
 
 请根据用户的描述，调用合适的工具完成操作。如果用户的描述不清晰，可以询问确认。
 回复时使用简洁的中文，说明执行了什么操作和结果。
@@ -71,8 +78,10 @@ const SYSTEM_PROMPT = `你是 Leafer Flow 流程图编辑器的 AI 助手。你�
 - 当用户说"改文字为 xxx"时，使用 modify_text 的 text 参数
 - 当用户说"把所有xxx改成红色"等批量操作时，先用 search_elements 搜索，再用 set_style 修改
 - 当用户说"连接 A 和 B"时，使用 connect_elements 工具
+- 当用户说"创建 10 个矩形"或"批量创建流程节点"时，使用 batch_create_shapes 工具
 - 创建图形时，如果没有指定位置，可以创建在画布中心附近
-- 使用 get_selection_info 工具可以获取选中元素的详细信息，包括子元素结构`;
+- 使用 get_selection_info 工具可以获取选中元素的详细信息，包括子元素结构
+- 当用户问"你能做什么"、"你有哪些能力"等时，使用 list_tools 查询并回复`;
 
 const SUMMARY_PROMPT = `请对以下对话历史进行简洁的摘要，保留关键信息：
 - 用户创建了哪些图形
@@ -88,12 +97,27 @@ export class AgentService {
   private editor: Editor;
   private config: AgentConfig;
   private history: ChatMessage[] = [];
-  private tools: ReturnType<typeof getAgentTools>;
+  private tools: ReturnType<typeof getAgentTools> | null = null;
 
   constructor(editor: Editor, config: AgentConfig) {
     this.editor = editor;
     this.config = config;
-    this.tools = getAgentTools();
+  }
+
+  private getTools() {
+    this.tools ??= getAgentTools();
+    return this.tools;
+  }
+
+  private getToolsSchema() {
+    return this.getTools().map((tool) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      },
+    }));
   }
 
   updateConfig(config: AgentConfig): void {
@@ -404,7 +428,7 @@ export class AgentService {
     useTools = true,
   ): Promise<Record<string, unknown>> {
     const endpoint = getApiEndpoint(this.config);
-    const tools = useTools ? getToolsSchema() : [];
+    const tools = useTools ? this.getToolsSchema() : [];
 
     const body: Record<string, unknown> = {
       model: this.config.model,
@@ -439,7 +463,7 @@ export class AgentService {
     onToken?: (token: string) => void,
   ): Promise<{ content: string; toolCalls: ToolCall[] | null }> {
     const endpoint = getApiEndpoint(this.config);
-    const tools = getToolsSchema();
+    const tools = this.getToolsSchema();
 
     const body: Record<string, unknown> = {
       model: this.config.model,
@@ -527,10 +551,10 @@ export class AgentService {
 
     const toolCalls = toolCallsMap.size > 0
       ? Array.from(toolCallsMap.values()).map((tc) => ({
-          id: tc.id,
-          type: "function" as const,
-          function: { name: tc.name, arguments: tc.arguments },
-        }))
+        id: tc.id,
+        type: "function" as const,
+        function: { name: tc.name, arguments: tc.arguments },
+      }))
       : null;
 
     return { content, toolCalls };
@@ -550,7 +574,7 @@ export class AgentService {
       };
     }
 
-    const tool = this.tools.find((t) => t.name === name);
+    const tool = this.getTools().find((t) => t.name === name);
     if (!tool) {
       return {
         name,

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { marked } from "marked";
+import { computed, ref, watch } from "vue";
 import type { ToolCallResult } from "./agent-service";
 
 interface Props {
@@ -12,21 +11,38 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// 配置 marked
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-});
+const renderedContent = ref("");
 
-// 渲染 Markdown
-const renderedContent = computed(() => {
-  if (!props.content) return "";
-  try {
-    return marked.parse(props.content);
-  } catch {
-    return props.content;
+let markedParserPromise: Promise<typeof import("marked")> | null = null;
+
+async function renderMarkdown(content: string) {
+  if (!content) {
+    renderedContent.value = "";
+    return;
   }
-});
+
+  try {
+    markedParserPromise ??= import("marked");
+    const { marked } = await markedParserPromise;
+
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    });
+
+    renderedContent.value = marked.parse(content);
+  } catch {
+    renderedContent.value = content;
+  }
+}
+
+watch(
+  () => props.content,
+  (content) => {
+    void renderMarkdown(content);
+  },
+  { immediate: true },
+);
 
 function formatToolName(name: string): string {
   const nameMap: Record<string, string> = {

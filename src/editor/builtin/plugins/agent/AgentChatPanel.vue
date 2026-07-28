@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, watch, defineAsyncComponent, Suspense } from "vue";
 import type Editor from "@/editor/editor";
 import { useDraggable, useCollapsible } from "@/composables/useDraggable";
 import { usePanelDock, usePanelMode } from "@/composables/usePanelDock";
