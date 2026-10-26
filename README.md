@@ -106,6 +106,31 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 
 ## 架构概览
 
+仓库采用 pnpm workspace，代码包直接导出 TypeScript / Vue 源码，由 Web 应用统一构建，当前均为私有包，无需发布或执行 `npm link`。
+
+```text
+apps/web/                       # 应用入口、路由、页面、市场策略、Vite 配置
+packages/core/          # Editor、actions、注册表、历史、序列化、绘图基础能力
+packages/ui/             # 通用组件、属性面板、composables、宿主上下文
+packages/builtin-plugins/        # 内置插件、工具贡献、模板、插件专属界面
+scripts/check-boundaries.mjs     # 包边界与依赖检查
+```
+
+依赖方向为 `web -> builtin-plugins -> ui -> core`；应用和插件也可直接依赖引擎。引擎没有 Vue 运行时导入，但面板插件协议暂时保留 Vue `Component` 类型，尚不是完全与框架无关的 SDK。
+
+根目录常用命令：
+
+```sh
+pnpm dev
+pnpm build
+pnpm check:boundaries
+pnpm typecheck
+```
+
+产物位于 `apps/web/dist`。目前完整类型检查仍报告迁移前已存在的 21 个诊断；迁移前后已对照确认，未新增诊断。类型检查暂未作为部署门禁。
+
+新增插件、工具和跨包接口的操作说明见 [monorepo 开发指南](docs/monorepo.md)。
+
 当前编辑器采用插件化结构：
 
 - `Editor` 负责 Leafer 画布生命周期、history、autosave、序列化和连接线同步等核心能力。
@@ -114,12 +139,10 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 - 工具栏、图形库、右键菜单、顶部按钮和视图控件优先从 registry 派生。
 - 插件市场当前管理内置插件源，可即时启用 / 禁用非必需插件。
 
-更多架构细节见：
+## 文档入口
 
-- `docs/plugin-architecture.md`
-- `docs/plugin-market-plan.md`
-- `docs/refactor-checklist.md`
-- `docs/todo.md`
+- [开发指南](docs/monorepo.md)：包职责、依赖管理、插件开发、源码索引与验收要点。
+- [更新记录](CHANGELOG.md)：功能变更历史。
 
 ## 内置插件
 

@@ -1,0 +1,23 @@
+{
+  "name": "@leafer-flow/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./composables": "./src/composables/index.ts",
+    "./context": "./src/context/index.ts",
+    "./icons": "./src/assets/icons/index.ts"
+  },
+  "dependencies": {
+    "@leafer-flow/core": "workspace:*",
+    "vue": "catalog:",
+    "leafer": "catalog:",
+    "@leafer-ui/interface": "catalog:",
+    "leafer-editor": "catalog:"
+  }
+}

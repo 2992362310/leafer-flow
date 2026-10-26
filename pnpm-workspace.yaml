@@ -1,6 +1,157 @@
-hoist-pattern:
-  - leafer-ui
-  - "@leafer-in/*"
+packages:
+  - apps/*
+  - packages/*
+
+catalog:
+  vue: ^3.5.44
+  vue-router: ^5.4.0
+  leafer: ^2.3.2
+  leafer-editor: ^2.3.2
+  "@leafer-ui/interface": ^2.3.2
+  leafer-x-easy-snap: ^1.11.0
+
+catalogMode: prefer
+catalogPrune: true
+disallowWorkspaceCycles: true
+failIfNoMatch: true
+verifyDepsBeforeRun: error
+minimumReleaseAgeExcludePrune: true
+
+hoist: false
+
+packageExtensions:
+  "@leafer/canvas-web@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/canvas@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/data@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/debug@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/file@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/list@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/math@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/path@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/platform@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/decorator@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/display@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/display-module@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/event@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/helper@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/image@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/layout@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/task@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/layouter@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/renderer@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/selector@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer/watcher@2.3.2":
+    dependencies:
+      "@leafer/core": 2.3.2
+      "@leafer/interface": 2.3.2
+  "@leafer-editor/partner@2.3.2":
+    dependencies:
+      "@leafer-in/interface": 2.3.2
+  "@leafer-ui/app@2.3.2":
+    dependencies:
+      "@leafer-ui/draw": 2.3.2
+      "@leafer-ui/interface": 2.3.2
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/data@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/display@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/bounds@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/color@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/event@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/hit@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/interaction@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/external@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/decorator@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/render@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/effect@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/interaction-web@2.3.2":
+    dependencies:
+      "@leafer/interface": 2.3.2
+  "@leafer-ui/paint@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/text@2.3.2":
+    dependencies:
+      "@leafer-ui/interface": 2.3.2
+  "@leafer-ui/core@2.3.2":
+    dependencies:
+      "@leafer/core": 2.3.2
+  "@leafer-in/linker@2.3.2":
+    dependencies:
+      "@leafer-ui/core": 2.3.2
+  "@leafer-in/stroke-sides@2.3.2":
+    dependencies:
+      "@leafer-ui/core": 2.3.2
+      "@leafer/core": 2.3.2
+  "leafer-x-easy-snap@1.11.0":
+    dependencies:
+      "@leafer-in/editor": 2.3.2
+      "@leafer-ui/core": 2.3.2
+      "@leafer-ui/interface": 2.3.2
 
 overrides:
   "leafer-x-ruler>@leafer-in/editor": 2.3.2
@@ -94,5 +245,5 @@ minimumReleaseAgeExclude:
   - leafer-ui@2.3.2
   - leafer@2.3.2
 
-onlyBuiltDependencies:
-  - less
+allowBuilds:
+  less: true

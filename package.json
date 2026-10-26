@@ -2,51 +2,27 @@
   "name": "leafer-flow",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@12.15.0",
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "typecheck": "pnpm -r typecheck",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "dev": "pnpm --filter @leafer-flow/web dev",
+    "build": "pnpm --filter @leafer-flow/web build",
+    "preview": "pnpm --filter @leafer-flow/web preview",
     "lint": "oxlint -c .oxlintrc.json --fix",
     "format": "oxlint -c .oxlintrc.json --fix"
   },
-  "dependencies": {
-    "@leafer-in/arrow": "^2.3.2",
-    "@leafer-in/text-editor": "^2.3.2",
-    "@leafer-in/view": "^2.3.2",
-    "@leafer-in/viewport": "^2.3.2",
-    "@leafer-ui/app": "^2.3.2",
-    "@leafer-ui/core": "^2.3.2",
-    "@leafer-ui/draw": "^2.3.2",
-    "@leafer-ui/interface": "^2.3.2",
-    "dagre": "^0.8.5",
-    "leafer": "^2.3.2",
-    "leafer-editor": "^2.3.2",
-    "leafer-x-dot-matrix": "^1.0.2",
-    "leafer-x-easy-snap": "^1.11.0",
-    "leafer-x-ruler": "^2.0.1",
-    "marked": "^18.0.6",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.40",
-    "vue-router": "^5.2.0"
-  },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.2",
-    "@tsconfig/node22": "^22.0.5",
+    "@tsconfig/node22": "^22.0.6",
     "@types/dagre": "^0.7.54",
-    "@types/node": "^26.1.1",
-    "@vitejs/plugin-vue": "^6.0.8",
+    "@types/node": "^26.6.5",
     "@vue/tsconfig": "^0.9.1",
-    "daisyui": "^5.6.18",
-    "jiti": "^2.7.0",
-    "less": "^4.6.7",
-    "oxlint": "~1.71.0",
-    "tailwindcss": "^4.3.2",
+    "oxlint": "~1.89.0",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5",
-    "vite-plugin-vue-devtools": "^8.1.5"
+    "vue-tsc": "^3.3.13"
   }
 }

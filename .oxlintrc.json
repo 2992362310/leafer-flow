@@ -8,20 +8,28 @@
     "restriction": "off",
     "pedantic": "off"
   },
-  "plugins": ["typescript", "vue"],
+  "plugins": [
+    "typescript",
+    "vue"
+  ],
   "env": {
     "browser": true,
     "es2021": true
   },
   "settings": {
     "typescript": {
-      "tsconfigPath": "./tsconfig.app.json"
+      "tsconfigPath": "./apps/web/tsconfig.app.json"
     }
   },
   "rules": {
     "no-console": "off",
     "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
     "no-debugger": "warn",
     "no-eval": "error",
     "no-implied-eval": "error",
@@ -31,7 +39,10 @@
     "eslint/sort-keys": "off",
     "eslint/no-plusplus": "off",
     "eslint/func-style": "off",
-    "eslint/quotes": ["warn", "single"],
+    "eslint/quotes": [
+      "warn",
+      "single"
+    ],
     "typescript-eslint/explicit-function-return-type": "off"
   }
 }
