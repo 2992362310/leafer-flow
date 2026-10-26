@@ -1,6 +1,6 @@
-import type { Snap } from "leafer-x-easy-snap";
+import { Snap } from "leafer-x-easy-snap";
 import type { EditorPluginModule } from "../../../api/plugin";
-import { editorSnap } from "../../../plugins/snap";
+import { getSnapEnabled } from "../../../core/drawing-settings";
 
 export const canvasSnapPlugin: EditorPluginModule = {
   manifest: {
@@ -16,7 +16,9 @@ export const canvasSnapPlugin: EditorPluginModule = {
     canvasOverlays: ["智能吸附"],
   },
   activate(ctx) {
-    ctx.editor.snap = ctx.editor.use<Snap>(editorSnap);
+    const snap = new Snap(ctx.editor.app);
+    snap.enable(getSnapEnabled());
+    ctx.editor.snap = snap;
   },
   deactivate(ctx) {
     ctx.editor.snap?.destroy();

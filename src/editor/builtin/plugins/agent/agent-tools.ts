@@ -6,6 +6,7 @@ import type Editor from "../../../editor";
 import { ACTION_NAME, TOOL_NAME } from "../../../constants";
 import { getTemplateStyle, templateMap } from "../../../templates/defs";
 import { insertTemplateFlow } from "../../../templates/insert";
+import { TemplateRegistry } from "../../templates/registry";
 
 function getChildren(element: IUI): IUI[] | undefined {
   return (element as unknown as { children?: IUI[] }).children;
@@ -69,9 +70,9 @@ function createConnectorForAgent(app: App, fromNode: IUI, toNode: IUI): Connecto
       toId: toNode.innerId,
       routeType: "orthogonal" as const,
     };
-    connector.setState(state as never, (id: string | number) => {
+    connector.setState({ ...connector.getState(), ...state }, (id: string | number) => {
       const children = app.tree.children as IUI[];
-      return children.find((el) => el.innerId === id || el.id === id) || null;
+      return children.find((el) => el.innerId === id || el.id === id);
     });
     return connector;
   } catch (e) {
@@ -838,13 +839,13 @@ export function getAgentTools(): AgentTool[] {
         const offsetY = typeof args.offset_y === "number" ? args.offset_y : 80;
         const scale = Math.max(0.5, Math.min(2, typeof args.scale === "number" ? args.scale : 1));
 
-        if (!templateMap[templateType as never]) {
+        if (!TemplateRegistry.isValidKind(templateType)) {
           return `不支持的模板类型: ${templateType}`;
         }
 
         try {
           editor.beginTransaction();
-          const data = templateMap[templateType as never]();
+          const data = templateMap[templateType]();
 
           // 应用位置偏移和缩放
           const transformedGraph = {

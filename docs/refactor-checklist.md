@@ -10,8 +10,20 @@
 - 图形库、工具栏、状态栏工具名称、快捷键、右键菜单、顶部按钮都从 registry 派生。
 - 插件市场当前只管理内置插件源。
 - `leafer-flow.builtin-core` 是必需插件，负责默认命令、右键菜单和顶部操作按钮。
+- 标尺、点阵、吸附实例由各自插件持有并销毁，不再经过旧 `Editor.use()` 机制。
 - 序列化文档结构已使用 `schema: "leafer-flow.document"` 与 `schemaVersion: 1`。
 - 手动保存文件与自动保存数据通过 `documentType: "file" | "autosave"` 区分。
+
+## Leafer 2.3.2 升级检查（2026-10-26）
+
+- [x] 官方包统一到 2.3.2，锁文件不存在旧版 Leafer；社区插件自身版本不变。
+- [x] 标尺插件的 editor / text-editor / interface 传递依赖定向对齐，无 peer 冲突。
+- [x] Agent、Connector、模板注册表、初始化与画布辅助插件通过针对性 TypeScript 编译检查。
+- [x] 模板注册表可读取全部 9 种模板，并拒绝未知名称与原型属性名称。
+- [x] 最终依赖树下 `pnpm run build` 通过；新版 EditBox 仍提供现有补丁使用的入口。
+- [ ] 浏览器实际交互和数据往返验证；本轮浏览器工具被跳过，下面的验收项保持未完成。
+
+安装器对本次新发布的官方包自动记录了精确到 2.3.2 的 minimumReleaseAgeExclude；未关闭全局供应链策略。内部端点改名不改变文档的 fromPoint / toPoint 字段。
 
 ## P0：高风险链路验收
 
@@ -101,23 +113,18 @@
 
 ## P1：收敛 mutation side effects
 
-`commitMutation()` 已建立，审计结果（2026-07）：
-
-- `history.save()` 和 `autoSave.save()` 仅在 `commitMutation()` 内部调用，无散落。
-- 所有 action 文件均通过 `commitMutation()` 提交 mutation。
-- `do-template.ts` 已修复：在 `endTransaction()` 前补充 `commitMutation()` 调用，确保连接线同步和自动保存正常触发。
-- `agent-service.ts` 中各工具调用已接入 `commitMutation()`，事务结束后无需额外处理。
+`commitMutation()` 已建立，但统一入口不等于所有副作用已经收敛。模板服务仍有事务结束后直接保存的路径，需要结合异步行为逐项核对，不能只按方法名称判断完成度。
 
 剩余工作：
 
-- [x] 审计所有 action，确保均通过 `commitMutation()` 提交。
+- [ ] 逐项核对 action、模板服务和 Agent 的提交与事务边界。
 - [ ] 明确每类 mutation 是否需要 history、autosave、connector label sync。
-- [x] 移动、缩放、旋转和程序性移动的连接线标签同步规则一致（均在 `commitMutation()` 中统一处理）。
+- [ ] 验证移动、缩放、旋转和程序性移动的连接线标签同步规则一致。
 
 验收标准：
 
-- [x] 任意一个编辑命令执行后，可以从 `commitMutation()` 追踪 history/autosave 行为。
-- [x] 无直接调用 `history.save()` / `autoSave.save()` 的散落代码。
+- [ ] 每个编辑命令的 history/autosave 行为有明确归属。
+- [ ] 保留的直接保存路径具有必要性，不出现重复历史记录或遗漏自动保存。
 
 ## P1：属性面板结构收敛
 
@@ -164,9 +171,9 @@
 - [ ] 至少一组核心编辑链路可通过命令自动运行。
 - [ ] 文档中记录测试命令和覆盖边界。
 
-## P2：插件市场扩展
+## 远期候选：插件市场扩展
 
-当前市场只支持内置插件源。
+当前市场只支持内置插件源。优先评估现有本地购买状态、插件配置和模板入口的复杂度；以下扩展不属于当前基础清理的交付范围。
 
 后续项：
 

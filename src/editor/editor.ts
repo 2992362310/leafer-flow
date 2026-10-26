@@ -1,5 +1,5 @@
 import { App, type IAppConfig, type IPointData, type IUI } from "leafer";
-import type { IEditorPlugin, IExecuteCommand, TCallback } from "./types";
+import type { IExecuteCommand, TCallback } from "./types";
 import { TOOL_NAME } from "./constants";
 import { HistoryManager } from "./core/history";
 import { AutoSave } from "./core/auto-save";
@@ -29,7 +29,6 @@ function getDrawResultElement(result: unknown): IUI | null {
 
 export default class Editor {
   app: App;
-  plugins: IEditorPlugin[] = [];
   public pluginManager: PluginManager;
   public toolRegistry: ToolRegistry;
   public commands: CommandRegistry;
@@ -117,16 +116,6 @@ export default class Editor {
   /** 结束事务：提交一次历史保存 */
   endTransaction() {
     this.history.endTransaction();
-  }
-
-  use<T>(plugin: IEditorPlugin): T {
-    const app = this.app;
-    const uPlugin = plugin.init(app);
-    this.plugins.push(plugin);
-    if (uPlugin && typeof uPlugin === "object" && "enable" in (uPlugin as object)) {
-      this.snap = uPlugin as Snap;
-    }
-    return uPlugin as T;
   }
 
   registerTool(contribution: ToolContribution) {

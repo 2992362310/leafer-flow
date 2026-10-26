@@ -37,7 +37,7 @@ export class TemplateRegistry {
    * Check if a template kind is valid
    */
   static isValidKind(kind: string): kind is TemplateKind {
-    return kind in templateMap;
+    return Object.hasOwn(templateMap, kind);
   }
 
   /**

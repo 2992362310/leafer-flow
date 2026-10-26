@@ -1,7 +1,6 @@
-import type { Ruler } from "leafer-x-ruler";
+import { Ruler } from "leafer-x-ruler";
 import type { EditorPluginModule } from "../../../api/plugin";
 import type Editor from "../../../editor";
-import { editorRuler } from "../../../plugins/ruler";
 
 const instances = new WeakMap<Editor, Ruler>();
 
@@ -19,7 +18,8 @@ export const canvasRulerPlugin: EditorPluginModule = {
     canvasOverlays: ["标尺"],
   },
   activate(ctx) {
-    const ruler = ctx.editor.use<Ruler>(editorRuler);
+    const ruler = new Ruler(ctx.editor.app);
+    ruler.enabled = true;
     instances.set(ctx.editor, ruler);
   },
   deactivate(ctx) {

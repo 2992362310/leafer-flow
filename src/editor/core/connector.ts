@@ -117,7 +117,7 @@ export class Connector extends Group {
   private fromNode?: IUI;
   private toNode?: IUI;
   private fromPoint?: IPointData;
-  private toPoint?: IPointData;
+  private targetPoint?: IPointData;
   private options: RuntimeOptions;
   private lastRoutePoints: IPointData[] = [];
   private cleanupEndpointListeners: (() => void)[] = [];
@@ -125,7 +125,6 @@ export class Connector extends Group {
   private isUpdating = false;
   private waypoints: IPointData[] = [];
   private waypointHandles: Rect[] = [];
-  private readonly app: App;
   /** Labels that should follow this connector's geometry on every update(). */
   private readonly attachedLabels = new Set<IUI>();
 
@@ -141,7 +140,6 @@ export class Connector extends Group {
       endArrow: options.endArrow,
       cornerRadius: options.cornerRadius ?? DEFAULT_CORNER_RADIUS,
     });
-    this.app = app;
     this.options = normalizeOptions(options);
     this.mode = hasNodeEndpoints(options) ? "node" : "point";
 
@@ -179,7 +177,7 @@ export class Connector extends Group {
       this.bindEndpointListeners();
     } else {
       this.fromPoint = clonePoint(options.fromPoint);
-      this.toPoint = clonePoint(options.toPoint);
+      this.targetPoint = clonePoint(options.toPoint);
     }
 
     this.update();
@@ -238,7 +236,7 @@ export class Connector extends Group {
     this.toNode = undefined;
     this.cleanupNodeListeners();
     this.fromPoint = clonePoint(from);
-    this.toPoint = clonePoint(to);
+    this.targetPoint = clonePoint(to);
     this.update();
   }
 
@@ -264,7 +262,7 @@ export class Connector extends Group {
     this.fromNode = from;
     this.toNode = to;
     this.fromPoint = undefined;
-    this.toPoint = undefined;
+    this.targetPoint = undefined;
     this.bindEndpointListeners();
     if (opts.updateMode) this.options.updateMode = opts.updateMode;
     if (opts.defer) this.scheduleUpdate();
@@ -281,7 +279,7 @@ export class Connector extends Group {
     this.toNode = undefined;
     this.cleanupNodeListeners();
     this.fromPoint = clonePoint(fromPoint);
-    this.toPoint = clonePoint(toPoint);
+    this.targetPoint = clonePoint(toPoint);
     if (opts.updateMode) this.options.updateMode = opts.updateMode;
     this.update();
   }
@@ -309,7 +307,7 @@ export class Connector extends Group {
     this.fromNode = endpoints.fromNode;
     this.toNode = endpoints.toNode;
     this.fromPoint = endpoints.fromPoint ? clonePoint(endpoints.fromPoint) : undefined;
-    this.toPoint = endpoints.toPoint ? clonePoint(endpoints.toPoint) : undefined;
+    this.targetPoint = endpoints.toPoint ? clonePoint(endpoints.toPoint) : undefined;
     this.bindEndpointListeners();
     if (opts.updateMode) this.options.updateMode = opts.updateMode;
     this.update();
@@ -323,17 +321,17 @@ export class Connector extends Group {
         ? { fromId: this.getNodeId(this.fromNode), toId: this.getNodeId(this.toNode) }
         : this.mode === "mixed"
           ? {
-              ...(this.fromNode
-                ? { fromId: this.getNodeId(this.fromNode) }
-                : { fromPoint: clonePoint(points?.from || this.fromPoint || { x: 0, y: 0 }) }),
-              ...(this.toNode
-                ? { toId: this.getNodeId(this.toNode) }
-                : { toPoint: clonePoint(points?.to || this.toPoint || { x: 0, y: 0 }) }),
-            }
+            ...(this.fromNode
+              ? { fromId: this.getNodeId(this.fromNode) }
+              : { fromPoint: clonePoint(points?.from || this.fromPoint || { x: 0, y: 0 }) }),
+            ...(this.toNode
+              ? { toId: this.getNodeId(this.toNode) }
+              : { toPoint: clonePoint(points?.to || this.targetPoint || { x: 0, y: 0 }) }),
+          }
           : {
-              fromPoint: clonePoint(points?.from || this.fromPoint || { x: 0, y: 0 }),
-              toPoint: clonePoint(points?.to || this.toPoint || { x: 0, y: 0 }),
-            }),
+            fromPoint: clonePoint(points?.from || this.fromPoint || { x: 0, y: 0 }),
+            toPoint: clonePoint(points?.to || this.targetPoint || { x: 0, y: 0 }),
+          }),
       routeType: this.routeType,
       padding: this.options.padding ?? DEFAULT_PADDING,
       margin: this.options.margin ?? DEFAULT_MARGIN,
@@ -382,7 +380,7 @@ export class Connector extends Group {
       this.fromNode = from;
       this.toNode = to;
       this.fromPoint = undefined;
-      this.toPoint = undefined;
+      this.targetPoint = undefined;
       this.bindEndpointListeners();
     } else if (state.mode === "mixed") {
       const from = state.fromId !== undefined ? resolveNode(state.fromId) : undefined;
@@ -396,7 +394,7 @@ export class Connector extends Group {
       this.fromNode = from;
       this.toNode = to;
       this.fromPoint = state.fromPoint ? clonePoint(state.fromPoint) : undefined;
-      this.toPoint = state.toPoint ? clonePoint(state.toPoint) : undefined;
+      this.targetPoint = state.toPoint ? clonePoint(state.toPoint) : undefined;
       this.bindEndpointListeners();
     } else if (state.fromPoint && state.toPoint) {
       this.mode = "point";
@@ -404,7 +402,7 @@ export class Connector extends Group {
       this.toNode = undefined;
       this.cleanupNodeListeners();
       this.fromPoint = clonePoint(state.fromPoint);
-      this.toPoint = clonePoint(state.toPoint);
+      this.targetPoint = clonePoint(state.toPoint);
     } else {
       throw new Error("Invalid connector state");
     }
@@ -671,30 +669,30 @@ export class Connector extends Group {
         ? toBounds
           ? getBoundsCenter(toBounds)
           : null
-        : this.toPoint;
+        : this.targetPoint;
       if (!fromReference || !toReference) return null;
 
       const fromEndpoint = this.fromNode
         ? resolveNodeEndpoint(
-            this.fromNode,
-            this.options.opt1,
-            toReference,
-            this.options.padding,
-            this.options.margin,
-          )
+          this.fromNode,
+          this.options.opt1,
+          toReference,
+          this.options.padding,
+          this.options.margin,
+        )
         : this.fromPoint
           ? pointEndpoint(this.fromPoint, inferSideByVector(this.fromPoint, toReference))
           : null;
       const toEndpoint = this.toNode
         ? resolveNodeEndpoint(
-            this.toNode,
-            this.options.opt2,
-            fromReference,
-            this.options.padding,
-            this.options.margin,
-          )
-        : this.toPoint
-          ? pointEndpoint(this.toPoint, inferSideByVector(this.toPoint, fromReference))
+          this.toNode,
+          this.options.opt2,
+          fromReference,
+          this.options.padding,
+          this.options.margin,
+        )
+        : this.targetPoint
+          ? pointEndpoint(this.targetPoint, inferSideByVector(this.targetPoint, fromReference))
           : null;
       if (!fromEndpoint || !toEndpoint) return null;
 
@@ -704,10 +702,10 @@ export class Connector extends Group {
       };
     }
 
-    if (this.fromPoint && this.toPoint) {
+    if (this.fromPoint && this.targetPoint) {
       return {
-        from: pointEndpoint(this.fromPoint, inferSideByVector(this.fromPoint, this.toPoint)),
-        to: pointEndpoint(this.toPoint, inferSideByVector(this.toPoint, this.fromPoint)),
+        from: pointEndpoint(this.fromPoint, inferSideByVector(this.fromPoint, this.targetPoint)),
+        to: pointEndpoint(this.targetPoint, inferSideByVector(this.targetPoint, this.fromPoint)),
       };
     }
 

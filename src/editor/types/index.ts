@@ -1,11 +1,7 @@
-import type { App, IUI } from 'leafer'
+import type { IUI } from 'leafer'
 import Editor from '../editor'
 
 export { type Editor }
-
-export interface IEditorPlugin {
-  init: <T>(app: App) => T
-}
 
 export interface IExecuteCommand {
   command: string
