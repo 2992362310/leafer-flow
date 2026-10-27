@@ -80,6 +80,7 @@ export type ConnectorOptions = ConnectorEndpoints & {
   routeOptions?: Record<string, unknown>;
   updateMode?: "event" | "render" | "manual";
   getNodeId?: (node: IUI) => string | number;
+  onEndpointEditEnd?: () => void;
   onDraw?: (param: {
     s: ConnectorPoint;
     e: ConnectorPoint;
@@ -113,6 +114,7 @@ export class Connector extends Group {
   readonly fromHandle: Rect;
   readonly toHandle: Rect;
 
+  private readonly rootApp: App;
   private mode: "node" | "point" | "mixed";
   private fromNode?: IUI;
   private toNode?: IUI;
@@ -140,6 +142,7 @@ export class Connector extends Group {
       endArrow: options.endArrow,
       cornerRadius: options.cornerRadius ?? DEFAULT_CORNER_RADIUS,
     });
+    this.rootApp = app;
     this.options = normalizeOptions(options);
     this.mode = hasNodeEndpoints(options) ? "node" : "point";
 
@@ -170,6 +173,8 @@ export class Connector extends Group {
     this.editable = false;
     this.draggable = false;
     this.add([this.hitArea, this.wire, this.fromHandle, this.toHandle]);
+    this.bindEndpointHandle(this.fromHandle, "from");
+    this.bindEndpointHandle(this.toHandle, "to");
 
     if (hasNodeEndpoints(options)) {
       this.fromNode = options.from;
@@ -228,6 +233,13 @@ export class Connector extends Group {
       from: clonePoint(endpoints.from.linkPoint),
       to: clonePoint(endpoints.to.linkPoint),
     };
+  }
+
+  setEndpointHandlesVisible(visible: boolean) {
+    this.fromHandle.visible = visible;
+    this.fromHandle.hittable = visible;
+    this.toHandle.visible = visible;
+    this.toHandle.hittable = visible;
   }
 
   setPoints(from: IPointData, to: IPointData) {
@@ -745,6 +757,61 @@ export class Connector extends Group {
     this.toHandle.y = to.y - HANDLE_SIZE / 2;
   }
 
+  private bindEndpointHandle(handle: Rect, endpoint: "from" | "to") {
+    handle.on("drag", (event: { getPagePoint?: () => IPointData }) => {
+      const point = event.getPagePoint?.() ?? {
+        x: (handle.x ?? 0) + HANDLE_SIZE / 2,
+        y: (handle.y ?? 0) + HANDLE_SIZE / 2,
+      };
+      this.updateDraggedEndpoint(endpoint, point);
+    });
+    handle.on("drag.end", () => this.options.onEndpointEditEnd?.());
+  }
+
+  private updateDraggedEndpoint(endpoint: "from" | "to", point: IPointData) {
+    const target = this.findEndpointTarget(endpoint, point);
+    const previousNode = endpoint === "from" ? this.fromNode : this.toNode;
+    if (endpoint === "from") {
+      this.fromNode = target;
+      this.fromPoint = target ? undefined : clonePoint(point);
+      this.options.opt1 = target ? { side: "auto", percent: 0.5 } : undefined;
+    } else {
+      this.toNode = target;
+      this.targetPoint = target ? undefined : clonePoint(point);
+      this.options.opt2 = target ? { side: "auto", percent: 0.5 } : undefined;
+    }
+
+    this.mode = this.fromNode && this.toNode ? "node" : this.fromNode || this.toNode ? "mixed" : "point";
+    if (previousNode !== target) this.bindEndpointListeners();
+    this.update();
+  }
+
+  private findEndpointTarget(endpoint: "from" | "to", point: IPointData): IUI | undefined {
+    const tree = this.rootApp.tree;
+    if (!tree) return undefined;
+    const root = tree as unknown as IUI;
+    const oppositeNode = endpoint === "from" ? this.toNode : this.fromNode;
+    const picked = this.rootApp.pick(point)?.target as IUI | undefined;
+    const direct = picked ? getConnectableRoot(picked, root) : undefined;
+    if (direct && direct !== this && direct !== oppositeNode && !(direct instanceof Connector)) {
+      return direct;
+    }
+
+    const zoom = Math.abs(tree.scaleX ?? 1) || 1;
+    const snapDistance = 64 / zoom;
+    let nearest: { node: IUI; distance: number } | undefined;
+    for (const node of (tree.children as IUI[] | undefined) ?? []) {
+      if (node === this || node === oppositeNode || node instanceof Connector || node.visible === false) continue;
+      const bounds = getNodeBoundsBox(node);
+      if (!bounds) continue;
+      const distance = distanceToBounds(point, bounds);
+      if (distance <= snapDistance && (!nearest || distance < nearest.distance)) {
+        nearest = { node, distance };
+      }
+    }
+    return nearest?.node;
+  }
+
   // ---- Waypoint 支持 ----
 
   addWaypoint(point: IPointData) {
@@ -825,11 +892,12 @@ export function hasConnectors(app: App) {
   return Boolean(app.tree.children?.some((child) => child instanceof Connector));
 }
 
-export function createConnector(app: App) {
+export function createConnector(app: App, onEndpointEditEnd?: () => void) {
   return new Connector(app, {
     fromPoint: { x: 0, y: 0 },
     toPoint: { x: 0, y: 0 },
     getNodeId: (node: IUI) => String(node.innerId),
+    onEndpointEditEnd,
   });
 }
 
@@ -878,8 +946,25 @@ function createHandle() {
     strokeWidth: 1,
     visible: false,
     editable: false,
-    hittable: false,
+    hittable: true,
+    draggable: true,
   });
+}
+
+function getConnectableRoot(picked: IUI, root: IUI): IUI | undefined {
+  if (picked === root) return undefined;
+  let node = picked;
+  while (node.parent && node.parent !== root) node = node.parent as IUI;
+  return node === root ? undefined : node;
+}
+
+function distanceToBounds(
+  point: IPointData,
+  bounds: { x: number; y: number; width: number; height: number },
+) {
+  const dx = Math.max(bounds.x - point.x, 0, point.x - (bounds.x + bounds.width));
+  const dy = Math.max(bounds.y - point.y, 0, point.y - (bounds.y + bounds.height));
+  return Math.hypot(dx, dy);
 }
 
 function resolveNodeEndpoint(

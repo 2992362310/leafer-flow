@@ -639,6 +639,18 @@ test('connector labels and waypoints are document data and undo as operations', 
   assert.equal(document.getNode(labelId).label.edgeId, 'edge');
 });
 
+test('new node connectors use dynamic side ports by default', () => {
+  const { DrawArrow } = loadModule('packages/core/src/tools/draw-arrow.ts', {
+    leafer: { PointerEvent: {} },
+    '../core/connector': { Connector: class Connector { } },
+    '../core/drawing-settings': { getConnectorRouteType: () => 'orthogonal' },
+    './draw-base': { DrawBase: class DrawBase { } },
+  });
+  const targetOption = new DrawArrow().getTargetOption();
+  assert.equal(targetOption.side, 'auto');
+  assert.equal(targetOption.percent, 0.5);
+});
+
 test('node projection preserves unknown node data and logical children through placeholder interactions', () => {
   const { document, adapter } = createNodeProjection();
   const snapshot = document.snapshot();

@@ -128,8 +128,8 @@ export class DrawArrow extends DrawBase {
 
     if (this.startNode && endNode && this.startNode !== endNode) {
       bindConnectorToNodes(connector, this.startNode, endNode, {
-        opt1: this.getTargetOption(this.startNode, endTarget.point),
-        opt2: this.getTargetOption(endNode, startPoint),
+        opt1: this.getTargetOption(),
+        opt2: this.getTargetOption(),
       });
     } else {
       const fromPoint =
@@ -156,9 +156,9 @@ export class DrawArrow extends DrawBase {
           {
             ...state,
             opt1: this.startNode
-              ? this.getTargetOption(this.startNode, endTarget.point)
+              ? this.getTargetOption()
               : state.opt1,
-            opt2: endNode ? this.getTargetOption(endNode, startPoint) : state.opt2,
+            opt2: endNode ? this.getTargetOption() : state.opt2,
           } as never,
           (id: string | number) => {
             if (this.startNode && matchesNodeId(this.startNode, id)) return this.startNode;
@@ -243,9 +243,9 @@ export class DrawArrow extends DrawBase {
     return [connector, ...(this.startNode ? [this.startNode] : [])];
   }
 
-  private getTargetOption(node: IUI, toward: IPointData) {
+  private getTargetOption() {
     return {
-      side: getNearestSideAnchor(node, toward).side,
+      side: "auto" as const,
       percent: 0.5,
     };
   }

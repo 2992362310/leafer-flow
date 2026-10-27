@@ -41,9 +41,9 @@ export async function initEditor(view: HTMLElement) {
  * hideOnMove 隐藏编辑框（EditBox.ts: `if (this.moving || this.gesturing)`），
  * 缩放/旋转/倾斜时编辑框矩形（紫色 #836DFF 边框）仍然可见，造成视觉干扰。
  *
- * 这里直接 patch EditBox.onTransformStart，在所有变换操作开始时把整个 editBox
- * 置为不可见（包括边框矩形和控制点），变换结束后由 editor.update() 重新计算可见性，
- * 从而保证移动、缩放、旋转、倾斜全程都不显示矩形。
+ * 这里扩展 EditBox.onTransformStart，在所有变换操作开始时隐藏 editor 容器。
+ * Leafer 的 onTransformEnd 会把 editor.opacity 恢复为 1，避免直接改 EditBox.visible
+ * 与后续 EditTool.update() 的可见性计算互相覆盖。
  */
 function patchEditBoxForTransform(editor: Editor) {
   editor.app.on("ready", () => {
@@ -57,10 +57,8 @@ function patchEditBoxForTransform(editor: Editor) {
     if (typeof originalOnTransformStart !== "function") return;
 
     editBox.onTransformStart = (e: unknown) => {
-      // 调用原始逻辑（记录 dragStartData、处理 hideOnMove 等）
       originalOnTransformStart(e);
-      // 变换进行中隐藏整个编辑框（包括边框矩形和控制点）
-      editBox.visible = false;
+      editorPlugin.opacity = 0;
     };
   });
 }

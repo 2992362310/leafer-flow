@@ -14,7 +14,7 @@ import { OverlayPanelRegistry } from "./core/overlay-panel-registry";
 import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
-import { hasConnectors, onConnectorGeometryUpdated, syncConnectors } from "./core/connector";
+import { Connector, hasConnectors, onConnectorGeometryUpdated, syncConnectors } from "./core/connector";
 import { DocumentStore } from "./document/document-store";
 import { LeaferDocumentAdapter } from "./document/leafer-document-adapter";
 import { DocumentCommands } from "./document/commands";
@@ -70,7 +70,12 @@ export default class Editor {
     this.clipboard = new DocumentClipboard(this.document, this.resources);
     this.nodeTypes = new NodeTypeRegistry();
     registerBuiltinNodeTypes(this.nodeTypes);
-    this.renderer = new LeaferDocumentAdapter(app, this.nodeTypes, this.resources);
+    this.renderer = new LeaferDocumentAdapter(
+      app,
+      this.nodeTypes,
+      this.resources,
+      () => this.commitInteraction({ syncConnectorLabels: true }),
+    );
     this.cleanups.push(this.nodeTypes.subscribe(() => {
       if (!this.disposed) this.renderer.render(this.document.snapshot());
     }));
@@ -170,6 +175,10 @@ export default class Editor {
       editor.on(event, transform);
       this.cleanups.push(() => editor.off(event, transform));
     }
+    const updateConnectorHandles = () => this.updateConnectorHandles();
+    editor.on("editor.select", updateConnectorHandles);
+    this.cleanups.push(() => editor.off("editor.select", updateConnectorHandles));
+    this.updateConnectorHandles();
     editor.on("innerEditor.close", textEditClose);
     this.cleanups.push(() => editor.off("innerEditor.close", textEditClose));
     // Labels follow inside Connector.update via attachLabel; this is a safety net.
@@ -188,6 +197,19 @@ export default class Editor {
     } finally {
       this.syncingConnectors = false;
     }
+  }
+
+  private updateConnectorHandles() {
+    const selected = this.app.editor?.list as IUI[] | undefined;
+    const active = selected?.length === 1 && selected[0] instanceof Connector ? selected[0] : undefined;
+    const visit = (nodes: IUI[]) => {
+      for (const node of nodes) {
+        if (node instanceof Connector) node.setEndpointHandlesVisible(node === active);
+        const children = (node as IUI & { children?: IUI[] }).children;
+        if (children) visit(children);
+      }
+    };
+    visit(this.app.tree.children as IUI[]);
   }
 
   private saveAfterTransform() {

@@ -24,7 +24,12 @@ export class LeaferDocumentAdapter {
     private transforms = new WeakMap<IUI, Record<string, unknown>>();
     private projecting = false;
 
-    constructor(private app: App, private nodeTypes: NodeTypeRegistry, private resources: ResourceService) { }
+    constructor(
+        private app: App,
+        private nodeTypes: NodeTypeRegistry,
+        private resources: ResourceService,
+        private onConnectorEndpointEditEnd?: () => void,
+    ) { }
 
     get isProjecting() { return this.projecting; }
 
@@ -182,7 +187,7 @@ export class LeaferDocumentAdapter {
             normalizeAtomicGroups(this.app.tree.children as IUI[]);
             const connectors = new Map<string, Connector>();
             for (const edge of document.edges) {
-                const connector = createConnector(this.app);
+                const connector = createConnector(this.app, this.onConnectorEndpointEditEnd);
                 const parent = edge.parentId ? nodes.get(edge.parentId) : this.app.tree;
                 if (!parent || !("add" in parent)) throw new Error(`Invalid connector parent: ${edge.parentId}`);
                 (parent as App["tree"]).add(connector);
