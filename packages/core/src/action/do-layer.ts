@@ -1,4 +1,4 @@
-import { Group, type IUI, type IGroup } from "leafer";
+import type { IUI, IGroup } from "leafer";
 import type Editor from "../editor";
 
 type LayerAction = "bringForward" | "sendBackward" | "bringToFront" | "sendToBack";
@@ -111,11 +111,7 @@ export function doUnlockAtCursor(
   x: number,
   y: number,
 ): { success: boolean; message: string } {
-  // 将屏幕坐标转换为画布坐标
   const tree = editor.app.tree;
-  const scale = tree.scaleX || 1;
-  const canvasX = (x - tree.x) / scale;
-  const canvasY = (y - tree.y) / scale;
 
   // 递归查找锁定的元素
   function findLockedAtPoint(items: IUI[]): IUI | null {
@@ -131,7 +127,6 @@ export function doUnlockAtCursor(
 
       // 检查点是否在元素范围内
       try {
-        const bounds = item.getBounds("box", "local");
         const worldBounds = item.getBounds("box", "world");
         const wx = worldBounds.x;
         const wy = worldBounds.y;

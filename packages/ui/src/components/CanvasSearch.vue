@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, shallowRef, watch, nextTick } from "vue";
 import type { IUI } from "leafer";
 import type { Editor } from "@leafer-flow/core";
 import { Text } from "leafer";
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const query = ref("");
-const results = ref<IUI[]>([]);
+const results = shallowRef<IUI[]>([]);
 const selectedIndex = ref(-1);
 const inputRef = ref<HTMLInputElement>();
 const { togglePanelDock } = usePanelDock();
@@ -145,27 +145,18 @@ function getElementLabel(el: IUI): string {
 </script>
 
 <template>
-  <div
-    v-if="open && mode === 'float'"
+  <div v-if="open && mode === 'float'"
     class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 w-80"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-    @click.stop
-  >
-    <div
-      class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
-      @mousedown="startDrag"
-    >
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }" @click.stop>
+    <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
+      @mousedown="startDrag">
       <div class="flex items-center gap-2">
         <Icon name="select" class="h-4 w-4" />
         <span class="text-xs font-bold">搜索</span>
       </div>
       <div class="flex gap-1">
-        <button
-          class="btn btn-ghost btn-xs btn-square"
-          title="收纳到右侧槽"
-          @click.stop="togglePanelDock('canvas-search')"
-          @mousedown.stop
-        >
+        <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('canvas-search')"
+          @mousedown.stop>
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
         <button class="btn btn-ghost btn-xs btn-square" title="关闭" @click.stop="emit('close')" @mousedown.stop>
@@ -175,24 +166,13 @@ function getElementLabel(el: IUI): string {
     </div>
 
     <div class="p-3">
-      <input
-        ref="inputRef"
-        v-model="query"
-        type="search"
-        placeholder="搜索元素..."
-        class="input input-sm input-bordered w-full mb-2"
-        @input="search"
-        @keydown="handleKeydown"
-      />
+      <input ref="inputRef" v-model="query" type="search" placeholder="搜索元素..."
+        class="input input-sm input-bordered w-full mb-2" @input="search" @keydown="handleKeydown" />
 
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
-        <div
-          v-for="(el, index) in results"
-          :key="index"
+        <div v-for="(el, index) in results" :key="index"
           class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
-          :class="{ 'bg-primary/10': index === selectedIndex }"
-          @click="selectResult(index)"
-        >
+          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
           <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
           <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
           <span class="text-[10px] opacity-50">
@@ -205,31 +185,14 @@ function getElementLabel(el: IUI): string {
     </div>
   </div>
 
-  <PanelFlyoutWrapper
-    v-else-if="mode === 'flyout'"
-    panel-id="canvas-search"
-    title="搜索"
-    icon="select"
-    :width="320"
-  >
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="canvas-search" title="搜索" icon="select" :width="320">
     <div class="p-3">
-      <input
-        ref="inputRef"
-        v-model="query"
-        type="search"
-        placeholder="搜索元素..."
-        class="input input-sm input-bordered w-full mb-2"
-        @input="search"
-        @keydown="handleKeydown"
-      />
+      <input ref="inputRef" v-model="query" type="search" placeholder="搜索元素..."
+        class="input input-sm input-bordered w-full mb-2" @input="search" @keydown="handleKeydown" />
       <div v-if="results.length > 0" class="max-h-60 overflow-y-auto space-y-1">
-        <div
-          v-for="(el, index) in results"
-          :key="index"
+        <div v-for="(el, index) in results" :key="index"
           class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200"
-          :class="{ 'bg-primary/10': index === selectedIndex }"
-          @click="selectResult(index)"
-        >
+          :class="{ 'bg-primary/10': index === selectedIndex }" @click="selectResult(index)">
           <span class="badge badge-xs badge-ghost">{{ el.tag }}</span>
           <span class="flex-1 truncate">{{ getElementLabel(el) }}</span>
           <span class="text-[10px] opacity-50">

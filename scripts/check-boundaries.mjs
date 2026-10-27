@@ -15,11 +15,24 @@ const workspaces = roots.map((directory) => ({
 const byName = new Map(workspaces.map((workspace) => [workspace.name, workspace]));
 const failures = [];
 
+for (const workspace of workspaces) {
+  if (byName.get(workspace.name).directory !== workspace.directory) {
+    failures.push(`Duplicate workspace name: ${workspace.name} (${workspace.directory}, ${byName.get(workspace.name).directory})`);
+  }
+}
+
 function collect(directory) {
   if (!fs.existsSync(directory)) return [];
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const filename = `${directory}/${entry.name}`;
     return entry.isDirectory() ? collect(filename) : /\.(ts|vue)$/.test(filename) ? [filename] : [];
+  });
+}
+
+function localModuleExists(target) {
+  return ['', '.ts', '.tsx', '.js', '.mjs', '.json', '.vue', '/index.ts', '/index.js'].some((suffix) => {
+    const filename = `${target}${suffix}`;
+    return fs.existsSync(filename) && fs.statSync(filename).isFile();
   });
 }
 
@@ -48,9 +61,14 @@ for (const workspace of workspaces) {
           const target = path.resolve(path.dirname(filename), specifier);
           const sourceRoot = `${path.resolve(workspace.directory, 'src')}${path.sep}`;
           if (!target.startsWith(sourceRoot)) failures.push(`${filename}: relative import escapes package: ${specifier}`);
+          if (!localModuleExists(target)) failures.push(`${filename}: missing local import: ${specifier}`);
           continue;
         }
-        if (specifier.startsWith('@/') && workspace.directory === 'apps/web') continue;
+        if (specifier.startsWith('@/') && workspace.directory === 'apps/web') {
+          const target = path.resolve(workspace.directory, 'src', specifier.slice(2));
+          if (!localModuleExists(target)) failures.push(`${filename}: missing local import: ${specifier}`);
+          continue;
+        }
         const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
         const dependencies = { ...workspace.dependencies, ...workspace.peerDependencies };
         if (name !== workspace.name && !dependencies[name]) failures.push(`${filename}: undeclared dependency: ${name}`);

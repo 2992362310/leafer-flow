@@ -5,7 +5,6 @@ import {
   getConnectorLabelTarget,
   persistConnectorLabel,
   restoreConnectorLabelRuntimeProps,
-  syncConnectorLabels,
 } from "../core/connector-labels";
 import {
   createConnector,

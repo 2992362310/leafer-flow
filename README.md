@@ -110,8 +110,8 @@ AI 助手是一个内置插件，允许通过自然语言指令操作编辑器�
 
 ```text
 apps/web/                       # 应用入口、路由、页面、市场策略、Vite 配置
-packages/core/          # Editor、actions、注册表、历史、序列化、绘图基础能力
-packages/ui/             # 通用组件、属性面板、composables、宿主上下文
+packages/core/                  # Editor、actions、注册表、历史、序列化、绘图基础能力
+packages/ui/                    # 通用组件、属性面板、composables、宿主上下文
 packages/builtin-plugins/        # 内置插件、工具贡献、模板、插件专属界面
 scripts/check-boundaries.mjs     # 包边界与依赖检查
 ```
@@ -124,10 +124,11 @@ scripts/check-boundaries.mjs     # 包边界与依赖检查
 pnpm dev
 pnpm build
 pnpm check:boundaries
+pnpm lint
 pnpm typecheck
 ```
 
-产物位于 `apps/web/dist`。目前完整类型检查仍报告迁移前已存在的 21 个诊断；迁移前后已对照确认，未新增诊断。类型检查暂未作为部署门禁。
+产物位于 `apps/web/dist`。`pnpm lint` 只检查代码；需要自动修复时执行 `pnpm lint:fix`。部署前执行包边界、lint 和完整类型检查。
 
 新增插件、工具和跨包接口的操作说明见 [monorepo 开发指南](docs/monorepo.md)。
 

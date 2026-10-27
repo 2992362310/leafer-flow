@@ -1,6 +1,5 @@
 import type { IUI } from "leafer";
 import type Editor from "../editor";
-import { Connector } from "../core/connector";
 import { findSelectedConnector } from "../core/connector-labels";
 
 export function doAddConnectorWaypoint(
@@ -16,8 +15,8 @@ export function doAddConnectorWaypoint(
   // 将屏幕坐标转换为画布坐标
   const tree = editor.app.tree;
   const scale = tree.scaleX || 1;
-  const canvasX = (x - tree.x) / scale;
-  const canvasY = (y - tree.y) / scale;
+  const canvasX = (x - (tree.x ?? 0)) / scale;
+  const canvasY = (y - (tree.y ?? 0)) / scale;
 
   connector.addWaypoint({ x: canvasX, y: canvasY });
   editor.commitMutation({ syncConnectorLabels: true });

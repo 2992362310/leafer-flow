@@ -6,7 +6,7 @@ import { buyPlugin, listInstalledPlugins } from "../editor/plugins/market/plugin
 const router = useRouter();
 const refreshKey = ref(0);
 const items = computed(() => {
-  refreshKey.value;
+  void refreshKey.value;
   return listInstalledPlugins();
 });
 
@@ -46,7 +46,8 @@ function handleBuy(pluginId: string) {
       </section>
 
       <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <article v-for="item in items" :key="item.manifest.id" class="card bg-base-100 shadow-sm border border-base-200">
+        <article v-for="item in items" :key="item.manifest.id"
+          class="card bg-base-100 shadow-sm border border-base-200">
           <div class="card-body p-4 space-y-2">
             <div class="flex items-center justify-between gap-2">
               <h2 class="card-title text-base">{{ item.manifest.name }}</h2>
@@ -60,7 +61,8 @@ function handleBuy(pluginId: string) {
               <span class="badge badge-outline" v-if="item.manifest.required">required</span>
               <span class="badge badge-warning" v-if="item.premium">Pro</span>
               <span class="badge badge-success" v-if="item.purchased">已购</span>
-              <span class="badge badge-outline" v-for="cap in item.manifest.capabilities ?? []" :key="cap">{{ cap }}</span>
+              <span class="badge badge-outline" v-for="cap in item.manifest.capabilities ?? []" :key="cap">{{ cap
+                }}</span>
             </div>
             <div class="card-actions justify-end" v-if="item.premium && !item.purchased">
               <button class="btn btn-xs btn-warning" @click="handleBuy(item.manifest.id)">购买</button>

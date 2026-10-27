@@ -1,7 +1,7 @@
 import { ACTION_NAME } from "@leafer-flow/core/constants";
 import type { CommandContribution } from "@leafer-flow/core/api/command";
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
-import { TemplateRegistry, type TemplateKind } from "../../templates/registry";
+import type { TemplateManager } from "../../templates";
 
 const PLUGIN_ID = "leafer-flow.template-actions";
 
@@ -9,8 +9,8 @@ const PLUGIN_ID = "leafer-flow.template-actions";
  * Get template manager from editor context
  * Set by the templatesPlugin during activation
  */
-function getTemplateManager(editor: unknown) {
-  return (editor as Record<string, unknown>).__templateManager__;
+function getTemplateManager(editor: unknown): TemplateManager | undefined {
+  return (editor as { __templateManager__?: TemplateManager }).__templateManager__;
 }
 
 const TEMPLATE_ACTIONS = {
@@ -47,9 +47,7 @@ export function createTemplateActionsPlugin(
           };
         }
 
-        return await (manager as unknown as { insertTemplate: Function }).insertTemplate(
-          templateKind as TemplateKind,
-        );
+        return manager.insertTemplate(templateKind);
       },
     }),
   );
@@ -64,7 +62,6 @@ export function createTemplateActionsPlugin(
       category: "utility",
       capabilities: ["command", "template"],
       enabledByDefault: true,
-      dependencies: ["leafer-flow.templates"],
     },
     contributes: {
       commands: ["业务流程模板", "专业图模板"],

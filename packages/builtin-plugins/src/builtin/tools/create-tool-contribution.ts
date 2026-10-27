@@ -1,4 +1,3 @@
-import { TOOL_NAME } from "@leafer-flow/core/constants";
 import { getToolShortcutLabel } from "@leafer-flow/core/core/tool-shortcuts";
 import { DrawArrow } from "@leafer-flow/core/tools/draw-arrow";
 import { DrawCircle } from "@leafer-flow/core/tools/draw-circle";

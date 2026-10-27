@@ -11,7 +11,7 @@ export interface Layer {
 
 const STORAGE_KEY = "leafer-flow.layers";
 
-export function useLayerManager(app: App) {
+export function useLayerManager(_app: App) {
   const layers = ref<Layer[]>([]);
   const activeLayerId = ref<string>("default");
 

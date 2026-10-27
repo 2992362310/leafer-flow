@@ -42,7 +42,7 @@ const { position, startDrag } = useDraggable({
 });
 
 const allItems = computed(() => {
-  refreshKey.value;
+  void refreshKey.value;
   return listTemplateMarketItems();
 });
 

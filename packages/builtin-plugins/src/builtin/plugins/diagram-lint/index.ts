@@ -1,5 +1,6 @@
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
 import type { IUI } from "leafer";
+import { Connector } from "@leafer-flow/core/core/connector";
 import { defineAsyncComponent } from "vue";
 import { dispatchPanelToggle, getPanelToggleEvent } from "@leafer-flow/core/api/panel-toggle";
 import { fixNodeOverlaps, fixTextTooLong, runDiagramLint } from "./lint-engine";

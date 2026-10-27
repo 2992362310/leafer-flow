@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import type { Editor } from "@leafer-flow/core/editor";
+import type Editor from "@leafer-flow/core/editor";
 import { useLayerManager, type Layer } from "./layer-manager";
 import { useDraggable, useCollapsible, usePanelDock } from "@leafer-flow/ui/composables";
 

@@ -13,8 +13,8 @@
     "dev": "pnpm --filter @leafer-flow/web dev",
     "build": "pnpm --filter @leafer-flow/web build",
     "preview": "pnpm --filter @leafer-flow/web preview",
-    "lint": "oxlint -c .oxlintrc.json --fix",
-    "format": "oxlint -c .oxlintrc.json --fix"
+    "lint": "oxlint -c .oxlintrc.json apps/web/src packages scripts",
+    "lint:fix": "pnpm lint --fix"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.6",

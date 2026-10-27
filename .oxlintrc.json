@@ -32,17 +32,6 @@
     ],
     "no-debugger": "warn",
     "no-eval": "error",
-    "no-implied-eval": "error",
-    // 关闭一些过于严格的样式规则
-    "eslint/no-magic-numbers": "off",
-    "eslint/sort-imports": "off",
-    "eslint/sort-keys": "off",
-    "eslint/no-plusplus": "off",
-    "eslint/func-style": "off",
-    "eslint/quotes": [
-      "warn",
-      "single"
-    ],
-    "typescript-eslint/explicit-function-return-type": "off"
+    "no-implied-eval": "error"
   }
 }

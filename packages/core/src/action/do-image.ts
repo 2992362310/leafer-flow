@@ -1,13 +1,14 @@
 import type Editor from "../editor";
+import type { CommandResult } from "../api/command";
 
-export function doImage(editor: Editor): { success: boolean; message: string } {
+export function doImage(editor: Editor): Promise<CommandResult> {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
   input.style.display = "none";
   document.body.appendChild(input);
 
-  return new Promise<{ success: boolean; message: string }>((resolve) => {
+  return new Promise<CommandResult>((resolve) => {
     input.onchange = async () => {
       const file = input.files?.[0];
       document.body.removeChild(input);

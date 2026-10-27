@@ -21,11 +21,15 @@ pnpm install
 pnpm dev
 pnpm build
 pnpm check:boundaries
+pnpm lint
+pnpm typecheck
 pnpm --filter @leafer-flow/ui typecheck
 pnpm --filter @leafer-flow/builtin-plugins add some-library
 ```
 
 内部依赖使用 `workspace:*`；本地源码由 Vite 直接消费，不需要逐包构建。当前包均为私有包，没有 npm 发布流程。生产产物为 `apps/web/dist`，根目录命令与迁移前保持一致。
+
+`pnpm lint` 是只读检查，自动修复单独使用 `pnpm lint:fix`；不再用 lint 命令冒充格式化工具。部署流程在构建前运行包边界、lint 和完整类型检查。
 
 ## pnpm 配置约定
 
@@ -70,7 +74,7 @@ TypeScript 暂留 6.x 最新版 6.0.3：最新 `vue-tsc 3.3.13` 仍依赖 TypeSc
 - 引擎协议只传递图标名称，内置图标数据与渲染留在 `ui`。
 - Tailwind 在 Web 样式入口显式扫描整个 `packages`，新增组件使用现有样式约定即可。
 
-`pnpm check:boundaries` 会检查导出目标、未声明依赖、相对导入越界、私有模块导入、包依赖环以及引擎的 Vue 运行时导入。
+`pnpm check:boundaries` 会检查重复包名、导出目标、本地导入目标（包括 Web 的 `@/` 别名）、未声明依赖、相对导入越界、私有模块导入、包依赖环以及引擎的 Vue 运行时导入。迁移文件后删除无人使用的旧实现，不保留不完整的旧 workspace 或失效副本。
 
 ## Vue UI 公共入口
 
@@ -119,6 +123,6 @@ import { usePanelDock } from "@leafer-flow/ui/composables";
 
 ## 验证状态
 
-迁移后的生产构建和包边界检查通过。新引入的 Vue 类型检查工具对迁移前 Git 版本与迁移后源码均报告同一组 21 个诊断，涉及 Agent、规范检查、连接线动作和 CanvasSearch 等原有代码。本次未顺带修复，也未将完整类型检查加入部署门禁。
+迁移遗留的旧 workspace、重复面板和注册代码已清理。原有 21 个类型诊断已修复，包边界、lint 错误检查和完整类型检查纳入部署门禁。Lint 中的既有警告不阻止部署；涉及连接线、保存恢复或历史的改动仍需按上面的流程验证行为，不能仅依赖静态检查。
 
 仓库文档分工：根目录 README 说明使用方式，本指南说明开发与维护，CHANGELOG 保存变更历史。阶段报告、重复的功能快照和过时 API 清单不再单独维护，历史内容可从 Git 查看。

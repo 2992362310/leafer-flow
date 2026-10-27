@@ -1,4 +1,4 @@
-import { onUnmounted, ref, watch, type Ref } from "vue";
+import { ref, watch, type Ref } from "vue";
 import { Text, type IUI } from "leafer";
 import { Connector } from "@leafer-flow/core/core/connector";
 import type { ConnectorRouteType, ConnectorSide, ConnectorState } from "@leafer-flow/core/core/connector";

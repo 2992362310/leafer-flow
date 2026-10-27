@@ -16,14 +16,14 @@ const emits = defineEmits<{
 }>();
 
 const EVENT_NAME = "leafer-flow:diagram-lint-updated";
-const issues = ref<LintIssue[]>([]);
-const generatedAt = ref<number | null>(null);
+const cachedIssues = ref<LintIssue[]>([]);
+const cachedGeneratedAt = ref<number | null>(null);
 const severityFilter = ref<"all" | "error" | "warning">("all");
 const onlyFixable = ref(false);
 const ruleFilter = ref<string>("all");
 const activeIssueId = ref<string | null>(null);
-const resolvedIssues = computed(() => props.issues ?? issues.value);
-const resolvedGeneratedAt = computed(() => props.generatedAt ?? generatedAt.value);
+const resolvedIssues = computed(() => props.issues ?? cachedIssues.value);
+const resolvedGeneratedAt = computed(() => props.generatedAt ?? cachedGeneratedAt.value);
 const { isPanelDocked, togglePanelDock } = usePanelDock();
 const fixSummary = ref<LintFixSummary | null>(null);
 
@@ -148,8 +148,8 @@ function navigateIssue(offset: 1 | -1) {
 
 function onUpdated(event: Event) {
   const customEvent = event as CustomEvent<DiagramLintUpdatedEventDetail>;
-  issues.value = customEvent.detail?.issues ?? [];
-  generatedAt.value = customEvent.detail?.generatedAt ?? Date.now();
+  cachedIssues.value = customEvent.detail?.issues ?? [];
+  cachedGeneratedAt.value = customEvent.detail?.generatedAt ?? Date.now();
   ensureActiveIssue();
 }
 

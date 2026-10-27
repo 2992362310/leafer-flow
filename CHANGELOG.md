@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- 清理 monorepo 迁移遗留的旧 workspace、重复面板与注册代码，保留 core、ui、builtin-plugins 和 web 四个包。
+- 包边界检查新增重复包名与失效本地导入检测；lint 默认只读，自动修复使用 `lint:fix`。
+- 修复原有类型诊断与 lint 错误，部署前执行包边界、lint 和完整类型检查。
+
 ### Added
 
 - **连线中心面板**：新增独立 `connector-panel`，支持浮动与右侧收纳两种形态

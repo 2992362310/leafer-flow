@@ -3,15 +3,7 @@ import type Editor from "@leafer-flow/core/editor";
 import { Connector } from "@leafer-flow/core/core/connector";
 import type { LintIssue, LintResult } from "./types";
 
-interface NodeLike extends IUI {
-  innerId: string | number;
-  tag?: string;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  locked?: boolean;
-}
+type NodeLike = IUI;
 
 interface GraphStats {
   inbound: Map<string, number>;

@@ -1,6 +1,6 @@
 import type Editor from "@leafer-flow/core/editor";
 import { type AgentConfig, getApiEndpoint, isConfigValid } from "./agent-config";
-import { getAgentTools, getToolsSchema } from "./agent-tools";
+import { getAgentTools } from "./agent-tools";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -426,7 +426,7 @@ export class AgentService {
   private async callLLM(
     messages: ChatMessage[],
     useTools = true,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<{ choices?: { message: { content?: string | null; tool_calls?: ToolCall[] } }[] }> {
     const endpoint = getApiEndpoint(this.config);
     const tools = useTools ? this.getToolsSchema() : [];
 

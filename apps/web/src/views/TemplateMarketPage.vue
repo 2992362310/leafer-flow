@@ -12,7 +12,7 @@ const selectedCategory = ref<"all" | "business" | "professional">("all");
 const selectedStatus = ref<"all" | "free" | "premium" | "purchased">("all");
 
 const allItems = computed(() => {
-  refreshKey.value;
+  void refreshKey.value;
   return listTemplateMarketItems();
 });
 
@@ -70,13 +70,8 @@ function purchase(action: string) {
 
       <section class="card bg-base-100 border border-base-200 shadow-sm">
         <div class="card-body p-4 space-y-3">
-          <TemplateMarketStats
-            :total="marketStats.total"
-            :free="marketStats.free"
-            :premium="marketStats.premium"
-            :purchased="marketStats.purchased"
-            :filtered="marketStats.filtered"
-          />
+          <TemplateMarketStats :total="marketStats.total" :free="marketStats.free" :premium="marketStats.premium"
+            :purchased="marketStats.purchased" :filtered="marketStats.filtered" />
           <div class="grid gap-2 md:grid-cols-3">
             <input v-model="query" class="input input-sm input-bordered w-full" placeholder="搜索模板..." />
             <select v-model="selectedCategory" class="select select-bordered select-sm w-full">
@@ -97,26 +92,16 @@ function purchase(action: string) {
       <section v-if="businessItems.length" class="space-y-3">
         <h2 class="text-lg font-semibold">业务流程</h2>
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TemplateMarketCard
-            v-for="item in businessItems"
-            :key="item.action"
-            :item="item"
-            @purchase="purchase"
-            @use="useTemplate"
-          />
+          <TemplateMarketCard v-for="item in businessItems" :key="item.action" :item="item" @purchase="purchase"
+            @use="useTemplate" />
         </div>
       </section>
 
       <section v-if="professionalItems.length" class="space-y-3">
         <h2 class="text-lg font-semibold">专业图</h2>
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TemplateMarketCard
-            v-for="item in professionalItems"
-            :key="item.action"
-            :item="item"
-            @purchase="purchase"
-            @use="useTemplate"
-          />
+          <TemplateMarketCard v-for="item in professionalItems" :key="item.action" :item="item" @purchase="purchase"
+            @use="useTemplate" />
         </div>
       </section>
 

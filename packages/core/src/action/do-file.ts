@@ -178,7 +178,7 @@ export async function doExportPDF(editor: Editor): Promise<{ success: boolean; m
     window.onload = function() {
       setTimeout(function() { window.print(); window.close(); }, 300);
     };
-  <\/script>
+  </script>
 </body>
 </html>`);
     printWindow.document.close();

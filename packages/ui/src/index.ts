@@ -15,5 +15,5 @@ export {
     ShapeLibrary,
     ContextMenu,
 } from './components';
-export { registerDefaultPropertyPanels } from './builtin/property-panels';
+export { registerDefaultPropertyPanels } from './builtin/property-panels/default-property-panels';
 export { registerHostOverlayPanels } from './builtin/overlay-panels/register-host-overlay-panels';

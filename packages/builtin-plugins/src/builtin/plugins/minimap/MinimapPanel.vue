@@ -165,8 +165,8 @@ function updateViewport() {
   const scale = tree.scaleX || 1;
 
   // 计算视口在画布坐标系中的位置
-  const viewportX = -tree.x / scale;
-  const viewportY = -tree.y / scale;
+  const viewportX = -(tree.x ?? 0) / scale;
+  const viewportY = -(tree.y ?? 0) / scale;
   const viewportWidth = rect.width / scale;
   const viewportHeight = rect.height / scale;
 

@@ -8,7 +8,7 @@ import { doClear } from "@leafer-flow/core/action/do-clear";
 import { doCopy, doCut, doPaste, doDuplicate } from "@leafer-flow/core/action/do-clipboard";
 import { doAddConnectorLabel } from "@leafer-flow/core/action/do-connector-label";
 import { doConnectorToFront } from "@leafer-flow/core/action/do-connector-layer";
-import { doAddConnectorWaypoint, doRemoveConnectorWaypoints } from "@leafer-flow/core/action/do-connector-waypoint";
+import { doRemoveConnectorWaypoints } from "@leafer-flow/core/action/do-connector-waypoint";
 import { doDelete } from "@leafer-flow/core/action/do-delete";
 import { doFlip } from "@leafer-flow/core/action/do-flip";
 import { doFormatPainterCopy, doFormatPainterApply } from "@leafer-flow/core/action/do-format-painter";

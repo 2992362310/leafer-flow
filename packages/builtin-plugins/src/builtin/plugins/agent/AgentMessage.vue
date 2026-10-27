@@ -30,7 +30,7 @@ async function renderMarkdown(content: string) {
       gfm: true,
     });
 
-    renderedContent.value = marked.parse(content);
+    renderedContent.value = marked.parse(content, { async: false });
   } catch {
     renderedContent.value = content;
   }
