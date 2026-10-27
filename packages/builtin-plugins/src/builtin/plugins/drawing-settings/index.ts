@@ -10,8 +10,8 @@ const DRAWING_SETTINGS_COMMAND: CommandContribution = {
   label: "绘图设置",
   pluginId: PLUGIN_ID,
   warning: false,
-  run: () => {
-    dispatchPanelToggle("drawing-settings");
+  run: (editor) => {
+    dispatchPanelToggle(editor, "drawing-settings");
     return { success: true, message: "已切换绘图设置" };
   },
 };

@@ -6,22 +6,11 @@ import type { Editor } from "@leafer-flow/core";
 import { applyStylePreset } from "@leafer-flow/core/core/style-presets";
 import type { StylePresetId } from "@leafer-flow/core/core/style-presets";
 import { getConnectorLabelTarget } from "@leafer-flow/core/core/connector-labels";
-import { resolveNodeById, CUSTOM_DATA_PROP } from "@leafer-flow/core/core/flow-serialization";
-import { getFlowShapeKind, updateFlowNodeShape } from "@leafer-flow/core/core/flow-node-shape";
 import { useSelectionInspector } from "./useSelectionInspector";
 
 interface EditorPanelStateOptions {
   editor: Ref<Editor | undefined>;
 }
-
-type ConnectorRoutePatch = Connector & {
-  routeType?: ConnectorRouteType;
-  update(): void;
-};
-
-type ConnectorCustomData = Connector & {
-  [CUSTOM_DATA_PROP]?: unknown;
-};
 
 export function useEditorPanelState(options: EditorPanelStateOptions) {
   const inspector = useSelectionInspector(options);
@@ -125,9 +114,8 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
       lineDashed.value = Array.isArray(state.dashPattern) && state.dashPattern.length > 0;
       fromSide.value = state.opt1?.side || "auto";
       toSide.value = state.opt2?.side || "auto";
-      connectorDescription.value = String(
-        (connector as ConnectorCustomData)[CUSTOM_DATA_PROP] ?? "",
-      );
+      const edge = options.editor.value?.document.snapshot().edges.find((item) => item.id === options.editor.value?.renderer.getId(connector));
+      connectorDescription.value = String(edge?.data.customData ?? "");
       if (state.startArrow && state.endArrow) arrowMode.value = "both";
       else if (state.endArrow) arrowMode.value = "end";
       else arrowMode.value = "none";
@@ -149,106 +137,77 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function updateX(value: number) {
     x.value = value;
-    const el = inspector.selectedElement.value;
-    if (!el) return;
-    el.x = value;
-    syncAfterChange();
+    updateSelected({ x: value });
   }
 
   function updateY(value: number) {
     y.value = value;
-    const el = inspector.selectedElement.value;
-    if (!el) return;
-    el.y = value;
-    syncAfterChange();
+    updateSelected({ y: value });
   }
 
   function updateWidth(value: number) {
     width.value = Math.max(1, value);
-    resizeSelected(width.value, height.value);
+    updateSelected({ width: width.value, height: height.value });
   }
 
   function updateHeight(value: number) {
     height.value = Math.max(1, value);
-    resizeSelected(width.value, height.value);
+    updateSelected({ width: width.value, height: height.value });
   }
 
   function updateFill(value: string) {
     fill.value = value;
-    applyToSelectedShapes((shape) => {
-      if (!(shape instanceof Connector)) shape.fill = value;
-    });
+    updateSelected({ fill: value });
   }
 
   function updateStroke(value: string) {
     stroke.value = value;
-    applyToSelectedShapes((shape) => {
-      shape.stroke = value;
-    });
+    updateSelected({ stroke: value });
   }
 
   function updateStrokeWidth(value: number) {
     strokeWidth.value = value;
-    applyToSelectedShapes((shape) => {
-      shape.strokeWidth = value;
-    });
+    updateSelected({ stroke_width: value });
   }
 
   function updateOpacity(value: number) {
     opacity.value = value;
-    applyToSelectedShapes((shape) => {
-      shape.opacity = value;
-    });
+    updateSelected({ opacity: value });
   }
 
   function updateText(value: string) {
     textContent.value = value;
-    const text = inspector.selectedText.value;
-    if (!text) return;
-    text.text = value;
-    syncAfterChange();
+    updateSelected({ text: value });
   }
 
   function updateFontSize(value: number) {
     fontSize.value = value;
-    applyToSelectedTexts((text) => {
-      text.fontSize = value;
-    });
+    updateSelected({ font_size: value });
   }
 
   function updateTextColor(value: string) {
     textColor.value = value;
-    applyToSelectedTexts((text) => {
-      text.fill = value;
-    });
+    updateSelected({ text_color: value });
   }
 
   function updateFontWeight(value: string) {
     fontWeight.value = value;
-    applyToSelectedTexts((text) => {
-      (text as unknown as { fontWeight: string }).fontWeight = value;
-    });
+    updateSelected({ font_weight: value });
   }
 
   function updateFontStyle(value: string) {
     fontStyle.value = value;
-    applyToSelectedTexts((text) => {
-      (text as unknown as { fontStyle: string }).fontStyle = value;
-    });
+    updateSelected({ font_style: value });
   }
 
   function updateTextAlign(value: string) {
     textAlign.value = value;
-    applyToSelectedTexts((text) => {
-      (text as unknown as { textAlign: string }).textAlign = value;
-    });
+    updateSelected({ text_align: value });
   }
 
   function updateCornerRadius(value: number) {
     cornerRadius.value = value;
-    applyToSelectedShapes((shape) => {
-      (shape as unknown as { cornerRadius: number }).cornerRadius = value;
-    });
+    updateSelected({ corner_radius: value });
   }
 
   function updateLockAspectRatio(value: boolean) {
@@ -257,76 +216,40 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 
   function updateLineDashed(value: boolean) {
     lineDashed.value = value;
-    applyToSelectedConnectors((connector) => {
-      connector.dashPattern = value ? [8, 6] : undefined;
-    });
+    updateSelected({ dash_pattern: value ? [8, 6] : [] });
   }
 
   function updateArrowMode(value: "none" | "end" | "both") {
     arrowMode.value = value;
-    applyToSelectedConnectors((connector) => {
-      connector.startArrow = value === "both" ? "arrow" : undefined;
-      connector.endArrow = value === "end" || value === "both" ? "arrow" : undefined;
+    updateSelected({
+      start_arrow: value === "both" ? "arrow" : null,
+      end_arrow: value === "end" || value === "both" ? "arrow" : null,
     });
   }
 
   function updateRouteType(value: ConnectorRouteType) {
     routeType.value = value;
-    applyToSelectedConnectors((connector) => {
-      const editableConnector = connector as ConnectorRoutePatch;
-      editableConnector.routeType = value;
-      editableConnector.update();
-    });
+    updateSelected({ route_type: value });
   }
 
   function updateLineCornerRadius(value: number) {
     lineCornerRadius.value = value;
-    applyToSelectedConnectors((connector) => {
-      connector.setRouteCornerRadius(value);
-    });
+    updateSelected({ route_corner_radius: value });
   }
 
   function updateConnectorSide(which: "from" | "to", value: ConnectorSide | "auto") {
     if (which === "from") fromSide.value = value;
     else toSide.value = value;
 
-    if (!options.editor.value) return;
-
-    const connectors = inspector.selectedElements.value.filter(
-      (el): el is Connector => el instanceof Connector,
-    );
-    if (!connectors.length) return;
-
-    connectors.forEach((connector) => {
-      const state = connector.getState() as ConnectorState;
-      const nextState = {
-        ...state,
-        opt1: {
-          ...(state.opt1 || {}),
-          side: which === "from" ? value : fromSide.value,
-          percent: 0.5,
-        },
-        opt2: { ...(state.opt2 || {}), side: which === "to" ? value : toSide.value, percent: 0.5 },
-      } as ConnectorState;
-
-      try {
-        connector.setState(nextState, (id: string | number) =>
-          resolveNodeById(options.editor.value!.app, id),
-        );
-      } catch (error) {
-        console.warn("更新连接线锚点失败", error);
-      }
+    updateSelected({
+      from_side: fromSide.value === "auto" ? "right" : fromSide.value,
+      to_side: toSide.value === "auto" ? "left" : toSide.value,
     });
-
-    syncAfterChange();
   }
 
   function updateConnectorDescription(value: string) {
     connectorDescription.value = value;
-    const connector = inspector.selectedConnector.value;
-    if (!connector) return;
-    (connector as ConnectorCustomData)[CUSTOM_DATA_PROP] = value;
-    syncAfterChange();
+    updateSelected({ connector_description: value });
   }
 
   function findConnectorLabel(connector: Connector): Text | null {
@@ -345,105 +268,23 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
   function updateConnectorLabelText(value: string) {
     connectorLabelText.value = value;
     const connector = inspector.selectedConnector.value;
-    if (!connector) return;
+    const editor = options.editor.value;
+    if (!connector || !editor) return;
     const label = findConnectorLabel(connector);
     if (!label) return;
-    label.text = value;
-    syncAfterChange();
+    const id = editor.renderer.getId(label);
+    editor.documentCommands.updatePresentation([id], { text: value });
   }
 
   function applyTextPreset(value: string) {
     updateText(value);
   }
 
-  function resizeSelected(nextWidth: number, nextHeight: number) {
-    const el = inspector.selectedElement.value;
-    if (!el) return;
-
-    const children = getChildren(el);
-    if (el.tag === "Group" && children?.length) {
-      const shape = children.find((child) => !(child instanceof Text)) as IUI | undefined;
-      const text = children.find((child) => child instanceof Text) as Text | undefined;
-      if (shape) {
-        const kind = getFlowShapeKind(shape);
-        if (kind) {
-          updateFlowNodeShape(shape, kind, nextWidth, nextHeight);
-        } else {
-          shape.width = nextWidth;
-          shape.height = nextHeight;
-        }
-      }
-      if (text) updateTextBox(text, nextWidth, nextHeight);
-      el.width = nextWidth;
-      el.height = nextHeight;
-    } else {
-      el.width = nextWidth;
-      el.height = nextHeight;
-    }
-
-    syncAfterChange();
-  }
-
-  function applyToSelectedShapes(updater: (shape: IUI) => void) {
-    const shapes = getSelectedShapes();
-    if (!shapes.length) return;
-    shapes.forEach(updater);
-    syncAfterChange();
-  }
-
-  function applyToSelectedTexts(updater: (text: Text) => void) {
-    const texts = getSelectedTexts();
-    if (!texts.length) return;
-    texts.forEach(updater);
-    syncAfterChange();
-  }
-
-  function applyToSelectedConnectors(updater: (connector: Connector) => void) {
-    const connectors = inspector.selectedElements.value.filter(
-      (el): el is Connector => el instanceof Connector,
-    );
-    const currentConnector = inspector.selectedConnector.value;
-    if (!connectors.length && currentConnector) connectors.push(currentConnector);
-    if (!connectors.length) return;
-    connectors.forEach(updater);
-    syncAfterChange();
-  }
-
-  function syncAfterChange() {
-    if (!options.editor.value) return;
-    options.editor.value.commitMutation({ syncConnectorLabels: true });
-  }
-
-  function getSelectedShapes() {
-    const shapes: IUI[] = [];
-    inspector.selectedElements.value.forEach((element) => {
-      if (element instanceof Connector) {
-        shapes.push(element);
-        return;
-      }
-      const children = getChildren(element);
-      if (element.tag === "Group" && children?.length) {
-        const shape = children.find((child) => !(child instanceof Text)) as IUI | undefined;
-        if (shape) shapes.push(shape);
-        return;
-      }
-      shapes.push(element);
-    });
-    return shapes;
-  }
-
-  function getSelectedTexts() {
-    const texts: Text[] = [];
-    inspector.selectedElements.value.forEach((element) => {
-      if (element instanceof Text) {
-        texts.push(element);
-        return;
-      }
-      const children = getChildren(element);
-      const text = children?.find((child) => child instanceof Text) as Text | undefined;
-      if (text) texts.push(text);
-    });
-    return texts;
+  function updateSelected(patch: Parameters<Editor["documentCommands"]["updatePresentation"]>[1]) {
+    const editor = options.editor.value;
+    if (!editor) return;
+    const ids = inspector.selectedElements.value.map((element) => editor.renderer.getId(element));
+    if (ids.length) editor.documentCommands.updatePresentation(ids, patch);
   }
 
   return {
@@ -502,18 +343,6 @@ export function useEditorPanelState(options: EditorPanelStateOptions) {
 }
 
 export type EditorPanelState = ReturnType<typeof useEditorPanelState>;
-
-function getChildren(element: IUI) {
-  return (element as unknown as { children?: IUI[] }).children;
-}
-
-function updateTextBox(text: Text, nextWidth: number, nextHeight: number) {
-  text.x = 10;
-  text.y = 10;
-  text.width = Math.max(nextWidth - 20, 0);
-  text.height = Math.max(nextHeight - 20, 0);
-  text.visible = nextWidth > 40 && nextHeight > 30;
-}
 
 function toHex(value: unknown, fallback: string) {
   if (typeof value !== "string") return fallback;

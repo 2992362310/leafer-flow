@@ -1,7 +1,7 @@
 import type { IUI } from "leafer";
 import type Editor from "../editor";
 import type { CommandResult } from "../api/command";
-import { createConnectorLabel, findSelectedConnector } from "../core/connector-labels";
+import { findSelectedConnector } from "../core/connector-labels";
 
 export function doAddConnectorLabel(editor: Editor): CommandResult {
   const connector = findSelectedConnector(editor.app.editor.list as IUI[]);
@@ -9,10 +9,10 @@ export function doAddConnectorLabel(editor: Editor): CommandResult {
     return { success: false, message: "请先选中一条连接线，再添加标签", warning: true };
   }
 
-  const label = createConnectorLabel(connector);
-  editor.app.tree.add(label);
-  editor.app.editor.select(label);
-  editor.commitMutation({ syncConnectorLabels: true });
+  const edgeId = editor.renderer.getId(connector);
+  const labelId = editor.documentCommands.addConnectorLabel(edgeId);
+  const label = editor.renderer.getNode(labelId);
+  if (label) editor.app.editor.select(label);
 
   return { success: true, message: "已添加连线标签" };
 }

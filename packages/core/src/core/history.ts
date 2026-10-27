@@ -1,9 +1,5 @@
-import { App } from "leafer";
-import {
-  applySerializedChildren,
-  serializeChildrenWithConnectors,
-  type SerializedChild,
-} from "./flow-serialization";
+import { DocumentStore } from "../document/document-store";
+import type { EditorDocument } from "../document/model";
 
 export interface HistoryEntry {
   index: number;
@@ -12,16 +8,25 @@ export interface HistoryEntry {
 }
 
 export class HistoryManager {
-  private app: App;
-  private undoStack: { data: SerializedChild[]; hash: string }[] = [];
-  private redoStack: { data: SerializedChild[]; hash: string }[] = [];
+  private undoStack: { data: EditorDocument; hash: string }[] = [];
+  private redoStack: { data: EditorDocument; hash: string }[] = [];
   private lastSavedHash = "";
   private limit = 30;
   private isExecuting = false;
   private transactionDepth = 0;
 
-  constructor(app: App) {
-    this.app = app;
+  private unsubscribe: () => void;
+
+  constructor(private document: DocumentStore) {
+    this.unsubscribe = document.subscribe((change) => {
+      if (change.origin === "history") return;
+      if (change.origin === "load") {
+        this.undoStack = [];
+        this.redoStack = [];
+        this.lastSavedHash = "";
+      }
+      this.save();
+    });
     this.save();
   }
 
@@ -29,8 +34,8 @@ export class HistoryManager {
     if (this.isExecuting) return;
     if (this.transactionDepth > 0) return; // 事务期间延迟保存
 
-    const data = serializeChildrenWithConnectors(this.app);
-    const hash = this.computeHash(data);
+    const data = this.document.snapshot();
+    const hash = JSON.stringify(data);
 
     if (hash === this.lastSavedHash) return;
 
@@ -48,35 +53,31 @@ export class HistoryManager {
     if (this.undoStack.length < 2) return false;
 
     this.isExecuting = true;
-
-    const current = this.undoStack.pop();
-    if (current) this.redoStack.push(current);
-
-    const prev = this.undoStack[this.undoStack.length - 1];
-    this.lastSavedHash = prev.hash;
-    applySerializedChildren(this.app, prev.data);
-
-    this.isExecuting = false;
-    return true;
+    try {
+      const prev = this.undoStack[this.undoStack.length - 2];
+      this.document.replace(prev.data, "history", "Undo");
+      this.redoStack.push(this.undoStack.pop()!);
+      this.lastSavedHash = prev.hash;
+      return true;
+    } finally {
+      this.isExecuting = false;
+    }
   }
 
   public redo() {
     if (this.redoStack.length === 0) return false;
 
     this.isExecuting = true;
-
-    const next = this.redoStack.pop();
-    if (!next) {
+    try {
+      const next = this.redoStack[this.redoStack.length - 1];
+      this.document.replace(next.data, "history", "Redo");
+      this.redoStack.pop();
+      this.undoStack.push(next);
+      this.lastSavedHash = next.hash;
+      return true;
+    } finally {
       this.isExecuting = false;
-      return false;
     }
-
-    this.undoStack.push(next);
-    this.lastSavedHash = next.hash;
-    applySerializedChildren(this.app, next.data);
-
-    this.isExecuting = false;
-    return true;
   }
 
   public get canUndo() {
@@ -110,21 +111,17 @@ export class HistoryManager {
     if (targetIndex === this.undoStack.length - 1) return true; // 已经在目标位置
 
     this.isExecuting = true;
-
-    // 需要撤销到目标位置
-    while (this.undoStack.length - 1 > targetIndex) {
-      const current = this.undoStack.pop();
-      if (current) this.redoStack.push(current);
-    }
-
-    const target = this.undoStack[this.undoStack.length - 1];
-    if (target) {
+    try {
+      const target = this.undoStack[targetIndex];
+      this.document.replace(target.data, "history", "Jump to history");
+      while (this.undoStack.length - 1 > targetIndex) {
+        this.redoStack.push(this.undoStack.pop()!);
+      }
       this.lastSavedHash = target.hash;
-      applySerializedChildren(this.app, target.data);
+      return true;
+    } finally {
+      this.isExecuting = false;
     }
-
-    this.isExecuting = false;
-    return true;
   }
 
   /** 开始事务：事务期间的 save() 调用会被延迟到 endTransaction() */
@@ -142,27 +139,9 @@ export class HistoryManager {
     }
   }
 
-  private computeHash(data: SerializedChild[]): string {
-    // 快速结构化哈希：用元素数量 + 位置/尺寸累加 + 标签采样，避免完整 JSON.stringify
-    let posSum = 0;
-    let sizeSum = 0;
-    let tagHash = 0;
-    const len = data.length;
-
-    for (let i = 0; i < len; i++) {
-      const el = data[i] as Record<string, unknown>;
-      posSum += ((el.x as number) || 0) + ((el.y as number) || 0);
-      sizeSum += ((el.width as number) || 0) + ((el.height as number) || 0);
-
-      // 采样标签哈希（每隔几个元素）
-      if (i % 3 === 0) {
-        const tag = String(el.tag || "");
-        for (let j = 0; j < tag.length; j++) {
-          tagHash = ((tagHash << 5) - tagHash + tag.charCodeAt(j)) | 0;
-        }
-      }
-    }
-
-    return `${len}:${Math.round(posSum)}:${Math.round(sizeSum)}:${tagHash}`;
+  dispose() {
+    this.unsubscribe();
+    this.undoStack = [];
+    this.redoStack = [];
   }
 }

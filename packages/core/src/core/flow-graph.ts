@@ -1,6 +1,23 @@
 import type { ConnectorSide } from "./connector";
 import type { FlowNodeKind } from "./flow-node-shape";
-import type { ConnectorStateLike } from "./flow-serialization";
+
+export type FlowConnectorState = {
+  mode: "node";
+  fromId: string;
+  toId: string;
+  fromPoint: { x: number; y: number };
+  toPoint: { x: number; y: number };
+  opt1: { side: ConnectorSide; percent: number };
+  opt2: { side: ConnectorSide; percent: number };
+  routeType: "orthogonal" | "bezier" | "straight" | "custom";
+  padding: number;
+  margin: number;
+  cornerRadius: number;
+  bezierCurvature: number;
+  stroke: string;
+  strokeWidth: number;
+  endArrow: "arrow";
+};
 
 /**
  * Semantic flow graph — authoring / import / template source of truth.
@@ -55,7 +72,7 @@ export function edgeToConnectorState(
   edge: FlowGraphEdge,
   from: FlowGraphNode,
   to: FlowGraphNode,
-): ConnectorStateLike {
+): FlowConnectorState {
   return {
     mode: "node",
     fromId: edge.from,

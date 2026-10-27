@@ -39,14 +39,14 @@ function getSelectedConnectors(editor: Editor): Connector[] {
 
 function applyRouteTypeToSelection(editor: Editor, routeType: ConnectorRouteType) {
   const selectedConnectors = getSelectedConnectors(editor);
-  if (selectedConnectors.length === 0) return 0;
-
-  selectedConnectors.forEach((connector) => {
-    connector.routeType = routeType;
-    connector.update();
-  });
-
-  editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
+  if (selectedConnectors.length === 0) {
+    editor.documentCommands.updateSettings({ connectorRouteType: routeType });
+    return 0;
+  }
+  editor.documentCommands.updatePresentation(
+    selectedConnectors.map((connector) => editor.renderer.getId(connector)),
+    { route_type: routeType },
+  );
   return selectedConnectors.length;
 }
 
@@ -91,8 +91,7 @@ const CORE_COMMANDS: CommandContribution[] = [
       const points = connector.getPoints();
       if (!points?.from || !points?.to) return { success: false, message: "无法获取连接线端点" };
       const mid = { x: (points.from.x + points.to.x) / 2, y: (points.from.y + points.to.y) / 2 };
-      connector.addWaypoint(mid);
-      currentEditor.commitMutation({ syncConnectorLabels: true });
+      currentEditor.documentCommands.addConnectorWaypoint(currentEditor.renderer.getId(connector), mid);
       return { success: true, message: "已添加中间点" };
     },
   },
@@ -120,8 +119,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "搜索",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("canvas-search");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "canvas-search");
       return { success: true, message: "已打开搜索" };
     },
   },
@@ -130,8 +129,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "图层树",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("layer-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "layer-panel");
       return { success: true, message: "已切换图层树" };
     },
   },
@@ -140,8 +139,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "插件市场",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("plugin-market");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "plugin-market");
       return { success: true, message: "已切换插件市场" };
     },
   },
@@ -150,8 +149,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "模板市场",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("template-market");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "template-market");
       return { success: true, message: "已切换模板市场" };
     },
   },
@@ -160,8 +159,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "历史面板",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("history-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "history-panel");
       return { success: true, message: "已切换历史面板" };
     },
   },
@@ -170,8 +169,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "快捷键帮助",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("shortcut-help");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "shortcut-help");
       return { success: true, message: "" };
     },
   },
@@ -180,8 +179,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "对齐与分布",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("align-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "align-panel");
       return { success: true, message: "已切换对齐与分布" };
     },
   },
@@ -190,8 +189,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "连线中心",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("connector-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "connector-panel");
       return { success: true, message: "已切换连线中心" };
     },
   },
@@ -200,8 +199,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "打开连线中心",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      window.dispatchEvent(new CustomEvent("leafer-flow:open-connector-panel"));
+    run: (editor) => {
+      editor.overlayPanels.request("connector-panel", "open");
       return { success: true, message: "已打开连线中心" };
     },
   },
@@ -210,8 +209,8 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "图层与状态",
     pluginId: BUILTIN_PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("layer-tools-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "layer-tools-panel");
       return { success: true, message: "已切换图层与状态" };
     },
   },

@@ -110,9 +110,11 @@ function handleSelect(node: IUI) {
 
 async function runLayerCommand(node: IUI, action: string) {
   if (!props.editor) return;
+  const id = props.editor.renderer.getId(node);
   props.editor.app.editor.select(node);
   const result = await props.editor.commands.execute(action);
-  props.editor.app.editor.select(node);
+  const current = props.editor.renderer.getNode(id);
+  if (current) props.editor.app.editor.select(current);
   if (result.success) updateTree();
 }
 

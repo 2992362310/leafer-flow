@@ -8,7 +8,6 @@ const STORAGE_SCOPE_KEY = "scope";
 const STORAGE_DIRECTION_KEY = "direction";
 const DEFAULT_DASH_PATTERN = [10, 8];
 const DEFAULT_SPEED = 1;
-const probeHandlers = new Map<string, () => void>();
 
 type AnimationScope = "all" | "selected";
 type AnimationDirection = "forward" | "reverse";
@@ -219,7 +218,12 @@ export const connectorAnimationPlugin: EditorPluginModule = {
         }
 
         const onProbe = () => notifyState();
-        probeHandlers.set(ctx.pluginId, onProbe);
+        ctx.onDispose(() => {
+            state.enabled = false;
+            stopAnimationLoop();
+            restoreAnimationStyle();
+            window.removeEventListener("leafer-flow:connector-flow-animation-probe", onProbe);
+        });
         window.addEventListener("leafer-flow:connector-flow-animation-probe", onProbe);
 
         if (state.enabled) {
@@ -316,13 +320,6 @@ export const connectorAnimationPlugin: EditorPluginModule = {
                 },
             ],
         });
-    },
-    deactivate() {
-        const onProbe = probeHandlers.get(PLUGIN_ID);
-        if (onProbe) {
-            window.removeEventListener("leafer-flow:connector-flow-animation-probe", onProbe);
-            probeHandlers.delete(PLUGIN_ID);
-        }
     },
     configure() {
         return {

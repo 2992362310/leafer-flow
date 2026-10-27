@@ -87,7 +87,8 @@ The built-in AI Agent plugin (`src/editor/builtin/plugins/agent/`) exposes edito
 Treat these as regression-prone:
 
 - `src/editor/tools/draw-arrow.ts`
-- `src/editor/core/flow-serialization.ts`
+- `packages/core/src/document/leafer-document-adapter.ts`
+- `packages/core/src/document/clipboard.ts`
 - `src/editor/core/connector-labels.ts`
 - `src/editor/action/do-clipboard.ts`
 - `src/editor/action/do-group.ts`
@@ -139,13 +140,12 @@ Do not assume a mutation is complete just because the canvas updates.
 
 ### 4. Treat serialization as a contract
 
-When touching `flow-serialization.ts`, clipboard logic, connector state, or custom data fields:
+When touching document projection, clipboard logic, connector state, or custom data fields:
 
-- preserve backward compatibility when practical
-- keep export/load and autosave/restore behavior aligned
+- keep document projection, file import/export, and autosave behavior aligned
 - verify round-trip behavior for connector bindings and label runtime props
 
-If a structure is saved and later restored, it should be treated as a schema, not an ad hoc object.
+Treat the current document schema as the source of truth; do not add legacy-format compatibility paths.
 
 ### 5. Be careful with async action boundaries
 

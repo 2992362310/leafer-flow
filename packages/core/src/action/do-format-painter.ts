@@ -1,125 +1,105 @@
-import type { IUI } from "leafer";
+import type { DocumentEdge, DocumentNode } from "../document/model";
 import type Editor from "../editor";
+import { FLOW_NODE_DOCUMENT_TYPE } from "../core/builtin-node-types";
 
 interface StyleSnapshot {
-  fill?: string;
-  stroke?: string;
-  strokeWidth?: number;
-  opacity?: number;
-  cornerRadius?: number;
-  fontSize?: number;
-  fontWeight?: string;
-  fontStyle?: string;
-  textAlign?: string;
-  textColor?: string;
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    opacity?: number;
+    cornerRadius?: number;
+    dashPattern?: number[];
+    fontSize?: number;
+    fontWeight?: string;
+    fontStyle?: string;
+    textAlign?: string;
+    textColor?: string;
 }
 
 let copiedStyle: StyleSnapshot | null = null;
 
 export function doFormatPainterCopy(editor: Editor): { success: boolean; message: string } {
-  const selected = editor.app.editor.list as IUI[];
-  if (!selected.length) {
-    return { success: false, message: "请先选中一个元素" };
-  }
-
-  const el = selected[0];
-  const children = (el as unknown as { children?: IUI[] }).children;
-
-  // 找到形状子元素
-  let shape: IUI | null = null;
-  let text: IUI | null = null;
-
-  if (el.tag === "Group" && children?.length) {
-    for (const child of children) {
-      if (child instanceof Text) {
-        text = child;
-      } else if (!shape) {
-        shape = child;
-      }
-    }
-  } else {
-    shape = el;
-  }
-
-  const style: StyleSnapshot = {};
-
-  if (shape) {
-    style.fill = shape.fill as string | undefined;
-    style.stroke = shape.stroke as string | undefined;
-    style.strokeWidth = shape.strokeWidth as number | undefined;
-    style.opacity = shape.opacity as number | undefined;
-    style.cornerRadius = (shape as unknown as { cornerRadius?: number }).cornerRadius;
-  }
-
-  if (text) {
-    style.fontSize = (text as unknown as { fontSize?: number }).fontSize;
-    style.fontWeight = (text as unknown as { fontWeight?: string }).fontWeight;
-    style.fontStyle = (text as unknown as { fontStyle?: string }).fontStyle;
-    style.textAlign = (text as unknown as { textAlign?: string }).textAlign;
-    style.textColor = text.fill as string | undefined;
-  }
-
-  copiedStyle = style;
-  return { success: true, message: "已复制样式" };
+    const selected = editor.app.editor.list ?? [];
+    if (!selected.length) return { success: false, message: "请先选中一个元素" };
+    const id = editor.renderer.getId(selected[0]!);
+    const document = editor.document.snapshot();
+    const node = findNode(document.nodes, id);
+    const edge = document.edges.find((item) => item.id === id);
+    copiedStyle = readStyle(node, edge);
+    return { success: true, message: "已复制样式" };
 }
 
 export function doFormatPainterApply(editor: Editor): { success: boolean; message: string } {
-  if (!copiedStyle) {
-    return { success: false, message: "请先复制样式（Ctrl+Shift+C）" };
-  }
+    if (!copiedStyle) return { success: false, message: "请先复制样式（Ctrl+Shift+C）" };
+    const selected = editor.app.editor.list ?? [];
+    if (!selected.length) return { success: false, message: "请先选中要应用样式的元素" };
+    const patch = {
+        fill: copiedStyle.fill,
+        stroke: copiedStyle.stroke,
+        stroke_width: copiedStyle.strokeWidth,
+        opacity: copiedStyle.opacity,
+        corner_radius: copiedStyle.cornerRadius,
+        dash_pattern: copiedStyle.dashPattern,
+        font_size: copiedStyle.fontSize,
+        font_weight: copiedStyle.fontWeight,
+        font_style: copiedStyle.fontStyle,
+        text_align: copiedStyle.textAlign,
+        text_color: copiedStyle.textColor,
+    };
+    editor.documentCommands.updatePresentation(selected.map((item) => editor.renderer.getId(item)), patch);
+    return { success: true, message: `已应用样式到 ${selected.length} 个元素` };
+}
 
-  const selected = editor.app.editor.list as IUI[];
-  if (!selected.length) {
-    return { success: false, message: "请先选中要应用样式的元素" };
-  }
-
-  selected.forEach((el) => {
-    const children = (el as unknown as { children?: IUI[] }).children;
-
-    let shape: IUI | null = null;
-    let text: IUI | null = null;
-
-    if (el.tag === "Group" && children?.length) {
-      for (const child of children) {
-        if (child instanceof Text) {
-          text = child;
-        } else if (!shape) {
-          shape = child;
-        }
-      }
-    } else {
-      shape = el;
+function findNode(nodes: DocumentNode[], id: string): DocumentNode | undefined {
+    for (const node of nodes) {
+        if (node.id === id) return node;
+        const child = findNode(node.children, id);
+        if (child) return child;
     }
+}
 
-    if (shape) {
-      if (copiedStyle!.fill !== undefined) shape.fill = copiedStyle!.fill;
-      if (copiedStyle!.stroke !== undefined) shape.stroke = copiedStyle!.stroke;
-      if (copiedStyle!.strokeWidth !== undefined) shape.strokeWidth = copiedStyle!.strokeWidth;
-      if (copiedStyle!.opacity !== undefined) shape.opacity = copiedStyle!.opacity;
-      if (copiedStyle!.cornerRadius !== undefined) {
-        (shape as unknown as { cornerRadius: number }).cornerRadius = copiedStyle!.cornerRadius;
-      }
+function findShape(node: DocumentNode): DocumentNode | undefined {
+    if (node.type === FLOW_NODE_DOCUMENT_TYPE || node.type === "Text") return node;
+    if (!["Group", "Box", "Frame"].includes(node.type)) return node;
+    for (const child of node.children) {
+        const shape = findShape(child);
+        if (shape) return shape;
     }
+}
 
-    if (text) {
-      if (copiedStyle!.fontSize !== undefined) {
-        (text as unknown as { fontSize: number }).fontSize = copiedStyle!.fontSize;
-      }
-      if (copiedStyle!.fontWeight !== undefined) {
-        (text as unknown as { fontWeight: string }).fontWeight = copiedStyle!.fontWeight;
-      }
-      if (copiedStyle!.fontStyle !== undefined) {
-        (text as unknown as { fontStyle: string }).fontStyle = copiedStyle!.fontStyle;
-      }
-      if (copiedStyle!.textAlign !== undefined) {
-        (text as unknown as { textAlign: string }).textAlign = copiedStyle!.textAlign;
-      }
-      if (copiedStyle!.textColor !== undefined) {
-        text.fill = copiedStyle!.textColor;
-      }
+function findText(node: DocumentNode): DocumentNode | undefined {
+    if (node.type === "Text" || node.type === FLOW_NODE_DOCUMENT_TYPE) return node;
+    for (const child of node.children) {
+        const text = findText(child);
+        if (text) return text;
     }
-  });
+}
 
-  editor.commitMutation();
-  return { success: true, message: `已应用样式到 ${selected.length} 个元素` };
+function readStyle(node?: DocumentNode, edge?: DocumentEdge): StyleSnapshot {
+    if (edge) {
+        return {
+            stroke: typeof edge.data.stroke === "string" ? edge.data.stroke : undefined,
+            strokeWidth: typeof edge.data.strokeWidth === "number" ? edge.data.strokeWidth : undefined,
+            dashPattern: Array.isArray(edge.data.dashPattern) ? edge.data.dashPattern as number[] : undefined,
+        };
+    }
+    if (!node) return {};
+    const shape = findShape(node);
+    const text = findText(node);
+    const shapeData = shape?.type === FLOW_NODE_DOCUMENT_TYPE && shape.data.style && typeof shape.data.style === "object"
+        ? shape.data.style as Record<string, unknown> : shape?.data;
+    return {
+        fill: typeof shapeData?.fill === "string" ? shapeData.fill : undefined,
+        stroke: typeof shapeData?.stroke === "string" ? shapeData.stroke : undefined,
+        strokeWidth: typeof shapeData?.strokeWidth === "number" ? shapeData.strokeWidth : undefined,
+        opacity: typeof shapeData?.opacity === "number" ? shapeData.opacity : undefined,
+        cornerRadius: typeof shapeData?.cornerRadius === "number" ? shapeData.cornerRadius : undefined,
+        dashPattern: Array.isArray(shapeData?.dashPattern) ? shapeData.dashPattern as number[] : undefined,
+        fontSize: typeof text?.data.fontSize === "number" ? text.data.fontSize : undefined,
+        fontWeight: typeof text?.data.fontWeight === "string" ? text.data.fontWeight : undefined,
+        fontStyle: typeof text?.data.fontStyle === "string" ? text.data.fontStyle : undefined,
+        textAlign: typeof text?.data.textAlign === "string" ? text.data.textAlign : undefined,
+        textColor: typeof text?.data.fill === "string" ? text.data.fill
+            : typeof text?.data.textColor === "string" ? text.data.textColor : undefined,
+    };
 }

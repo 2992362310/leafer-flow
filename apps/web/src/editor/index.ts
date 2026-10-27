@@ -4,7 +4,7 @@ import { getEnabledPluginIds } from "./plugins/market/builtin-registry";
 import { defineAsyncComponent } from "vue";
 import { registerDefaultPropertyPanels, registerHostOverlayPanels } from "@leafer-flow/ui";
 
-export function initEditor(view: HTMLElement) {
+export async function initEditor(view: HTMLElement) {
   const editor = new Editor({
     view,
     editor: {
@@ -18,14 +18,22 @@ export function initEditor(view: HTMLElement) {
   // 这里直接 patch EditBox.onTransformStart，让所有变换期间都隐藏编辑框。
   patchEditBoxForTransform(editor);
 
-  activateEnabledPlugins(editor);
-  registerDefaultPropertyPanels(editor);
-  registerHostOverlayPanels(editor, {
-    pluginMarket: defineAsyncComponent(() => import("../components/PluginMarket/PluginMarketDrawer.vue")),
-    templateMarket: defineAsyncComponent(() => import("../components/TemplateMarket/TemplateMarketDrawer.vue")),
-  });
-
-  return editor;
+  try {
+    await activateEnabledPlugins(editor);
+    registerDefaultPropertyPanels(editor);
+    registerHostOverlayPanels(editor, {
+      pluginMarket: defineAsyncComponent(() => import("../components/PluginMarket/PluginMarketDrawer.vue")),
+      templateMarket: defineAsyncComponent(() => import("../components/TemplateMarket/TemplateMarketDrawer.vue")),
+    });
+    return editor;
+  } catch (error) {
+    try {
+      await editor.dispose();
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], "Editor initialization failed");
+    }
+    throw error;
+  }
 }
 
 /**
@@ -39,6 +47,7 @@ export function initEditor(view: HTMLElement) {
  */
 function patchEditBoxForTransform(editor: Editor) {
   editor.app.on("ready", () => {
+    if (editor.isDisposed) return;
     const editorPlugin = editor.app.editor;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const editBox = editorPlugin?.editBox as any;
@@ -56,13 +65,13 @@ function patchEditBoxForTransform(editor: Editor) {
   });
 }
 
-function activateEnabledPlugins(editor: Editor) {
+async function activateEnabledPlugins(editor: Editor) {
   const enabledIds = new Set(getEnabledPluginIds());
-  builtinPlugins.forEach((plugin) => {
+  for (const plugin of builtinPlugins) {
     if (plugin.manifest.required || enabledIds.has(plugin.manifest.id)) {
-      void editor.pluginManager.activate(plugin);
+      await editor.pluginManager.activate(plugin);
     }
-  });
+  }
 }
 
 export { Editor, getZoomPercent };

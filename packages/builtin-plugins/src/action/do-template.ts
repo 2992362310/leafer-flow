@@ -2,7 +2,7 @@ import type Editor from "@leafer-flow/core/editor";
 import { getTemplateStyle, templateMap, type TemplateKind } from "../templates/defs";
 import { insertTemplateFlow } from "../templates/insert";
 import { applyConnectorWorkbenchSettings } from "@leafer-flow/core/core/connector-workbench-settings";
-import type { FlowDocumentSettings } from "@leafer-flow/core/core/flow-serialization";
+import type { FlowDocumentSettings } from "@leafer-flow/core";
 import type { FlowGraph } from "@leafer-flow/core/core/flow-graph";
 
 export type { TemplateKind };
@@ -55,16 +55,14 @@ export async function doInsertTemplate(
 
   try {
     const data = templateMap[kind]();
-    insertTemplateFlow(editor.app, data.graph, getTemplateStyle);
-
     const settings = resolveTemplateSettings(data.graph, data.settings);
+    insertTemplateFlow(editor, data.graph, getTemplateStyle, settings);
+
     if (settings) {
       await applyConnectorWorkbenchSettings(editor, settings);
     }
 
-    editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
     editor.endTransaction();
-    await editor.autoSave.save();
     return { success: true, message: data.message };
   } catch (error) {
     editor.endTransaction();

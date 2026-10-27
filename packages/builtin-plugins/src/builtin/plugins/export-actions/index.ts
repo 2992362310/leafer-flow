@@ -34,8 +34,8 @@ const EXPORT_COMMANDS: CommandContribution[] = [
     label: "导出",
     pluginId: PLUGIN_ID,
     warning: false,
-    run: () => {
-      dispatchPanelToggle("export-panel");
+    run: (editor) => {
+      dispatchPanelToggle(editor, "export-panel");
       return { success: true, message: "已切换导出面板" };
     },
   },

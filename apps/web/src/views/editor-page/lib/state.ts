@@ -1,24 +1,27 @@
-import { ref, type Ref } from "vue";
+import { ref, shallowReactive, type Ref } from "vue";
 import type { Editor } from "@leafer-flow/core";
 import { getZoomPercent } from "@leafer-flow/core";
 import { TOOL_NAME } from "@leafer-flow/core/constants";
 import type { LintIssue } from "@leafer-flow/builtin-plugins/builtin/plugins/diagram-lint/types";
 import type { SelectionMarqueeState } from "@leafer-flow/ui/composables";
-import { PAGE_PANEL_IDS, type PagePanelId } from "@leafer-flow/ui/context";
-
-function createPagePanels(): Record<PagePanelId, Ref<boolean>> {
-  return Object.fromEntries(PAGE_PANEL_IDS.map((id) => [id, ref(false)])) as Record<
-    PagePanelId,
-    Ref<boolean>
-  >;
-}
+import { HOST_PANEL_IDS, type PagePanelId } from "@leafer-flow/ui/context";
 
 export function usePageState() {
   const elementCount = ref(0);
   const zoomPercent = ref(100);
   const activeTool = ref<string>(TOOL_NAME.SELECT);
 
-  const panels = createPagePanels();
+  const panels = shallowReactive(new Map<string, Ref<boolean>>(HOST_PANEL_IDS.map((id) => [id, ref(false)])));
+
+  function syncPanels(ids: string[]) {
+    const active = new Set<string>([...HOST_PANEL_IDS, ...ids]);
+    for (const id of panels.keys()) if (!active.has(id)) panels.delete(id);
+    for (const id of active) if (!panels.has(id)) panels.set(id, ref(false));
+  }
+
+  function hasPanel(id: PagePanelId) {
+    return panels.has(id);
+  }
 
   const diagramLintIssues = ref<LintIssue[]>([]);
   const diagramLintGeneratedAt = ref<number>(Date.now());
@@ -27,19 +30,22 @@ export function usePageState() {
   const cleanupCallbacks: Array<() => void> = [];
 
   function isPanelOpen(id: PagePanelId) {
-    return panels[id].value;
+    return panels.get(id)?.value ?? false;
   }
 
   function togglePanel(id: PagePanelId) {
-    panels[id].value = !panels[id].value;
+    const panel = panels.get(id);
+    if (panel) panel.value = !panel.value;
   }
 
   function openPanel(id: PagePanelId) {
-    panels[id].value = true;
+    const panel = panels.get(id);
+    if (panel) panel.value = true;
   }
 
   function closePanel(id: PagePanelId) {
-    panels[id].value = false;
+    const panel = panels.get(id);
+    if (panel) panel.value = false;
   }
 
   function refreshEditorStats(currentEditor: Editor) {
@@ -60,6 +66,8 @@ export function usePageState() {
     zoomPercent,
     activeTool,
     panels,
+    syncPanels,
+    hasPanel,
     isPanelOpen,
     togglePanel,
     openPanel,

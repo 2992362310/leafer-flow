@@ -1,11 +1,10 @@
-import type { IUI, IGroup } from "leafer";
+import type { IUI } from "leafer";
 import type Editor from "../editor";
-
-type LayerAction = "bringForward" | "sendBackward" | "bringToFront" | "sendToBack";
+import type { LayerOrderAction } from "../document/element-operations";
 
 export function doLayer(
   editor: Editor,
-  action: LayerAction,
+  action: LayerOrderAction,
 ): { success: boolean; message: string } {
   try {
     const list = [...(editor.app.editor.list as IUI[])];
@@ -13,35 +12,12 @@ export function doLayer(
       return { success: false, message: "未选中元素" };
     }
 
-    const moved = new Set<IUI>();
-    const sorted = [...list].sort((a, b) => {
-      const parentA = a.parent as IGroup | undefined;
-      const parentB = b.parent as IGroup | undefined;
-      if (parentA !== parentB) return 0;
-      const indexA = parentA?.children?.indexOf(a) ?? -1;
-      const indexB = parentB?.children?.indexOf(b) ?? -1;
-      return indexA - indexB;
-    });
-
-    if (action === "bringForward") {
-      [...sorted].reverse().forEach((node) => moveWithinParent(node, 1, moved));
-    }
-    if (action === "sendBackward") {
-      sorted.forEach((node) => moveWithinParent(node, -1, moved));
-    }
-    if (action === "bringToFront") {
-      [...sorted].reverse().forEach((node) => moveToEdge(node, 1, moved));
-    }
-    if (action === "sendToBack") {
-      sorted.forEach((node) => moveToEdge(node, -1, moved));
-    }
-
-    if (!moved.size) {
+    const moved = editor.documentCommands.reorderElements(list.map((node) => editor.renderer.getId(node)), action);
+    if (!moved) {
       return { success: false, message: "当前元素无法调整层级" };
     }
 
-    editor.commitMutation({ autoSave: false });
-    return { success: true, message: `已调整 ${moved.size} 个元素的层级` };
+    return { success: true, message: `已调整 ${moved} 个元素的层级` };
   } catch (error) {
     console.error("调整层级失败", error);
     return {
@@ -58,11 +34,7 @@ export function doToggleLock(
   const list = editor.app.editor.list as IUI[];
   if (!list.length) return { success: false, message: "未选中元素" };
 
-  list.forEach((item) => {
-    item.locked = locked;
-  });
-
-  editor.commitMutation({ autoSave: false });
+  editor.documentCommands.setElementState(list.map((item) => editor.renderer.getId(item)), { locked });
   return { success: true, message: locked ? "已锁定选中元素" : "已解锁选中元素" };
 }
 
@@ -73,36 +45,17 @@ export function doToggleVisible(
   const list = editor.app.editor.list as IUI[];
   if (!list.length) return { success: false, message: "未选中元素" };
 
-  list.forEach((item) => {
-    item.visible = visible;
-  });
-
-  editor.commitMutation({ autoSave: false });
+  editor.documentCommands.setElementState(list.map((item) => editor.renderer.getId(item)), { visible });
   return { success: true, message: visible ? "已显示选中元素" : "已隐藏选中元素" };
 }
 
 export function doUnlockAll(editor: Editor): { success: boolean; message: string } {
-  const children = editor.app.tree.children as IUI[];
-  let count = 0;
-
-  function unlockRecursive(items: IUI[]) {
-    for (const item of items) {
-      if (item.locked) {
-        item.locked = false;
-        count++;
-      }
-      const childChildren = (item as unknown as { children?: IUI[] }).children;
-      if (childChildren?.length) unlockRecursive(childChildren as IUI[]);
-    }
-  }
-
-  unlockRecursive(children);
+  const count = editor.documentCommands.unlockAll();
 
   if (count === 0) {
     return { success: false, message: "没有锁定的元素" };
   }
 
-  editor.commitMutation({ autoSave: false });
   return { success: true, message: `已解锁 ${count} 个元素` };
 }
 
@@ -147,49 +100,9 @@ export function doUnlockAtCursor(
     return { success: false, message: "该位置没有锁定的元素" };
   }
 
-  locked.locked = false;
-  editor.app.editor.select(locked);
-  editor.commitMutation({ autoSave: false });
+  const id = editor.renderer.getId(locked);
+  editor.documentCommands.setElementState([id], { locked: false });
+  const view = editor.renderer.getNode(id);
+  if (view) editor.app.editor.select(view);
   return { success: true, message: "已解锁元素" };
-}
-
-function moveWithinParent(node: IUI, direction: 1 | -1, moved: Set<IUI>) {
-  const parent = node.parent as IGroup | undefined;
-  if (!parent?.children) return;
-
-  const children = parent.children as IUI[];
-  const index = children.indexOf(node);
-  if (index < 0) return;
-
-  const nextIndex = index + direction;
-  if (nextIndex < 0 || nextIndex >= children.length) return;
-
-  const target = children[nextIndex];
-  if (direction > 0) {
-    parent.addAfter(node, target);
-  } else {
-    parent.addBefore(node, target);
-  }
-
-  moved.add(node);
-}
-
-function moveToEdge(node: IUI, direction: 1 | -1, moved: Set<IUI>) {
-  const parent = node.parent as IGroup | undefined;
-  if (!parent?.children) return;
-
-  const children = parent.children as IUI[];
-  const index = children.indexOf(node);
-  if (index < 0) return;
-
-  const target = direction > 0 ? children[children.length - 1] : children[0];
-  if (!target || target === node) return;
-
-  if (direction > 0) {
-    parent.addAfter(node, target);
-  } else {
-    parent.addBefore(node, target);
-  }
-
-  moved.add(node);
 }

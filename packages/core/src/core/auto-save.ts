@@ -1,32 +1,26 @@
-import { App } from "leafer";
-import {
-  deserializeTreeWithConnectors,
-  getFlowDocumentSettings,
-  migrateLegacyFormat,
-  serializeTreeWithConnectors,
-} from "./flow-serialization";
-import { getConnectorWorkbenchSettings, applyConnectorWorkbenchSettings } from "./connector-workbench-settings";
-import type Editor from "../editor";
+import { DocumentStore } from "../document/document-store";
 
-const STORAGE_KEY = "leafer-flow-autosave";
-const IDB_DB_NAME = "leafer-flow";
+const STORAGE_KEY = "leafer-flow.document.v2";
+const IDB_DB_NAME = "leafer-flow-documents";
 const IDB_STORE_NAME = "autosave";
 const IDB_KEY = "current";
 const DEBOUNCE_MS = 1000;
 const LOCALSTORAGE_SIZE_LIMIT = 3 * 1024 * 1024; // 3MB — localStorage 安全线
 
 export class AutoSave {
-  private app: App;
-  private editor?: Editor;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private _lastSaveOk = true;
   private _saveError: string | null = null;
   private db: IDBDatabase | null = null;
   private dbReady: Promise<IDBDatabase | null>;
+  private started = false;
+  private disposed = false;
+  private disposePromise?: Promise<void>;
+  private cleanups: Array<() => void> = [];
+  private saves = new Set<Promise<boolean>>();
+  private writeQueue: Promise<boolean> = Promise.resolve(true);
 
-  constructor(app: App, editor?: Editor) {
-    this.app = app;
-    this.editor = editor;
+  constructor(private document: DocumentStore) {
     this.dbReady = this.openDB();
   }
 
@@ -39,25 +33,25 @@ export class AutoSave {
   }
 
   start() {
-    this.app.tree.on("child.add", () => this.scheduleSave());
-    this.app.tree.on("child.remove", () => this.scheduleSave());
-    this.app.tree.on("clear", () => this.scheduleSave());
-
-    if (this.app.editor) {
-      this.app.editor.on("move.end", () => this.scheduleSave());
-      this.app.editor.on("resize.end", () => this.scheduleSave());
-      this.app.editor.on("rotate.end", () => this.scheduleSave());
-    }
+    if (this.started || this.disposed) return;
+    this.started = true;
+    this.cleanups.push(this.document.subscribe((change) => {
+      if (change.origin !== "load") this.scheduleSave();
+    }));
   }
 
-  async save(): Promise<boolean> {
+  save(): Promise<boolean> {
+    if (this.disposed) return Promise.resolve(false);
+    const json = JSON.stringify(this.document.snapshot());
+    const task = this.writeQueue.then(() => this.persist(json));
+    this.writeQueue = task;
+    this.saves.add(task);
+    void task.then(() => this.saves.delete(task));
+    return task;
+  }
+
+  private async persist(json: string): Promise<boolean> {
     try {
-      const data = serializeTreeWithConnectors(
-        this.app,
-        "autosave",
-        getConnectorWorkbenchSettings(),
-      );
-      const json = JSON.stringify(data);
       const sizeBytes = json.length * 2; // UTF-16
 
       // 小数据直接存 localStorage（快）
@@ -96,7 +90,8 @@ export class AutoSave {
     }
   }
 
-  async load(): Promise<{ loaded: boolean; failedConnectors: number }> {
+  async load(): Promise<{ loaded: boolean }> {
+    if (this.disposed) return { loaded: false };
     try {
       // 优先读 localStorage（快，且覆盖小文件场景）
       let raw = localStorage.getItem(STORAGE_KEY);
@@ -104,28 +99,17 @@ export class AutoSave {
       // localStorage 没有则尝试 IndexedDB
       if (!raw) {
         const db = await this.dbReady;
-        if (db) {
+        if (db && !this.disposed) {
           raw = await this.idbGet(db);
         }
       }
 
-      if (!raw) return { loaded: false, failedConnectors: 0 };
-
-      const json = JSON.parse(raw) as Record<string, unknown>;
-      const migrated = migrateLegacyFormat(json);
-      if (!hasSavedChildren(migrated)) {
-        return { loaded: false, failedConnectors: 0 };
-      }
-
-      const result = deserializeTreeWithConnectors(this.app, migrated);
-      if (this.editor) {
-        const settings = getFlowDocumentSettings(migrated);
-        await applyConnectorWorkbenchSettings(this.editor, settings);
-      }
-      return { loaded: true, failedConnectors: result.failedConnectors };
+      if (!raw || this.disposed) return { loaded: false };
+      this.document.replace(JSON.parse(raw), "load", "Restore document");
+      return { loaded: true };
     } catch (error) {
       console.warn("自动加载失败:", error);
-      return { loaded: false, failedConnectors: 0 };
+      return { loaded: false };
     }
   }
 
@@ -139,17 +123,31 @@ export class AutoSave {
     });
   }
 
-  destroy() {
-    if (this.timer) clearTimeout(this.timer);
-    if (this.db) {
-      this.db.close();
-      this.db = null;
+  destroy(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+      void this.save();
     }
+    this.disposed = true;
+    this.cleanups.splice(0).forEach((cleanup) => cleanup());
+    this.disposePromise = (async () => {
+      await Promise.allSettled([...this.saves]);
+      const db = await this.dbReady;
+      db?.close();
+      this.db = null;
+    })();
+    return this.disposePromise;
   }
 
   private scheduleSave() {
+    if (this.disposed) return;
     if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.save(), DEBOUNCE_MS);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      void this.save();
+    }, DEBOUNCE_MS);
   }
 
   // ---- IndexedDB ----
@@ -199,9 +197,4 @@ export class AutoSave {
       request.onerror = () => reject(request.error);
     });
   }
-}
-
-function hasSavedChildren(json: Record<string, unknown>) {
-  const tree = json.tree as { children?: unknown } | undefined;
-  return Array.isArray(tree?.children) && tree.children.length > 0;
 }

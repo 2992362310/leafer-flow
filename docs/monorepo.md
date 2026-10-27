@@ -108,7 +108,7 @@ import { usePanelDock } from "@leafer-flow/ui/composables";
 | Agent 工具定义与自省 | [agent-tools.ts](../packages/builtin-plugins/src/builtin/plugins/agent/agent-tools.ts)                         |
 | 模板查询             | [registry.ts](../packages/builtin-plugins/src/builtin/templates/registry.ts)                                   |
 | 模板定义             | [defs.ts](../packages/builtin-plugins/src/templates/defs.ts)                                                   |
-| 文件与自动恢复格式   | [flow-serialization.ts](../packages/core/src/core/flow-serialization.ts)                                       |
+| 文档模型与校验       | [model.ts](../packages/core/src/document/model.ts)                                                             |
 | 图标定义与渲染       | [icons/index.ts](../packages/ui/src/assets/icons/index.ts)、[Icon.vue](../packages/ui/src/components/Icon.vue) |
 
 ## 高风险改动验收

@@ -8,7 +8,6 @@ import type { PanelToggleId } from "@leafer-flow/core/api/panel-toggle";
 import { useCollapsible, useDraggable } from "../composables/useDraggable";
 import { usePanelDock, usePanelMode } from "../composables/usePanelDock";
 import { useInjectedPageCommands, useInjectedPanelVisibility } from "../context";
-import { isPagePanelId } from "../context/panels";
 
 const ACTION_BAR_POSITION_KEY = "leafer-flow-action-bar-position";
 
@@ -50,7 +49,7 @@ const activePanelIds = computed(() => {
     for (const item of group.items) {
       const panelId = item.panelId as PanelToggleId | undefined;
       if (!panelId) continue;
-      if (isPagePanelId(panelId) && panelVisibility.isMounted(panelId)) {
+      if (panelVisibility.has(panelId) && panelVisibility.isMounted(panelId)) {
         ids.add(panelId);
         continue;
       }
@@ -93,35 +92,22 @@ function savePosition(next: { x: number; y: number }) {
 <template>
   <!-- 浮动展开：与 AI 助手一致的卡片交互 -->
   <Transition name="slide-fade">
-    <div
-      v-if="!isCollapsed && mode === 'float'"
+    <div v-if="!isCollapsed && mode === 'float'"
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 w-80"
-      :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-      @click.stop
-    >
-      <div
-        class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
-        @mousedown="startDrag"
-      >
+      :style="{ left: `${position.x}px`, top: `${position.y}px` }" @click.stop>
+      <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
+        @mousedown="startDrag">
         <div class="flex items-center gap-2">
           <Icon name="toolbar" class="h-4 w-4" />
           <span class="text-xs font-bold">操作工具</span>
         </div>
         <div class="flex gap-1">
-          <button
-            class="btn btn-ghost btn-xs btn-square"
-            title="收纳到右侧槽"
-            @click.stop="togglePanelDock('action-bar')"
-            @mousedown.stop
-          >
+          <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('action-bar')"
+            @mousedown.stop>
             <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
           </button>
-          <button
-            class="btn btn-ghost btn-xs btn-square"
-            title="折叠"
-            @click.stop="toggleCollapse(isDragging || hasMoved)"
-            @mousedown.stop
-          >
+          <button class="btn btn-ghost btn-xs btn-square" title="折叠"
+            @click.stop="toggleCollapse(isDragging || hasMoved)" @mousedown.stop>
             <Icon name="arrow-down" class="h-3.5 w-3.5" />
           </button>
         </div>
@@ -140,21 +126,13 @@ function savePosition(next: { x: number; y: number }) {
           </div>
         </div>
 
-        <div
-          v-for="section in sections"
-          :key="section.id"
-          class="rounded-xl border border-base-200/80 bg-base-100 p-2.5"
-        >
+        <div v-for="section in sections" :key="section.id"
+          class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
           <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
             {{ section.label }}
           </div>
-          <EditorButton
-            :groups="section.groups"
-            :columns="5"
-            :active-panel-ids="activePanelIds"
-            :tooltip-placement="section.id === 'panel' ? 'top' : 'bottom'"
-            @action="handleAction"
-          />
+          <EditorButton :groups="section.groups" :columns="5" :active-panel-ids="activePanelIds"
+            :tooltip-placement="section.id === 'panel' ? 'top' : 'bottom'" @action="handleAction" />
         </div>
       </div>
     </div>
@@ -162,26 +140,16 @@ function savePosition(next: { x: number; y: number }) {
 
   <!-- 折叠为浮动按钮（与 AI 助手一致） -->
   <Transition name="slide-fade">
-    <button
-      v-if="isCollapsed && mode === 'float'"
-      class="btn btn-sm fixed z-20 shadow-lg cursor-move"
-      :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-      @mousedown="startDrag"
-      @click="toggleCollapse(hasMoved)"
-    >
+    <button v-if="isCollapsed && mode === 'float'" class="btn btn-sm fixed z-20 shadow-lg cursor-move"
+      :style="{ left: `${position.x}px`, top: `${position.y}px` }" @mousedown="startDrag"
+      @click="toggleCollapse(hasMoved)">
       <Icon name="toolbar" class="h-4 w-4" />
       操作工具
     </button>
   </Transition>
 
   <!-- 右侧槽 flyout：共用 PanelFlyoutWrapper -->
-  <PanelFlyoutWrapper
-    v-if="mode === 'flyout'"
-    panel-id="action-bar"
-    title="操作工具"
-    icon="toolbar"
-    :width="320"
-  >
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="action-bar" title="操作工具" icon="toolbar" :width="320">
     <div class="p-3 space-y-3">
       <div class="rounded-xl border border-base-200/80 bg-base-200/35 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场</div>
@@ -195,21 +163,13 @@ function savePosition(next: { x: number; y: number }) {
         </div>
       </div>
 
-      <div
-        v-for="section in sections"
-        :key="`flyout-${section.id}`"
-        class="rounded-xl border border-base-200/80 bg-base-100 p-2.5"
-      >
+      <div v-for="section in sections" :key="`flyout-${section.id}`"
+        class="rounded-xl border border-base-200/80 bg-base-100 p-2.5">
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">
           {{ section.label }}
         </div>
-        <EditorButton
-          :groups="section.groups"
-          :columns="5"
-          :active-panel-ids="activePanelIds"
-          :tooltip-placement="section.id === 'panel' ? 'top' : 'bottom'"
-          @action="handleAction"
-        />
+        <EditorButton :groups="section.groups" :columns="5" :active-panel-ids="activePanelIds"
+          :tooltip-placement="section.id === 'panel' ? 'top' : 'bottom'" @action="handleAction" />
       </div>
     </div>
   </PanelFlyoutWrapper>

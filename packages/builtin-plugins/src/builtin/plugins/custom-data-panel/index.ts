@@ -1,6 +1,5 @@
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
 import type { PropertyPanelContext } from "@leafer-flow/core/api/property-panel";
-import { CUSTOM_DATA_PROP } from "@leafer-flow/core/core/flow-serialization";
 import CustomDataPropertyPanel from "./CustomDataPropertyPanel.vue";
 
 const PLUGIN_ID = "leafer-flow.custom-data-panel";
@@ -82,15 +81,12 @@ export const customDataPanelPlugin: EditorPluginModule = {
 function getCustomData(context: PropertyPanelContext) {
   const element = context.selectedElement;
   if (!element) return {};
-
-  const record = element as unknown as Record<string, unknown>;
-  const data = record[CUSTOM_DATA_PROP];
+  const id = context.editor.renderer.getId(element);
+  const data = context.editor.document.getNode(id)?.data.customData;
   if (data && typeof data === "object" && !Array.isArray(data)) {
     return data as Record<string, unknown>;
   }
-
-  record[CUSTOM_DATA_PROP] = {};
-  return record[CUSTOM_DATA_PROP] as Record<string, unknown>;
+  return {};
 }
 
 function getCustomDataValue<T>(context: PropertyPanelContext, key: string, fallback: T): T {
@@ -99,5 +95,8 @@ function getCustomDataValue<T>(context: PropertyPanelContext, key: string, fallb
 }
 
 function setCustomDataValue(context: PropertyPanelContext, key: string, value: unknown) {
-  getCustomData(context)[key] = value;
+  const element = context.selectedElement;
+  if (!element) return;
+  const id = context.editor.renderer.getId(element);
+  context.editor.documentCommands.setCustomData(id, { ...getCustomData(context), [key]: value } as import("@leafer-flow/core").JsonObject);
 }

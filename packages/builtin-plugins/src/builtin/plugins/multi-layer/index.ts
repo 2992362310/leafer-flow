@@ -1,6 +1,6 @@
 import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
-import { dispatchPanelToggle, getPanelToggleEvent } from "@leafer-flow/core/api/panel-toggle";
+import { dispatchPanelToggle } from "@leafer-flow/core/api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.multi-layer";
 
@@ -37,20 +37,21 @@ export const multiLayerPlugin: EditorPluginModule = {
 
     ctx.editor.overlayPanels.register({
       id: "multi-layer-panel",
+      label: "多图层",
+      icon: "ungroup",
       pluginId: PLUGIN_ID,
       component: defineAsyncComponent(() => import("./LayerPanel.vue")),
       visibilityMode: "self-visible",
       needsEditor: true,
       order: 60,
-      toggleEvent: getPanelToggleEvent("multi-layer-panel"),
     });
 
     ctx.editor.commands.register({
       id: "toggleMultiLayerPanel",
       label: "切换多图层",
       pluginId: PLUGIN_ID,
-      run: () => {
-        dispatchPanelToggle("multi-layer-panel", config);
+      run: (editor) => {
+        dispatchPanelToggle(editor, "multi-layer-panel", config);
         return { success: true, message: "已切换多图层面板" };
       },
     });

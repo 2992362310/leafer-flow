@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import type { Editor } from "@leafer-flow/core";
+import { providePanelDock } from "@leafer-flow/ui/composables";
 import {
   EditorTopBar,
   EditorActionBar,
@@ -28,7 +29,8 @@ const editor = shallowRef<Editor>();
 const router = useRouter();
 
 const state = usePageState();
-const panelVisibility = providePanelVisibility(state);
+const panelDock = providePanelDock();
+const panelVisibility = providePanelVisibility(state, panelDock);
 const { cleanupAll } = state;
 
 const selectedTool = computed(() => state.activeTool.value);
@@ -41,12 +43,13 @@ const viewControls = computed(() => {
   return editor.value.viewControls.list();
 });
 
-const { initializeApp, bindEvents, runtime, pageCommands } = usePageSetup({
+const { initializeApp, bindEvents, runtime, pageCommands, overlayPanels } = usePageSetup({
   editor,
   editorElement: editorRef,
   logRef,
   state,
   panelVisibility,
+  panelDock,
 });
 
 const toolLabels = computed(() => runtime.toolLabels.value);
@@ -63,9 +66,18 @@ async function openMarket(kind: "plugin" | "template") {
 
 onMounted(() => {
   void (async () => {
-    await initializeApp();
-    bindEvents();
-    await handleTemplateFromRoute();
+    try {
+      if (!await initializeApp()) return;
+      bindEvents();
+      await handleTemplateFromRoute();
+    } catch (error) {
+      logRef.value?.addLog({ message: "编辑器初始化失败", level: "error" });
+      console.error("Editor initialization failed", error);
+      cleanupAll();
+      const currentEditor = editor.value;
+      editor.value = undefined;
+      await currentEditor?.dispose().catch((cleanupError) => console.error("Editor disposal failed", cleanupError));
+    }
   })();
 });
 
@@ -93,5 +105,5 @@ onUnmounted(() => {
     <ViewControls :zoom-percent="zoomPercent" :controls="viewControls" />
   </div>
 
-  <Overlays :editor="editor" :state="state" />
+  <Overlays :editor="editor" :state="state" :panels="overlayPanels" />
 </template>

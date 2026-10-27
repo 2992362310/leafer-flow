@@ -1,105 +1,84 @@
-import { computed, ref } from "vue";
-import type { IconName } from "../assets/icons";
+import { computed, inject, provide, ref, shallowRef, type InjectionKey } from "vue";
 
-export type DockPanelId =
-  | "shape-library"
-  | "property-panel"
-  | "layer-panel"
-  | "action-bar"
-  | "event-log"
-  | "canvas-search"
-  | "history-panel"
-  | "plugin-market"
-  | "agent-chat"
-  | "minimap-panel"
-  | "multi-layer-panel"
-  | "diagram-lint"
-  | "shortcut-help"
-  | "status-bar"
-  | "drawing-settings"
-  | "template-market"
-  | "connector-panel"
-  | "align-panel"
-  | "layer-tools-panel"
-  | "export-panel"
-  | "auto-layout-panel";
+export type DockPanelId = string;
 
-interface DockPanelMeta {
+export interface DockPanelMeta {
   id: DockPanelId;
   label: string;
-  icon: IconName;
+  icon: string;
 }
 
 const STORAGE_KEY = "leafer-flow-docked-panels";
 
-const panelMetaMap: Record<DockPanelId, DockPanelMeta> = {
+const hostPanelMeta: Record<DockPanelId, DockPanelMeta> = {
   "shape-library": { id: "shape-library", label: "图形库", icon: "template" },
   "property-panel": { id: "property-panel", label: "属性", icon: "settings" },
   "layer-panel": { id: "layer-panel", label: "图层", icon: "layer" },
   "action-bar": { id: "action-bar", label: "操作工具", icon: "toolbar" },
   "event-log": { id: "event-log", label: "事件日志", icon: "clear" },
-  "canvas-search": { id: "canvas-search", label: "搜索", icon: "select" },
-  "history-panel": { id: "history-panel", label: "历史", icon: "undo" },
-  "plugin-market": { id: "plugin-market", label: "插件市场", icon: "export" },
-  "agent-chat": { id: "agent-chat", label: "AI 助手", icon: "agent" },
-  "minimap-panel": { id: "minimap-panel", label: "缩略图", icon: "visible" },
-  "multi-layer-panel": { id: "multi-layer-panel", label: "多图层", icon: "ungroup" },
-  "diagram-lint": { id: "diagram-lint", label: "规范检查", icon: "warning" },
-  "shortcut-help": { id: "shortcut-help", label: "快捷键", icon: "info" },
   "status-bar": { id: "status-bar", label: "状态信息", icon: "load" },
-  "drawing-settings": { id: "drawing-settings", label: "绘图设置", icon: "template" },
-  "template-market": { id: "template-market", label: "模板市场", icon: "template" },
-  "connector-panel": { id: "connector-panel", label: "连线中心", icon: "draw_arrow" },
-  "align-panel": { id: "align-panel", label: "对齐与分布", icon: "align_center" },
-  "layer-tools-panel": { id: "layer-tools-panel", label: "图层与状态", icon: "layer" },
-  "export-panel": { id: "export-panel", label: "导出", icon: "export" },
-  "auto-layout-panel": { id: "auto-layout-panel", label: "智能布局", icon: "distribute_vertical" },
 };
 
-const dockedIds = ref<DockPanelId[]>([]);
-const activeFlyoutId = ref<DockPanelId | null>(null);
-let initialized = false;
+export function createPanelDock() {
+  const panelMetaMap = shallowRef(new Map(Object.entries(hostPanelMeta)));
+  const dockedIds = ref<DockPanelId[]>([]);
+  const activeFlyoutId = ref<DockPanelId | null>(null);
+  let initialized = false;
 
-function isDockPanelId(value: string): value is DockPanelId {
-  return value in panelMetaMap;
-}
-
-function ensureInitialized() {
-  if (initialized) return;
-  initialized = true;
-  if (typeof window === "undefined") return;
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as string[];
-    if (!Array.isArray(parsed)) return;
-    dockedIds.value = parsed.filter(isDockPanelId);
-  } catch (error) {
-    console.warn("读取停靠面板状态失败", error);
+  function isDockPanelId(value: string): value is DockPanelId {
+    return typeof value === "string" && value.trim().length > 0;
   }
-}
 
-function persist() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dockedIds.value));
-  } catch (error) {
-    console.warn("保存停靠面板状态失败", error);
+  function ensureInitialized() {
+    if (initialized) return;
+    initialized = true;
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as string[];
+      if (!Array.isArray(parsed)) return;
+      dockedIds.value = parsed.filter(isDockPanelId);
+    } catch (error) {
+      console.warn("读取停靠面板状态失败", error);
+    }
   }
-}
 
-export function usePanelDock() {
+  function persist() {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dockedIds.value));
+    } catch (error) {
+      console.warn("保存停靠面板状态失败", error);
+    }
+  }
+
   ensureInitialized();
 
-  const dockedPanels = computed(() => dockedIds.value.map((id) => panelMetaMap[id]));
+  const dockedPanels = computed(() => dockedIds.value.flatMap((id) => {
+    const meta = panelMetaMap.value.get(id);
+    return meta ? [meta] : [];
+  }));
+
+  function syncPanels(panels: DockPanelMeta[]) {
+    const next = new Map(Object.entries(hostPanelMeta));
+    for (const panel of panels) next.set(panel.id, panel);
+    const removed = new Set([...panelMetaMap.value.keys()].filter((id) => !next.has(id)));
+    panelMetaMap.value = next;
+    if (removed.size) {
+      dockedIds.value = dockedIds.value.filter((id) => !removed.has(id));
+      if (activeFlyoutId.value && removed.has(activeFlyoutId.value)) activeFlyoutId.value = null;
+      persist();
+    }
+  }
 
   function isPanelDocked(id: DockPanelId) {
     return dockedIds.value.includes(id);
   }
 
   function dockPanel(id: DockPanelId) {
-    if (isPanelDocked(id)) return;
+    if (!panelMetaMap.value.has(id) || isPanelDocked(id)) return;
     dockedIds.value = [...dockedIds.value, id];
     // Keep the panel visible as a flyout after docking; otherwise it becomes "hidden".
     activeFlyoutId.value = id;
@@ -135,6 +114,7 @@ export function usePanelDock() {
   }
 
   function toggleFlyout(id: DockPanelId) {
+    if (!panelMetaMap.value.has(id) || !isPanelDocked(id)) return;
     activeFlyoutId.value = activeFlyoutId.value === id ? null : id;
   }
 
@@ -148,6 +128,7 @@ export function usePanelDock() {
 
   return {
     dockedPanels,
+    syncPanels,
     activeFlyoutId,
     isPanelDocked,
     isFlyoutOpen,
@@ -158,6 +139,20 @@ export function usePanelDock() {
     closeFlyout,
     moveDockedPanel,
   };
+}
+
+const PANEL_DOCK_KEY: InjectionKey<ReturnType<typeof createPanelDock>> = Symbol("panel-dock");
+
+export function providePanelDock() {
+  const dock = createPanelDock();
+  provide(PANEL_DOCK_KEY, dock);
+  return dock;
+}
+
+export function usePanelDock() {
+  const dock = inject(PANEL_DOCK_KEY);
+  if (!dock) throw new Error("usePanelDock requires an editor panel dock provider");
+  return dock;
 }
 
 /** 返回面板当前渲染模式：float（浮动）| flyout（槽位弹出）| hidden（已收起，不渲染） */

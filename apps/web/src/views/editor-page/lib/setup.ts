@@ -1,10 +1,12 @@
-import type { Ref } from "vue";
+import { watch, type Ref } from "vue";
 import type { Editor } from "@leafer-flow/core";
 import {
   useRuntimeContributions,
   useSelectionMarquee,
   useShapeDrop,
   useEditorCommands,
+  useOverlayPanels,
+  type usePanelDock,
 } from "@leafer-flow/ui/composables";
 import { useEditorAppInit } from "../../../composables/useEditorAppInit";
 import { usePageEvents } from "../../../composables/usePageEvents";
@@ -23,10 +25,20 @@ interface UsePageSetupOptions {
   logRef: Ref<EditorLogRef | null>;
   state: PageState;
   panelVisibility: PanelVisibility;
+  panelDock: ReturnType<typeof usePanelDock>;
 }
 
 export function usePageSetup(options: UsePageSetupOptions) {
   const runtime = useRuntimeContributions();
+  const overlayPanels = useOverlayPanels(options.editor);
+  watch(overlayPanels, (panels) => {
+    options.state.syncPanels(panels.map((panel) => panel.id));
+    options.panelDock.syncPanels(panels.map((panel) => ({
+      id: panel.id,
+      label: panel.label,
+      icon: panel.icon ?? "settings",
+    })));
+  }, { immediate: true, flush: "sync" });
 
   const pageCommands = providePageCommands(
     useEditorCommands({
@@ -67,17 +79,15 @@ export function usePageSetup(options: UsePageSetupOptions) {
     refreshEditorStats: options.state.refreshEditorStats,
   });
 
-  const { bindEvents, bindHostEvents } = usePageEvents({
+  const { bindEvents } = usePageEvents({
     editor: options.editor,
     togglePanel: options.panelVisibility.toggle,
     openPanel: options.panelVisibility.open,
+    closePanel: options.panelVisibility.closeFloat,
     diagramLintIssues: options.state.diagramLintIssues,
     diagramLintGeneratedAt: options.state.diagramLintGeneratedAt,
     addCleanup: options.state.addCleanup,
   });
-
-  // Host panels (e.g. layer tree) must work even while editor async init is in flight.
-  bindHostEvents();
 
   function handlePluginMarketChanged() {
     const currentEditor = options.editor.value;
@@ -101,5 +111,6 @@ export function usePageSetup(options: UsePageSetupOptions) {
     bindEvents,
     pageCommands,
     runtime,
+    overlayPanels,
   };
 }

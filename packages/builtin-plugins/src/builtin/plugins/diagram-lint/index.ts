@@ -2,7 +2,7 @@ import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
 import type { IUI } from "leafer";
 import { Connector } from "@leafer-flow/core/core/connector";
 import { defineAsyncComponent } from "vue";
-import { dispatchPanelToggle, getPanelToggleEvent } from "@leafer-flow/core/api/panel-toggle";
+import { dispatchPanelToggle } from "@leafer-flow/core/api/panel-toggle";
 import { fixNodeOverlaps, fixTextTooLong, runDiagramLint } from "./lint-engine";
 import type { DiagramLintCachePayload, DiagramLintUpdatedEventDetail, LintFixSummary, LintIssue } from "./types";
 
@@ -115,20 +115,21 @@ export const diagramLintPlugin: EditorPluginModule = {
   activate(ctx) {
     ctx.editor.overlayPanels.register({
       id: "diagram-lint",
+      label: "规范检查",
+      icon: "warning",
       pluginId: PLUGIN_ID,
       component: defineAsyncComponent(() => import("./DiagramLintPanel.vue")),
       visibilityMode: "open-prop",
       needsEditor: false,
       order: 70,
-      toggleEvent: getPanelToggleEvent("diagram-lint"),
     });
 
     ctx.editor.commands.register({
       id: "toggleDiagramLint",
       label: "规范检查",
       pluginId: PLUGIN_ID,
-      run: () => {
-        dispatchPanelToggle("diagram-lint");
+      run: (editor) => {
+        dispatchPanelToggle(editor, "diagram-lint");
         return { success: true, message: "已切换规范检查" };
       },
     });

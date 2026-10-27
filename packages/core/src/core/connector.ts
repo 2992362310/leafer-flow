@@ -825,6 +825,14 @@ export function hasConnectors(app: App) {
   return Boolean(app.tree.children?.some((child) => child instanceof Connector));
 }
 
+export function createConnector(app: App) {
+  return new Connector(app, {
+    fromPoint: { x: 0, y: 0 },
+    toPoint: { x: 0, y: 0 },
+    getNodeId: (node: IUI) => String(node.innerId),
+  });
+}
+
 export function isConnector(value: unknown): value is Connector {
   return value instanceof Connector;
 }

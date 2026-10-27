@@ -1,6 +1,6 @@
 import type { FlowGraph, FlowGraphEdge, FlowGraphNode, FlowGraphNodeStyle } from "@leafer-flow/core/core/flow-graph";
 import type { FlowNodeKind } from "@leafer-flow/core/core/flow-node-shape";
-import type { FlowDocumentSettings } from "@leafer-flow/core/core/flow-serialization";
+import type { FlowDocumentSettings } from "@leafer-flow/core";
 
 export type TemplateKind =
   | "approval"

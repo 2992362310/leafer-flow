@@ -79,10 +79,6 @@ function applyPanelExtensions(def: OverlayPanelDef): OverlayPanelDef {
   return def;
 }
 
-export function resolveOverlayPanelDefs(editor: Editor | undefined): OverlayPanelDef[] {
-  if (!editor) return [];
-
-  return editor.overlayPanels
-    .list()
-    .map((contribution) => applyPanelExtensions(toOverlayPanelDef(contribution)));
+export function resolveOverlayPanelDefs(panels: OverlayPanelContribution[]): OverlayPanelDef[] {
+  return panels.map((contribution) => applyPanelExtensions(toOverlayPanelDef(contribution)));
 }

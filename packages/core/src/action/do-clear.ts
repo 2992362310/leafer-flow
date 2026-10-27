@@ -7,14 +7,7 @@ import type Editor from "../editor";
  */
 export function doClear(editor: Editor): { success: boolean; message: string } {
   try {
-    // 清空画布中的所有元素
-    editor.app.tree.clear();
-
-    // 清空选择
-    editor.app.editor.target = undefined;
-
-    // 保存历史记录，使清空操作可撤销
-    editor.commitMutation();
+    editor.documentCommands.clear();
 
     return {
       success: true,

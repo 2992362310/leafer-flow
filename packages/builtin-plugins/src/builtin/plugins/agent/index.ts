@@ -1,6 +1,6 @@
 import { defineAsyncComponent } from "vue";
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
-import { dispatchPanelToggle, getPanelToggleEvent } from "@leafer-flow/core/api/panel-toggle";
+import { dispatchPanelToggle } from "@leafer-flow/core/api/panel-toggle";
 
 const PLUGIN_ID = "leafer-flow.agent";
 
@@ -22,20 +22,21 @@ export const agentPlugin: EditorPluginModule = {
   activate(ctx) {
     ctx.editor.overlayPanels.register({
       id: "agent-chat",
+      label: "AI 助手",
+      icon: "agent",
       pluginId: PLUGIN_ID,
       component: defineAsyncComponent(() => import("./AgentChatPanel.vue")),
       visibilityMode: "self-visible",
       needsEditor: true,
       order: 40,
-      toggleEvent: getPanelToggleEvent("agent-chat"),
     });
 
     ctx.editor.commands.register({
       id: "openAgent",
       label: "打开 AI 助手",
       pluginId: PLUGIN_ID,
-      run: () => {
-        dispatchPanelToggle("agent-chat");
+      run: (editor) => {
+        dispatchPanelToggle(editor, "agent-chat");
         return { success: true, message: "已执行" };
       },
     });

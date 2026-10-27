@@ -126,3 +126,4 @@ export const ACTION_NAME = {
 export type ActionName = (typeof ACTION_NAME)[keyof typeof ACTION_NAME];
 
 export const BUILTIN_PLUGIN_ID = "leafer-flow.builtin-core";
+export const CUSTOM_DATA_PROP = "__flowCustomData";

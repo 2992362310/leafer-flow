@@ -1,10 +1,9 @@
 import type Editor from "../editor";
 import {
     getConnectorRouteType,
-    setConnectorRouteType,
     type ConnectorRouteType,
 } from "./drawing-settings";
-import type { FlowDocumentSettings } from "./flow-serialization";
+import type { FlowDocumentSettings } from "../document/model";
 
 const CONNECTOR_ANIMATION_STORAGE_PREFIX = "leafer-flow.plugin.leafer-flow.connector-animation.";
 const CONNECTOR_ANIMATION_ENABLED_KEY = `${CONNECTOR_ANIMATION_STORAGE_PREFIX}enabled`;
@@ -63,10 +62,6 @@ export async function applyConnectorWorkbenchSettings(
     settings?: FlowDocumentSettings,
 ): Promise<void> {
     if (!settings) return;
-
-    if (isRouteType(settings.connectorRouteType)) {
-        setConnectorRouteType(settings.connectorRouteType);
-    }
 
     const animation = settings.connectorFlowAnimation;
     if (!animation) return;

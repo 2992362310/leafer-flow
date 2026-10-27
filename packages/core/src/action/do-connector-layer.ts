@@ -1,30 +1,19 @@
-import type { IUI } from "leafer";
-import { Connector } from "../core/connector";
 import type Editor from "../editor";
 
 export function doConnectorToFront(editor: Editor): { success: boolean; message: string } {
   try {
-    const children = editor.app.tree.children;
-    if (!children?.length) {
+    const document = editor.document.snapshot();
+    if (!document.nodes.length && !document.edges.length) {
       return { success: false, message: "画布为空" };
     }
 
-    const connectors: IUI[] = [];
-    for (const child of children) {
-      if (child instanceof Connector) {
-        connectors.push(child);
-      }
-    }
+    const connectors = document.edges.filter((edge) => edge.parentId === null);
 
     if (!connectors.length) {
       return { success: false, message: "画布上没有连接线" };
     }
 
-    connectors.forEach((connector) => {
-      editor.app.tree.add(connector);
-    });
-
-    editor.commitMutation({ autoSave: false });
+    editor.documentCommands.reorderElements(connectors.map((edge) => edge.id), "bringToFront");
     return { success: true, message: `已将 ${connectors.length} 条连接线置于顶层` };
   } catch (error) {
     console.error("连接线置顶失败", error);

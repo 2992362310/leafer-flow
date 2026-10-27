@@ -62,7 +62,7 @@ export function useEditorCommands({
   function handleTool(evt: IExecuteCommand) {
     if (!editor.value) return;
     if (evt.command === TOOL_NAME.DRAW_ARROW) {
-      window.dispatchEvent(new CustomEvent("leafer-flow:open-connector-panel"));
+      editor.value.overlayPanels.request("connector-panel", "open");
     }
     setCurrentTool(evt.command);
     editor.value.execute(evt, executeCallback);

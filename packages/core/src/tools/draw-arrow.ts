@@ -31,6 +31,14 @@ export class DrawArrow extends DrawBase {
     return zoom && zoom > 0 ? this.BASE_SNAP_DISTANCE / zoom : this.BASE_SNAP_DISTANCE;
   }
 
+  private getRouteType() {
+    const routeType = this.editor?.document.snapshot().settings.connectorRouteType;
+    if (routeType === "orthogonal" || routeType === "bezier" || routeType === "straight") {
+      return routeType;
+    }
+    return getConnectorRouteType();
+  }
+
   constructor(options?: IDrawOptions) {
     super();
     this.options = {
@@ -69,7 +77,7 @@ export class DrawArrow extends DrawBase {
       strokeWidth: this.options.strokeWidth,
       cornerRadius: this.options.cornerRadius,
       endArrow: "arrow",
-      routeType: getConnectorRouteType(),
+      routeType: this.getRouteType(),
       getNodeId: (node: IUI) => String(node.innerId),
     });
 
@@ -111,12 +119,12 @@ export class DrawArrow extends DrawBase {
     const endTarget = evt?.altKey
       ? createFreeTarget(rawEndPoint)
       : this.lastEndTarget ||
-        this.pickConnectableNode(rawEndPoint, startPoint, {
-          ignoredNodes: this.getIgnoredNodes(connector),
-        });
+      this.pickConnectableNode(rawEndPoint, startPoint, {
+        ignoredNodes: this.getIgnoredNodes(connector),
+      });
     const endNode = endTarget.node;
 
-    (connector as EditableConnector).routeType = getConnectorRouteType();
+    (connector as EditableConnector).routeType = this.getRouteType();
 
     if (this.startNode && endNode && this.startNode !== endNode) {
       bindConnectorToNodes(connector, this.startNode, endNode, {

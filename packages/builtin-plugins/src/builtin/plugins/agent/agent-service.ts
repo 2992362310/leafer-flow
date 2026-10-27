@@ -260,10 +260,6 @@ export class AgentService {
 
           toolCallCount++;
           if (toolCallCount > MAX_TOOL_CALLS) {
-            if (inTransaction) {
-              this.editor.endTransaction();
-              inTransaction = false;
-            }
             return {
               content: "工具调用次数过多，已停止执行。",
               toolCalls: allToolCalls,
@@ -287,11 +283,6 @@ export class AgentService {
             });
           }
         } else {
-          // 结束事务
-          if (inTransaction) {
-            this.editor.endTransaction();
-            inTransaction = false;
-          }
           return {
             content: "API 响应格式错误",
             toolCalls: allToolCalls,
@@ -299,15 +290,13 @@ export class AgentService {
         }
       }
     } catch (error) {
-      if (inTransaction) {
-        this.editor.endTransaction();
-        inTransaction = false;
-      }
       const errorMessage = error instanceof Error ? error.message : "未知错误";
       return {
         content: `处理消息时出错: ${errorMessage}`,
         toolCalls: allToolCalls,
       };
+    } finally {
+      if (inTransaction) this.editor.endTransaction();
     }
   }
 

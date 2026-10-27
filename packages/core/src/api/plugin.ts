@@ -13,11 +13,15 @@ export interface PluginStorage {
   remove(key: string): void;
 }
 
-export interface PluginContext {
+export interface PluginConfigurationContext {
   pluginId: string;
   editor: Editor;
   logger: PluginLogger;
   storage: PluginStorage;
+}
+
+export interface PluginContext extends PluginConfigurationContext {
+  onDispose(cleanup: () => void | Promise<void>): void;
 }
 
 export interface PluginConfigSchema {
@@ -50,6 +54,7 @@ export interface EditorPluginManifest {
 }
 
 export interface PluginContributionPreview {
+  nodeTypes?: string[];
   tools?: string[];
   commands?: string[];
   menus?: string[];
@@ -65,5 +70,5 @@ export interface EditorPluginModule {
   contributes?: PluginContributionPreview;
   activate(ctx: PluginContext): void | Promise<void>;
   deactivate?(ctx: PluginContext): void | Promise<void>;
-  configure?(ctx: PluginContext): PluginConfigSchema | Component;
+  configure?(ctx: PluginConfigurationContext): PluginConfigSchema | Component;
 }

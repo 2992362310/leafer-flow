@@ -19,8 +19,10 @@ export function doImage(editor: Editor): Promise<CommandResult> {
       }
 
       try {
-        const dataUrl = await readFileAsDataUrl(file);
-        const img = await loadImage(dataUrl);
+        if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
+        const resource = await editor.resources.prepare(file);
+        const img = await loadImage(resource.source);
+        if (editor.isDisposed) throw new Error("编辑器已关闭");
 
         // 计算合适的尺寸（最大 300px，保持比例）
         const maxSize = 300;
@@ -32,21 +34,16 @@ export function doImage(editor: Editor): Promise<CommandResult> {
           height = Math.round(height * ratio);
         }
 
-        // 创建 Leafer Image 元素
-        const { Image } = await import("leafer");
-        const element = new Image({
-          url: dataUrl,
-          x: 200,
-          y: 200,
-          width,
-          height,
-          editable: true,
-          name: file.name.replace(/\.[^.]+$/, ""),
-        });
-
-        editor.app.tree.add(element);
-        editor.app.editor.select(element);
-        editor.commitMutation();
+        const id = crypto.randomUUID();
+        editor.documentCommands.insertNode({
+          id,
+          type: "Image",
+          version: 1,
+          data: { assetId: resource.id, x: 200, y: 200, width, height, editable: true, name: file.name.replace(/\.[^.]+$/, "") },
+          children: [],
+        }, undefined, [resource]);
+        const element = editor.renderer.getNode(id);
+        if (element) editor.app.editor.select(element);
 
         resolve({ success: true, message: `已插入图片: ${file.name}` });
       } catch (error) {
@@ -64,15 +61,6 @@ export function doImage(editor: Editor): Promise<CommandResult> {
     };
 
     input.click();
-  });
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("读取文件失败"));
-    reader.readAsDataURL(file);
   });
 }
 

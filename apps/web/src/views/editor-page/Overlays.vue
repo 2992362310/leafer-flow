@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { Editor } from "@leafer-flow/core";
+import type { OverlayPanelContribution } from "@leafer-flow/core/api/overlay-panel";
 import { resolveOverlayPanelDefs, useInjectedPanelVisibility, type OverlayPanelContext, type PageState } from "./lib";
 
 const props = defineProps<{
   editor: Editor | undefined;
   state: PageState;
+  panels: OverlayPanelContribution[];
 }>();
 
 const visibility = useInjectedPanelVisibility();
 
-const overlayPanelDefs = computed(() => resolveOverlayPanelDefs(props.editor));
+const overlayPanelDefs = computed(() => resolveOverlayPanelDefs(props.panels));
 
 const panelContext = computed<OverlayPanelContext>(() => ({
   editor: props.editor,

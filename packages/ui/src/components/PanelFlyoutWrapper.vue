@@ -2,7 +2,7 @@
 import { inject } from "vue";
 import { usePanelDock, type DockPanelId } from "../composables/usePanelDock";
 import type { IconName } from "../assets/icons";
-import { isPagePanelId, PANEL_VISIBILITY_KEY } from "../context/panel-visibility";
+import { PANEL_VISIBILITY_KEY } from "../context/panel-visibility";
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +21,7 @@ function handleUndock() {
   const id = props.panelId;
   undockPanel(id);
   // Restore float visibility for page-managed panels (docked toggles never set float open).
-  if (panelVisibility && isPagePanelId(id)) {
+  if (panelVisibility?.has(id)) {
     panelVisibility.open(id);
   }
 }
@@ -30,9 +30,7 @@ function handleUndock() {
 <template>
   <div
     class="fixed z-40 flex flex-col rounded-2xl border border-base-200/80 bg-base-100/95 shadow-xl backdrop-blur-sm overflow-hidden"
-    :style="{ width: props.width + 'px', right: '3.5rem', top: '4rem', maxHeight: 'calc(100vh - 5rem)' }"
-    @click.stop
-  >
+    :style="{ width: props.width + 'px', right: '3.5rem', top: '4rem', maxHeight: 'calc(100vh - 5rem)' }" @click.stop>
     <div class="flex shrink-0 items-center justify-between border-b border-base-200/80 px-4 py-2.5">
       <div class="flex items-center gap-2">
         <Icon :name="props.icon" class="h-4 w-4 text-base-content/60" />

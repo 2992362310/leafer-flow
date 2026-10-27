@@ -1,5 +1,3 @@
-import { Text, type IUI } from "leafer";
-import { Connector } from "./connector";
 import type Editor from "../editor";
 
 export type StylePresetId = "default" | "blue" | "success" | "warning" | "danger" | "data" | "note";
@@ -85,36 +83,16 @@ export function applyStylePreset(editor: Editor, presetId: StylePresetId) {
   const preset = stylePresets.find((item) => item.id === presetId);
   if (!preset) return { success: false, message: "未找到样式预设" };
 
-  const selected = (editor.app.editor.list || []) as IUI[];
+  const selected = editor.app.editor.list || [];
   if (!selected.length) return { success: false, message: "请先选择元素" };
 
-  selected.forEach((element) => applyPresetToElement(element, preset));
-  editor.commitMutation({ syncConnectorLabels: true });
+  editor.documentCommands.updatePresentation(selected.map((element) => editor.renderer.getId(element)), {
+    fill: preset.fill,
+    stroke: preset.connectorStroke ?? preset.stroke,
+    stroke_width: preset.strokeWidth,
+    opacity: 1,
+    text_color: preset.text,
+    ...(preset.dashPattern ? { dash_pattern: preset.dashPattern } : {}),
+  });
   return { success: true, message: `已应用样式：${preset.label}` };
-}
-
-function applyPresetToElement(element: IUI, preset: StylePreset) {
-  if (element instanceof Connector) {
-    element.stroke = preset.connectorStroke || preset.stroke;
-    element.strokeWidth = preset.strokeWidth;
-    element.dashPattern = preset.dashPattern;
-    element.update();
-    return;
-  }
-
-  if (element instanceof Text) {
-    element.fill = preset.text;
-    return;
-  }
-
-  const children = (element as unknown as { children?: IUI[] }).children;
-  if (children?.length) {
-    children.forEach((child) => applyPresetToElement(child, preset));
-    return;
-  }
-
-  element.fill = preset.fill;
-  element.stroke = preset.stroke;
-  element.strokeWidth = preset.strokeWidth;
-  element.opacity = 1;
 }

@@ -1,7 +1,4 @@
 import { Text, type IUI } from "leafer";
-import type { App } from "leafer";
-import { Connector } from "@leafer-flow/core/core/connector";
-import { createConnector } from "@leafer-flow/core/core/flow-serialization";
 import type Editor from "@leafer-flow/core/editor";
 import { ACTION_NAME, TOOL_NAME } from "@leafer-flow/core/constants";
 import { getTemplateStyle, templateMap } from "../../../templates/defs";
@@ -59,26 +56,6 @@ function getElementLabel(element: IUI): string {
   const text = getText(element);
   if (text?.text) return String(text.text).slice(0, 30);
   return element.tag || "未知";
-}
-
-function createConnectorForAgent(app: App, fromNode: IUI, toNode: IUI): Connector | null {
-  try {
-    const connector = createConnector(app);
-    const state = {
-      mode: "node" as const,
-      fromId: fromNode.innerId,
-      toId: toNode.innerId,
-      routeType: "orthogonal" as const,
-    };
-    connector.setState({ ...connector.getState(), ...state }, (id: string | number) => {
-      const children = app.tree.children as IUI[];
-      return children.find((el) => el.innerId === id || el.id === id);
-    });
-    return connector;
-  } catch (e) {
-    console.warn("创建连接线失败", e);
-    return null;
-  }
 }
 
 export interface AgentTool {
@@ -763,6 +740,7 @@ export function getAgentTools(): AgentTool[] {
         if (!tool) return `不支持的图形类型: ${shapeType}`;
 
         let created = 0;
+        const textPatches: Record<string, { text: string }> = {};
         editor.beginTransaction();
 
         try {
@@ -775,19 +753,12 @@ export function getAgentTools(): AgentTool[] {
 
             const element = editor.createElementFromTool(tool, { x, y }, { width, height });
             if (element && text) {
-              // 设置文本：大部分图形是 Group，找到子元素中的 Text
-              const children = (element as unknown as { children?: unknown[] }).children;
-              if (children) {
-                const textChild = children.find((child) => (child as unknown as { text?: string }).text !== undefined);
-                if (textChild) {
-                  (textChild as unknown as { text: string }).text = text;
-                }
-              }
+              textPatches[editor.renderer.getId(element)] = { text };
             }
             if (element) created++;
           }
 
-          editor.commitMutation();
+          if (Object.keys(textPatches).length) editor.documentCommands.updatePresentations(textPatches);
           return `已批量创建 ${created}/${count} 个 ${shapeType} 图形`;
         } catch (error) {
           editor.endTransaction();
@@ -859,10 +830,8 @@ export function getAgentTools(): AgentTool[] {
             edges: data.graph.edges.map((edge) => ({ ...edge })),
           };
 
-          insertTemplateFlow(editor.app, transformedGraph, getTemplateStyle);
-          editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
+          insertTemplateFlow(editor, transformedGraph, getTemplateStyle, data.settings);
           editor.endTransaction();
-          await editor.autoSave.save();
 
           const scaleStr = scale !== 1 ? ` (缩放 ${Math.round(scale * 100)}%)` : "";
           return `已插入 ${templateType} 模板${scaleStr}`;
@@ -928,52 +897,13 @@ export function getAgentTools(): AgentTool[] {
         if (!selected || selected.length === 0) {
           return "请先选中要修改的元素";
         }
-
-        selected.forEach((element) => {
-          // 位置
-          if (typeof args.x === "number") {
-            element.x = args.x;
-          }
-          if (typeof args.y === "number") {
-            element.y = args.y;
-          }
-
-          // 尺寸
-          if (typeof args.width === "number") {
-            element.width = Math.max(1, args.width);
-          }
-          if (typeof args.height === "number") {
-            element.height = Math.max(1, args.height);
-          }
-
-          // 旋转
-          if (typeof args.rotation === "number") {
-            element.rotation = args.rotation;
-          }
-
-          // 样式属性：应用到形状子元素（Group 的子元素）
-          const shape = getShape(element);
-          if (shape) {
-            if (typeof args.fill === "string") {
-              shape.fill = args.fill;
-            }
-            if (typeof args.stroke === "string") {
-              shape.stroke = args.stroke;
-            }
-            if (typeof args.stroke_width === "number") {
-              shape.strokeWidth = args.stroke_width;
-            }
-            if (typeof args.opacity === "number") {
-              shape.opacity = args.opacity;
-            }
-            if (typeof args.corner_radius === "number") {
-              shape.cornerRadius = args.corner_radius;
-            }
-          }
-        });
-
-        editor.commitMutation();
-        return `已修改 ${selected.length} 个元素的属性`;
+        const keys = ["x", "y", "width", "height", "rotation", "fill", "stroke", "stroke_width", "opacity", "corner_radius"];
+        const patch = Object.fromEntries(keys.filter((key) => args[key] !== undefined).map((key) => [key, args[key]]));
+        if (!Object.keys(patch).length) return "未提供要修改的属性";
+        return editor.commands.execute("document.presentation.update", {
+          ids: selected.map((element) => editor.renderer.getId(element)),
+          patch,
+        }).then((result) => result.success ? `已修改 ${selected.length} 个元素的属性` : result.message);
       },
     },
 
@@ -1005,29 +935,13 @@ export function getAgentTools(): AgentTool[] {
           return "请先选中要修改文字的元素";
         }
 
-        let modified = 0;
-        selected.forEach((element) => {
-          const text = getText(element);
-          if (!text) return;
-
-          if (typeof args.text === "string") {
-            text.text = args.text;
-          }
-          if (typeof args.font_size === "number") {
-            text.fontSize = args.font_size;
-          }
-          if (typeof args.text_color === "string") {
-            text.fill = args.text_color;
-          }
-          modified++;
-        });
-
-        if (modified === 0) {
-          return "选中的元素中没有可修改的文字元素";
-        }
-
-        editor.commitMutation();
-        return `已修改 ${modified} 个元素的文字`;
+        const keys = ["text", "font_size", "text_color"];
+        const patch = Object.fromEntries(keys.filter((key) => args[key] !== undefined).map((key) => [key, args[key]]));
+        if (!Object.keys(patch).length) return "未提供要修改的文字属性";
+        return editor.commands.execute("document.presentation.update", {
+          ids: selected.map((element) => editor.renderer.getId(element)),
+          patch,
+        }).then((result) => result.success ? `已修改选中元素文字` : "选中的元素中没有可修改的文字元素");
       },
     },
 
@@ -1269,11 +1183,16 @@ export function getAgentTools(): AgentTool[] {
         if (!fromEl) return `未找到起始元素: ${fromStr}`;
         if (!toEl) return `未找到目标元素: ${toStr}`;
 
-        const connector = createConnectorForAgent(editor.app, fromEl, toEl);
-        if (!connector) return "创建连接线失败";
-
-        editor.app.tree.add(connector);
-        editor.commitMutation({ syncConnectorLabels: true });
+        const edgeId = crypto.randomUUID();
+        editor.documentCommands.insertEdge({
+          id: edgeId,
+          parentId: null,
+          from: { nodeId: editor.renderer.getId(fromEl), port: { side: "right", percent: 0.5 } },
+          to: { nodeId: editor.renderer.getId(toEl), port: { side: "left", percent: 0.5 } },
+          data: { routeType: "orthogonal" },
+        });
+        const connector = editor.renderer.getNode(edgeId);
+        if (connector) editor.app.editor.select(connector);
         return `已连接 "${getElementLabel(fromEl)}" 和 "${getElementLabel(toEl)}"`;
       },
     },

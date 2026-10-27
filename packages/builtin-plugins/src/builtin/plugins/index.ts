@@ -20,6 +20,7 @@ import { diagramLintPlugin } from "./diagram-lint";
 import { minimapPlugin } from "./minimap";
 import { multiLayerPlugin } from "./multi-layer";
 import { connectorAnimationPlugin } from "./connector-animation";
+import { taskNodePlugin } from "./task-node";
 
 export interface BuiltinPluginOptions {
   canUseTemplateAction?: (action: string) => boolean;
@@ -42,6 +43,7 @@ export function createBuiltinPlugins(options: BuiltinPluginOptions = {}): Editor
     flowShapesPlugin,
     bpmnShapesPlugin,
     architectureShapesPlugin,
+    taskNodePlugin,
     agentPlugin,
     autoLayoutPlugin,
     connectorAnimationPlugin,

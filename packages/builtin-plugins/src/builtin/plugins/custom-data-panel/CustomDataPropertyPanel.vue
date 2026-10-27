@@ -1,40 +1,41 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { IUI } from "leafer";
 import type Editor from "@leafer-flow/core/editor";
+import type { JsonObject } from "@leafer-flow/core";
 import type { PropertyPanelContext } from "@leafer-flow/core/api/property-panel";
-import { CUSTOM_DATA_PROP } from "@leafer-flow/core/core/flow-serialization";
 
 const props = defineProps<{
   editor: Editor;
   context: PropertyPanelContext;
 }>();
 
-type CustomData = Record<string, unknown>;
+type CustomData = JsonObject;
 
 const rawCustomData = ref("{}");
 const errorMessage = ref("");
 
-const selectedElement = computed(() => props.context.selectedElement);
+const selectedNodeId = computed(() => props.context.selectedElement
+  ? props.editor.renderer.getId(props.context.selectedElement)
+  : null);
 
 watch(
-  selectedElement,
+  selectedNodeId,
   () => {
-    rawCustomData.value = JSON.stringify(readCustomData(selectedElement.value), null, 2);
+    rawCustomData.value = JSON.stringify(readCustomData(), null, 2);
     errorMessage.value = "";
   },
   { immediate: true },
 );
 
-function readCustomData(element: IUI | null): CustomData {
-  if (!element) return {};
-  const data = (element as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP];
-  return isPlainObject(data) ? (data as CustomData) : {};
+function readCustomData(): CustomData {
+  if (!selectedNodeId.value) return {};
+  const data = props.editor.document.getNode(selectedNodeId.value)?.data.customData;
+  return isPlainObject(data) ? data as CustomData : {};
 }
 
 function applyCustomData() {
-  const element = selectedElement.value;
-  if (!element) return;
+  const id = selectedNodeId.value;
+  if (!id) return;
 
   try {
     const parsed = JSON.parse(rawCustomData.value) as unknown;
@@ -43,8 +44,7 @@ function applyCustomData() {
       return;
     }
 
-    (element as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP] = parsed;
-    props.editor.commitMutation();
+    props.editor.documentCommands.setCustomData(id, parsed as JsonObject);
     errorMessage.value = "";
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "JSON 解析失败";
@@ -52,13 +52,12 @@ function applyCustomData() {
 }
 
 function clearCustomData() {
-  const element = selectedElement.value;
-  if (!element) return;
+  const id = selectedNodeId.value;
+  if (!id) return;
 
-  delete (element as unknown as Record<string, unknown>)[CUSTOM_DATA_PROP];
+  props.editor.documentCommands.setCustomData(id);
   rawCustomData.value = "{}";
   errorMessage.value = "";
-  props.editor.commitMutation();
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -72,12 +71,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
       这是一个插件属性面板示例，用于编辑选中元素的自定义 JSON 数据。
     </p>
 
-    <textarea
-      v-model="rawCustomData"
-      class="textarea textarea-bordered textarea-xs min-h-32 w-full resize-y font-mono"
-      spellcheck="false"
-      placeholder="{}"
-    ></textarea>
+    <textarea v-model="rawCustomData" class="textarea textarea-bordered textarea-xs min-h-32 w-full resize-y font-mono"
+      spellcheck="false" placeholder="{}"></textarea>
 
     <p v-if="errorMessage" class="text-xs text-error">{{ errorMessage }}</p>
 

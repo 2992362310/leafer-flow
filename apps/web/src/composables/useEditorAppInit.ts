@@ -1,4 +1,4 @@
-import type { Ref } from "vue";
+import { onUnmounted, type Ref } from "vue";
 import { WatchEvent } from "leafer";
 import { initEditor, type Editor } from "../editor";
 
@@ -27,36 +27,48 @@ export function useEditorAppInit({
   bindShapeDrop,
   refreshEditorStats,
 }: UseEditorAppInitOptions) {
+  let disposed = false;
+  let removeStatsListener: (() => void) | undefined;
+
+  onUnmounted(() => {
+    disposed = true;
+    removeStatsListener?.();
+    const currentEditor = editor.value;
+    editor.value = undefined;
+    void currentEditor?.dispose().catch((error) => console.error("Editor disposal failed", error));
+  });
+
   async function initializeApp() {
-    if (!editorElement.value) return;
+    if (disposed || !editorElement.value) return false;
 
-    editor.value = initEditor(editorElement.value);
-    refreshRuntimeToolContributions(editor.value);
-    bindSelectionMarquee(editor.value);
-    bindShapeDrop(editor.value);
+    const currentEditor = await initEditor(editorElement.value);
+    if (disposed) {
+      await currentEditor.dispose();
+      return false;
+    }
+    editor.value = currentEditor;
+    refreshRuntimeToolContributions(currentEditor);
+    bindSelectionMarquee(currentEditor);
+    bindShapeDrop(currentEditor);
 
-    editor.value.app.tree.on(WatchEvent.DATA, () => {
-      if (!editor.value) return;
-      refreshEditorStats(editor.value);
-    });
+    const refresh = () => {
+      if (!disposed) refreshEditorStats(currentEditor);
+    };
+    currentEditor.app.tree.on(WatchEvent.DATA, refresh);
+    removeStatsListener = () => currentEditor.app.tree.off(WatchEvent.DATA, refresh);
 
-    await restoreAutosave(editor.value);
+    await restoreAutosave(currentEditor);
+    if (disposed) return false;
     logRef.value?.addLog({ message: "应用初始化完成", level: "success" });
+    return true;
   }
 
   async function restoreAutosave(currentEditor: Editor) {
     const loadResult = await currentEditor.autoSave.load();
-    if (!loadResult.loaded) return;
+    if (disposed || !loadResult.loaded) return;
 
     refreshEditorStats(currentEditor);
-    currentEditor.commitMutation({ autoSave: false });
     logRef.value?.addLog({ message: "已恢复上次编辑的数据", level: "info" });
-    if (loadResult.failedConnectors > 0) {
-      logRef.value?.addLog({
-        message: `${loadResult.failedConnectors} 条连接线恢复节点绑定失败，已转为浮动线段`,
-        level: "warning",
-      });
-    }
   }
 
   return { initializeApp };

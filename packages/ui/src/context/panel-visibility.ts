@@ -1,8 +1,9 @@
 import { inject, provide, type InjectionKey } from "vue";
 import { usePanelDock } from "../composables/usePanelDock";
-import { isPagePanelId, type PagePanelId } from "./panels";
+import type { PagePanelId } from "./panels";
 
 interface PanelState {
+  hasPanel(id: PagePanelId): boolean;
   isPanelOpen(id: PagePanelId): boolean;
   togglePanel(id: PagePanelId): void;
   openPanel(id: PagePanelId): void;
@@ -10,6 +11,7 @@ interface PanelState {
 }
 
 export interface PanelVisibility {
+  has(id: PagePanelId): boolean;
   isDocked(id: PagePanelId): boolean;
   isFloatOpen(id: PagePanelId): boolean;
   isMounted(id: PagePanelId): boolean;
@@ -21,10 +23,8 @@ export interface PanelVisibility {
 
 export const PANEL_VISIBILITY_KEY: InjectionKey<PanelVisibility> = Symbol("panel-visibility");
 
-export { isPagePanelId };
-
-export function usePanelVisibility(state: PanelState): PanelVisibility {
-  const { isPanelDocked, isFlyoutOpen, toggleFlyout, closeFlyout } = usePanelDock();
+export function usePanelVisibility(state: PanelState, dock = usePanelDock()): PanelVisibility {
+  const { isPanelDocked, isFlyoutOpen, toggleFlyout, closeFlyout } = dock;
 
   function isDocked(id: PagePanelId) {
     return isPanelDocked(id);
@@ -67,6 +67,7 @@ export function usePanelVisibility(state: PanelState): PanelVisibility {
   }
 
   return {
+    has: state.hasPanel,
     isDocked,
     isFloatOpen,
     isMounted,
@@ -77,8 +78,8 @@ export function usePanelVisibility(state: PanelState): PanelVisibility {
   };
 }
 
-export function providePanelVisibility(state: PanelState) {
-  const visibility = usePanelVisibility(state);
+export function providePanelVisibility(state: PanelState, dock?: ReturnType<typeof usePanelDock>) {
+  const visibility = usePanelVisibility(state, dock);
   provide(PANEL_VISIBILITY_KEY, visibility);
   return visibility;
 }

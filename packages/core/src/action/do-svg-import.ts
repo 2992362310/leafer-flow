@@ -1,4 +1,4 @@
-import { Path, Group, Text, type IUI } from "leafer";
+import type { DocumentNode, JsonObject } from "../document/model";
 import type Editor from "../editor";
 
 export function doImportSVG(editor: Editor): Promise<{ success: boolean; message: string }> {
@@ -20,16 +20,16 @@ export function doImportSVG(editor: Editor): Promise<{ success: boolean; message
 
       try {
         const svgText = await file.text();
-        const element = parseSVGToElement(svgText, file.name);
+        const node = parseSVGToNode(svgText, file.name);
 
-        if (!element) {
+        if (!node) {
           resolve({ success: false, message: "无法解析 SVG 文件" });
           return;
         }
 
-        editor.app.tree.add(element);
-        editor.app.editor.select(element);
-        editor.commitMutation();
+        editor.documentCommands.insertNode(node);
+        const element = editor.renderer.getNode(node.id);
+        if (element) editor.app.editor.select(element);
 
         resolve({ success: true, message: `已导入 SVG: ${file.name}` });
       } catch (error) {
@@ -50,7 +50,7 @@ export function doImportSVG(editor: Editor): Promise<{ success: boolean; message
   });
 }
 
-function parseSVGToElement(svgText: string, fileName: string): IUI | null {
+function parseSVGToNode(svgText: string, fileName: string): DocumentNode | null {
   // 解析 SVG 获取尺寸和路径
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, "image/svg+xml");
@@ -163,20 +163,12 @@ function parseSVGToElement(svgText: string, fileName: string): IUI | null {
 
   if (paths.length === 0) return null;
 
-  // 创建 Leafer Path 元素
   const combinedPath = paths.join(" ");
 
   // 获取 SVG 的 stroke 和 fill
   const svgFill = svg.getAttribute("fill") || "none";
   const svgStroke = svg.getAttribute("stroke") || "#333";
   const svgStrokeWidth = parseFloat(svg.getAttribute("stroke-width") || "1");
-
-  const pathElement = new Path({
-    path: combinedPath,
-    fill: svgFill === "none" ? "transparent" : svgFill,
-    stroke: svgStroke === "none" ? "#333" : svgStroke,
-    strokeWidth: svgStrokeWidth || 1,
-  });
 
   // 缩放到合适大小（最大 300px）
   const maxSize = 300;
@@ -190,29 +182,45 @@ function parseSVGToElement(svgText: string, fileName: string): IUI | null {
 
   // 创建 Group 包裹路径和名称文本
   const name = fileName.replace(/\.svg$/i, "");
-  const group = new Group({
-    x: 200,
-    y: 200,
-    width: finalWidth,
-    height: finalHeight,
-    editable: true,
-    name: name || "SVG 图形",
+  return {
+    id: crypto.randomUUID(),
+    type: "Group",
+    version: 1,
+    data: { x: 200, y: 200, width: finalWidth, height: finalHeight, editable: true, name: name || "SVG 图形" },
     children: [
-      pathElement,
-      new Text({
-        x: 4,
-        y: 4,
-        width: Math.max(finalWidth - 8, 0),
-        height: Math.max(finalHeight - 8, 0),
-        text: name || "SVG",
-        fill: "#666",
-        fontSize: 12,
-        textAlign: "center",
-        verticalAlign: "middle",
-        visible: finalWidth > 60 && finalHeight > 40,
-      }),
+      {
+        id: crypto.randomUUID(),
+        type: "Path",
+        version: 1,
+        data: {
+          path: combinedPath,
+          fill: svgFill === "none" ? "transparent" : svgFill,
+          stroke: svgStroke === "none" ? "#333" : svgStroke,
+          strokeWidth: svgStrokeWidth || 1,
+          scaleX: scale,
+          scaleY: scale,
+          editable: false,
+        } as JsonObject,
+        children: [],
+      },
+      {
+        id: crypto.randomUUID(),
+        type: "Text",
+        version: 1,
+        data: {
+          x: 4,
+          y: 4,
+          width: Math.max(finalWidth - 8, 0),
+          height: Math.max(finalHeight - 8, 0),
+          text: name || "SVG",
+          fill: "#666",
+          fontSize: 12,
+          textAlign: "center",
+          verticalAlign: "middle",
+          visible: finalWidth > 60 && finalHeight > 40,
+        },
+        children: [],
+      },
     ],
-  });
-
-  return group;
+  };
 }

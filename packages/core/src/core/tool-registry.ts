@@ -33,15 +33,27 @@ export class ToolRegistry {
   }
 
   unregister(id: string): void {
-    this.contributions.delete(id);
+    const contribution = this.contributions.get(id);
+    if (!contribution) return;
+    try {
+      contribution.tool.cancel(() => undefined);
+    } finally {
+      this.contributions.delete(id);
+    }
   }
 
   unregisterByPlugin(pluginId: string): void {
+    const errors: unknown[] = [];
     this.contributions.forEach((contribution, id) => {
       if (contribution.pluginId === pluginId) {
-        this.contributions.delete(id);
+        try {
+          this.unregister(id);
+        } catch (error) {
+          errors.push(error);
+        }
       }
     });
+    if (errors.length) throw new AggregateError(errors, `Tool cleanup failed: ${pluginId}`);
   }
 
   get(id: string): IEditorTool | undefined {

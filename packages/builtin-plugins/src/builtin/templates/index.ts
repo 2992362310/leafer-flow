@@ -12,7 +12,7 @@ import type Editor from "@leafer-flow/core/editor";
 import type { EditorPluginModule } from "@leafer-flow/core/api/plugin";
 import { insertTemplateFlow } from "../../templates/insert";
 import { applyConnectorWorkbenchSettings } from "@leafer-flow/core/core/connector-workbench-settings";
-import type { FlowDocumentSettings } from "@leafer-flow/core/core/flow-serialization";
+import type { FlowDocumentSettings } from "@leafer-flow/core";
 import type { FlowGraph } from "@leafer-flow/core/core/flow-graph";
 import { TemplateRegistry, type TemplateKind } from "./registry";
 
@@ -111,16 +111,13 @@ export class TemplateManager {
         edges: data.graph.edges.map((edge) => ({ ...edge })),
       };
 
-      insertTemplateFlow(this.editor.app, transformedGraph, TemplateRegistry.getNodeStyle);
-
       const settings = resolveTemplateSettings(data.graph, data.settings);
+      insertTemplateFlow(this.editor, transformedGraph, TemplateRegistry.getNodeStyle, settings);
       if (settings) {
         await applyConnectorWorkbenchSettings(this.editor, settings);
       }
 
-      this.editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
       this.editor.endTransaction();
-      await this.editor.autoSave.save();
 
       const scaleStr = scale !== 1 ? ` (缩放 ${Math.round(scale * 100)}%)` : "";
       return { success: true, message: data.message + scaleStr };

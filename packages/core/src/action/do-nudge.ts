@@ -1,4 +1,3 @@
-import type { IUI } from "leafer";
 import type Editor from "../editor";
 
 export function doNudge(
@@ -7,24 +6,17 @@ export function doNudge(
   dy: number,
 ): { success: boolean; message: string } {
   try {
-    const list = (editor.app.editor.list || []) as IUI[];
+    const list = editor.app.editor.list ?? [];
     if (!list.length) {
       return { success: false, message: "未选中元素" };
     }
 
-    let moved = 0;
-    list.forEach((item) => {
-      if ((item as { locked?: boolean }).locked) return;
-      item.x = (item.x || 0) + dx;
-      item.y = (item.y || 0) + dy;
-      moved += 1;
-    });
+    const moved = editor.documentCommands.moveElements(list.map((item) => editor.renderer.getId(item)), dx, dy);
 
     if (!moved) {
       return { success: false, message: "选中元素不可移动" };
     }
 
-    editor.commitMutation({ syncConnectorLabels: true, autoSave: false });
     return { success: true, message: `已移动 ${moved} 个元素` };
   } catch (error) {
     console.error("执行移动操作时发生错误", error);

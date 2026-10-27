@@ -11,13 +11,7 @@ interface GraphStats {
   adjacency: Map<string, Set<string>>;
 }
 
-interface TextCarrier {
-  text?: unknown;
-}
-
-type TextNode = IUI & {
-  text: string;
-};
+interface TextCarrier { text?: unknown }
 
 function collectVisibleNodes(editor: Editor): NodeLike[] {
   const children = (editor.app.tree.children ?? []) as IUI[];
@@ -29,7 +23,7 @@ function toId(input: string | number): string {
   return String(input);
 }
 
-function overlaps(a: NodeLike, b: NodeLike): boolean {
+function overlaps(a: { x?: number; y?: number; width?: number; height?: number }, b: { x?: number; y?: number; width?: number; height?: number }): boolean {
   const ax = a.x ?? 0;
   const ay = a.y ?? 0;
   const aw = a.width ?? 0;
@@ -142,31 +136,6 @@ function analyzeReachability(
     breakpointId,
     pathHint: compactPath,
     pathIds: chain,
-  };
-}
-
-function getEditableTextNode(node: NodeLike): { get: () => string; set: (value: string) => void } | null {
-  const direct = node as unknown as TextCarrier;
-  if (typeof direct.text === "string") {
-    return {
-      get: () => String(direct.text ?? ""),
-      set: (value: string) => {
-        direct.text = value;
-      },
-    };
-  }
-
-  const children = (node as unknown as { children?: IUI[] }).children;
-  if (!children?.length) return null;
-
-  const textChild = children.find((child) => typeof (child as unknown as TextCarrier).text === "string") as TextNode | undefined;
-  if (!textChild) return null;
-
-  return {
-    get: () => String(textChild.text ?? ""),
-    set: (value: string) => {
-      textChild.text = value;
-    },
   };
 }
 
@@ -313,7 +282,8 @@ export function runDiagramLint(editor: Editor): LintResult {
 }
 
 export function fixNodeOverlaps(editor: Editor): { success: boolean; message: string } {
-  const nodes = collectVisibleNodes(editor);
+  const document = editor.document.snapshot();
+  const nodes = document.nodes.filter((node) => node.data.visible !== false);
   if (nodes.length < 2) {
     return { success: false, message: "节点数量不足，无需修复重叠" };
   }
@@ -321,16 +291,25 @@ export function fixNodeOverlaps(editor: Editor): { success: boolean; message: st
   const gap = 32;
   let moved = 0;
 
+  const positions = new Map(nodes.map((node) => [node.id, {
+    x: Number(node.data.x ?? 0),
+    y: Number(node.data.y ?? 0),
+    width: Number(node.data.width ?? 0),
+    height: Number(node.data.height ?? 0),
+  }]));
+
   for (let i = 0; i < nodes.length; i++) {
-    const current = nodes[i];
-    if (current.locked) continue;
+    const current = nodes[i]!;
+    if (current.data.locked) continue;
 
     for (let j = 0; j < i; j++) {
-      const prev = nodes[j];
-      if (!overlaps(current, prev)) continue;
+      const prev = nodes[j]!;
+      const currentBox = positions.get(current.id)!;
+      const previousBox = positions.get(prev.id)!;
+      if (!overlaps(currentBox, previousBox)) continue;
 
-      current.x = (prev.x ?? 0) + (prev.width ?? 120) + gap;
-      current.y = (current.y ?? 0) + gap;
+      currentBox.x = previousBox.x + (previousBox.width || 120) + gap;
+      currentBox.y += gap;
       moved++;
     }
   }
@@ -339,7 +318,7 @@ export function fixNodeOverlaps(editor: Editor): { success: boolean; message: st
     return { success: false, message: "未发现可修复的节点重叠" };
   }
 
-  editor.commitMutation({ syncConnectorLabels: true });
+  editor.documentCommands.updateNodes(Object.fromEntries([...positions].map(([id, position]) => [id, { x: position.x, y: position.y }])));
   return { success: true, message: `已修复 ${moved} 处节点重叠` };
 }
 
@@ -347,36 +326,37 @@ export function fixTextTooLong(
   editor: Editor,
   targetIds?: string[],
 ): { success: boolean; message: string } {
-  const nodes = collectVisibleNodes(editor);
+  const runtimeNodes = collectVisibleNodes(editor);
+  const nodes = editor.document.snapshot().nodes;
   const targetSet = new Set((targetIds ?? []).map((id) => String(id)));
-  let fixedCount = 0;
+  const patches: Record<string, { text: string }> = {};
+  for (const runtime of runtimeNodes) {
+    const id = editor.renderer.getId(runtime);
+    if (targetSet.size > 0 && !targetSet.has(toId(runtime.innerId)) && !targetSet.has(id)) continue;
+    const node = nodes.find((item) => item.id === id);
+    if (!node || node.data.locked) continue;
 
-  for (const node of nodes) {
-    const id = toId(node.innerId);
-    if (targetSet.size > 0 && !targetSet.has(id)) continue;
-    if (node.locked) continue;
-
-    const editable = getEditableTextNode(node);
-    if (!editable) continue;
-
-    const text = editable.get().trim();
+    const textNode = findDocumentText(node);
+    const text = String(textNode?.data.text ?? "").trim();
     if (text.length <= 24) continue;
-
-    const backupHolder = node as unknown as { __proOriginalText?: string };
-    if (!backupHolder.__proOriginalText) {
-      backupHolder.__proOriginalText = text;
-    }
-
-    editable.set(`${text.slice(0, 21)}...`);
-    fixedCount++;
+    patches[id] = { text: `${text.slice(0, 21)}...` };
   }
 
+  const fixedCount = Object.keys(patches).length;
   if (!fixedCount) {
     return { success: false, message: "未发现可修复的长文本节点" };
   }
 
-  editor.commitMutation({ syncConnectorLabels: true });
+  editor.documentCommands.updatePresentations(patches);
   return { success: true, message: `已精简 ${fixedCount} 个节点文案` };
+}
+
+function findDocumentText(node: import("@leafer-flow/core").DocumentNode): import("@leafer-flow/core").DocumentNode | undefined {
+  if (node.type === "Text" || node.type === "leafer-flow.flow-node") return node;
+  for (const child of node.children) {
+    const result = findDocumentText(child);
+    if (result) return result;
+  }
 }
 
 export function listIssueMessages(result: LintResult): string[] {

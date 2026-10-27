@@ -12,14 +12,10 @@ export function doAddConnectorWaypoint(
     return { success: false, message: "请先选择一条连接线" };
   }
 
-  // 将屏幕坐标转换为画布坐标
   const tree = editor.app.tree;
   const scale = tree.scaleX || 1;
-  const canvasX = (x - (tree.x ?? 0)) / scale;
-  const canvasY = (y - (tree.y ?? 0)) / scale;
-
-  connector.addWaypoint({ x: canvasX, y: canvasY });
-  editor.commitMutation({ syncConnectorLabels: true });
+  const point = { x: (x - (tree.x ?? 0)) / scale, y: (y - (tree.y ?? 0)) / scale };
+  editor.documentCommands.addConnectorWaypoint(editor.renderer.getId(connector), point);
   return { success: true, message: "已添加中间点" };
 }
 
@@ -31,15 +27,12 @@ export function doRemoveConnectorWaypoints(
     return { success: false, message: "请先选择一条连接线" };
   }
 
-  const waypoints = connector.getWaypoints();
-  if (waypoints.length === 0) {
+  const edge = editor.document.snapshot().edges.find((item) => item.id === editor.renderer.getId(connector));
+  const waypoints = Array.isArray(edge?.data.waypoints) ? edge.data.waypoints : [];
+  if (!waypoints.length) {
     return { success: false, message: "该连接线没有中间点" };
   }
 
-  // 移除所有中间点（从后往前移除避免索引问题）
-  for (let i = waypoints.length - 1; i >= 0; i--) {
-    connector.removeWaypoint(i);
-  }
-  editor.commitMutation({ syncConnectorLabels: true });
-  return { success: true, message: `已移除 ${waypoints.length} 个中间点` };
+  const count = editor.documentCommands.removeConnectorWaypoints(editor.renderer.getId(connector));
+  return { success: true, message: `已移除 ${count} 个中间点` };
 }

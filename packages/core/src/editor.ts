@@ -15,6 +15,14 @@ import type { ToolContribution } from "./api/tool";
 import type { Snap } from "leafer-x-easy-snap";
 import { captureSelectedConnectorLabelOffsets, syncConnectorLabels } from "./core/connector-labels";
 import { hasConnectors, onConnectorGeometryUpdated, syncConnectors } from "./core/connector";
+import { DocumentStore } from "./document/document-store";
+import { LeaferDocumentAdapter } from "./document/leafer-document-adapter";
+import { DocumentCommands } from "./document/commands";
+import { registerDocumentCommands } from "./action/document-commands";
+import { NodeTypeRegistry } from "./core/node-type-registry";
+import { registerBuiltinNodeTypes } from "./core/builtin-node-types";
+import { ResourceService } from "./document/resources";
+import { DocumentClipboard } from "./document/clipboard";
 
 const INIT_CONFIG = {
   view: window,
@@ -37,21 +45,49 @@ export default class Editor {
   public viewControls: ViewControlRegistry;
   public propertyPanels: PropertyPanelRegistry;
   public overlayPanels: OverlayPanelRegistry;
+  public readonly nodeTypes: NodeTypeRegistry;
   private currentCursorClass: string = "";
   private syncingConnectors = false;
+  private disposed = false;
+  private initialized = false;
+  private disposePromise?: Promise<void>;
+  private cleanups: Array<() => void> = [];
   public snap?: Snap;
 
   public history: HistoryManager;
   public autoSave: AutoSave;
+  public readonly document: DocumentStore;
+  public readonly renderer: LeaferDocumentAdapter;
+  public readonly documentCommands: DocumentCommands;
+  public readonly resources: ResourceService;
+  public readonly clipboard: DocumentClipboard;
 
   constructor(config: IAppConfig = INIT_CONFIG) {
     const app = new App(config);
     this.app = app;
-    this.history = new HistoryManager(app);
-    this.autoSave = new AutoSave(app, this);
+    this.document = new DocumentStore();
+    this.resources = new ResourceService(this.document);
+    this.clipboard = new DocumentClipboard(this.document, this.resources);
+    this.nodeTypes = new NodeTypeRegistry();
+    registerBuiltinNodeTypes(this.nodeTypes);
+    this.renderer = new LeaferDocumentAdapter(app, this.nodeTypes, this.resources);
+    this.cleanups.push(this.nodeTypes.subscribe(() => {
+      if (!this.disposed) this.renderer.render(this.document.snapshot());
+    }));
+    this.cleanups.push(this.document.connect({
+      apply: (document, origin) => {
+        this.resources.validate(document);
+        if (origin === "interaction") this.renderer.acceptInteraction(document);
+        else this.renderer.render(document);
+      },
+    }));
+    this.history = new HistoryManager(this.document);
+    this.autoSave = new AutoSave(this.document);
     this.pluginManager = new PluginManager(this);
     this.toolRegistry = new ToolRegistry(this);
     this.commands = new CommandRegistry(this);
+    this.documentCommands = new DocumentCommands(this.document, this.nodeTypes, this.resources, this.clipboard);
+    registerDocumentCommands(this);
     this.menus = new MenuRegistry(this);
     this.actionButtons = new ActionButtonRegistry();
     this.viewControls = new ViewControlRegistry();
@@ -59,10 +95,50 @@ export default class Editor {
     this.overlayPanels = new OverlayPanelRegistry();
 
     // 使用 Leafer 的 ready 事件确保 editor 已就绪后再初始化监听
-    app.on("ready", () => {
+    const onReady = () => {
+      if (this.disposed || this.initialized) return;
+      this.initialized = true;
       this.initHistoryListeners();
       this.autoSave.start();
-    });
+    };
+    app.on("ready", onReady);
+    this.cleanups.push(() => app.off("ready", onReady));
+  }
+
+  get isDisposed() {
+    return this.disposed;
+  }
+
+  dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    const errors: unknown[] = [];
+    for (const cleanup of [...this.cleanups.splice(0).reverse(), () => this.clearCursor()]) {
+      try {
+        cleanup();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    this.disposePromise = (async () => {
+      for (const cleanup of [
+        () => this.autoSave.destroy(),
+        () => this.pluginManager.destroy(),
+        () => this.history.dispose(),
+        () => this.clipboard.dispose(),
+        () => this.resources.dispose(),
+        () => this.document.dispose(),
+        () => this.app.destroy(),
+      ]) {
+        try {
+          await cleanup();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (errors.length) throw new AggregateError(errors, "Editor disposal failed");
+    })();
+    return this.disposePromise;
   }
 
   private initHistoryListeners() {
@@ -70,31 +146,43 @@ export default class Editor {
     // 监听由编辑器产生的变换操作 (拖拽移动、缩放、旋转结束)
     if (!this.app.editor) return;
 
-    this.app.on("render.end", () => this.syncConnectorsAfterRender());
-    this.app.tree.on("render.end", () => this.syncConnectorsAfterRender());
-    this.app.editor.on("move.end", () => this.saveAfterTransform());
-    this.app.editor.on("resize.end", () => this.saveAfterTransform());
-    this.app.editor.on("rotate.end", () => this.saveAfterTransform());
+    const render = () => this.syncConnectorsAfterRender();
+    const transform = () => this.saveAfterTransform();
+    const { app } = this;
+    const editor = app.editor;
+    app.on("render.end", render);
+    app.tree.on("render.end", render);
+    this.cleanups.push(() => app.off("render.end", render), () => app.tree.off("render.end", render));
+    for (const event of ["move.end", "resize.end", "rotate.end"]) {
+      editor.on(event, transform);
+      this.cleanups.push(() => editor.off(event, transform));
+    }
     // Labels follow inside Connector.update via attachLabel; this is a safety net.
-    onConnectorGeometryUpdated((connector) => {
-      if (this.syncingConnectors) return;
+    this.cleanups.push(onConnectorGeometryUpdated((connector) => {
+      if (this.disposed || this.syncingConnectors || connector.app !== this.app) return;
       connector.syncAttachedLabels();
-    });
+    }));
   }
 
   private syncConnectorsAfterRender() {
-    if (this.syncingConnectors || !hasConnectors(this.app)) return;
+    if (this.disposed || this.syncingConnectors || !hasConnectors(this.app)) return;
     this.syncingConnectors = true;
-    syncConnectors(this.app);
-    syncConnectorLabels(this.app);
-    this.syncingConnectors = false;
+    try {
+      syncConnectors(this.app);
+      syncConnectorLabels(this.app);
+    } finally {
+      this.syncingConnectors = false;
+    }
   }
 
   private saveAfterTransform() {
-    this.commitMutation({ syncConnectorLabels: true, autoSave: false });
+    this.commitInteraction({ syncConnectorLabels: true });
   }
 
-  commitMutation(options: { syncConnectorLabels?: boolean; autoSave?: boolean } = {}) {
+  commitInteraction(options: {
+    syncConnectorLabels?: boolean;
+  } = {}) {
+    if (this.disposed || this.renderer.isProjecting) return;
     syncConnectors(this.app);
 
     if (options.syncConnectorLabels) {
@@ -102,19 +190,24 @@ export default class Editor {
       syncConnectorLabels(this.app);
     }
 
-    this.history.save();
-    if (options.autoSave ?? true) {
-      this.autoSave.save();
+    const committed = this.document.snapshot();
+    try {
+      this.document.replace(this.renderer.readInteraction(committed), "interaction", "Canvas interaction");
+    } catch (error) {
+      this.renderer.render(committed);
+      throw error;
     }
   }
 
   /** 开始事务：事务期间的 commitMutation 不会产生新的历史记录 */
   beginTransaction() {
+    if (this.disposed) return;
     this.history.beginTransaction();
   }
 
   /** 结束事务：提交一次历史保存 */
   endTransaction() {
+    if (this.disposed) return;
     this.history.endTransaction();
   }
 
@@ -135,6 +228,7 @@ export default class Editor {
     startPoint: IPointData,
     size: { width: number; height: number },
   ): IUI | null {
+    if (this.disposed) return null;
     const tool = this.toolRegistry.get(name);
     if (!tool?.createFixedElement) return null;
 
@@ -143,13 +237,16 @@ export default class Editor {
       y: startPoint.y + size.height,
     });
 
-    this.app.tree.add(element);
-    this.app.editor.select(element);
-    this.commitMutation();
-    return element;
+    const node = this.renderer.describeNode(element);
+    element.destroy();
+    this.documentCommands.insertNode(node);
+    const rendered = this.renderer.getNode(node.id);
+    if (rendered) this.app.editor.select(rendered);
+    return rendered ?? null;
   }
 
   execute(command: IExecuteCommand, callback: TCallback) {
+    if (this.disposed) return;
     const { pre, command: next } = command;
     const tool = this.toolRegistry.get(pre);
 
@@ -194,6 +291,7 @@ export default class Editor {
 
     // 3. 执行工具逻辑
     tool.execute((result) => {
+      if (this.disposed) return;
       // 工具执行完毕后的回调 (例如画完了一个矩形)
       const element = getDrawResultElement(result);
       if (element && name !== TOOL_NAME.DRAW_ARROW) {
@@ -203,7 +301,7 @@ export default class Editor {
       }
 
       // 保存历史记录
-      this.commitMutation({ syncConnectorLabels: true });
+      this.commitInteraction({ syncConnectorLabels: true });
 
       // 恢复选择器
       app.editor.config.selector = true;
