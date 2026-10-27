@@ -14,6 +14,11 @@ const workspaces = roots.map((directory) => ({
 }));
 const byName = new Map(workspaces.map((workspace) => [workspace.name, workspace]));
 const failures = [];
+const forbiddenMutations = [
+  [/\.document\.transact\s*\(/, 'document mutations must use DocumentCommands'],
+  [/\.commitInteraction\s*\(/, 'interaction commits are owned by the core editor'],
+  [/\.app\.tree\.(?:add|addAt|remove|clear)\s*\(/, 'canvas tree mutations are owned by the core adapter'],
+];
 
 for (const workspace of workspaces) {
   if (byName.get(workspace.name).directory !== workspace.directory) {
@@ -49,6 +54,11 @@ for (const workspace of workspaces) {
       ? [descriptor.script?.content, descriptor.scriptSetup?.content].filter(Boolean)
       : [source];
     for (const script of scripts) {
+      if (workspace.name !== '@leafer-flow/core') {
+        for (const [pattern, message] of forbiddenMutations) {
+          if (pattern.test(script)) failures.push(`${filename}: ${message}`);
+        }
+      }
       const syntax = ts.createSourceFile(filename, script, ts.ScriptTarget.Latest, true);
       for (const statement of syntax.statements) {
         if (workspace.name !== '@leafer-flow/core' || !ts.isImportDeclaration(statement)) continue;

@@ -55,6 +55,8 @@ TypeScript 暂留 6.x 最新版 6.0.3：最新 `vue-tsc 3.3.13` 仍依赖 TypeSc
 4. 插件专属 Vue 面板放在该插件目录；通用面板基础设施从 `ui` 复用。
 5. 修改画布数据时沿用统一 mutation 提交机制，验证撤销、保存与恢复等受影响行为。
 
+节点扩展的完整参考实现见 [task-node 插件](../packages/builtin-plugins/src/builtin/plugins/task-node/index.ts)：它展示节点校验与渲染、命令、属性字段、`DocumentCommands` 写入，以及通过 `ctx.onDispose` 释放注册。新增节点优先沿用该模式，不在插件中直接修改 Leafer 树或文档事务。
+
 基础绘图实现目前保留在引擎的 `tools/`；具体工具贡献和启用策略归插件包。单个功能不需要单独创建 workspace 包，独立发布或复用时再拆。
 
 ## 宿主策略与界面
@@ -74,7 +76,7 @@ TypeScript 暂留 6.x 最新版 6.0.3：最新 `vue-tsc 3.3.13` 仍依赖 TypeSc
 - 引擎协议只传递图标名称，内置图标数据与渲染留在 `ui`。
 - Tailwind 在 Web 样式入口显式扫描整个 `packages`，新增组件使用现有样式约定即可。
 
-`pnpm check:boundaries` 会检查重复包名、导出目标、本地导入目标（包括 Web 的 `@/` 别名）、未声明依赖、相对导入越界、私有模块导入、包依赖环以及引擎的 Vue 运行时导入。迁移文件后删除无人使用的旧实现，不保留不完整的旧 workspace 或失效副本。
+`pnpm check:boundaries` 会检查重复包名、导出目标、本地导入目标（包括 Web 的 `@/` 别名）、未声明依赖、相对导入越界、私有模块导入、包依赖环、引擎的 Vue 运行时导入，以及 core 外绕过 `DocumentCommands`、Editor 手势提交或 Leafer 适配器直接写入。迁移文件后删除无人使用的旧实现，不保留不完整的旧 workspace 或失效副本。
 
 ## Vue UI 公共入口
 
