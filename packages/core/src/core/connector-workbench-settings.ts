@@ -1,8 +1,5 @@
 import type Editor from "../editor";
-import {
-    getConnectorRouteType,
-    type ConnectorRouteType,
-} from "./drawing-settings";
+import { getConnectorRouteType } from "./drawing-settings";
 import type { FlowDocumentSettings } from "../document/model";
 
 const CONNECTOR_ANIMATION_STORAGE_PREFIX = "leafer-flow.plugin.leafer-flow.connector-animation.";
@@ -10,10 +7,6 @@ const CONNECTOR_ANIMATION_ENABLED_KEY = `${CONNECTOR_ANIMATION_STORAGE_PREFIX}en
 const CONNECTOR_ANIMATION_SPEED_KEY = `${CONNECTOR_ANIMATION_STORAGE_PREFIX}speed`;
 const CONNECTOR_ANIMATION_SCOPE_KEY = `${CONNECTOR_ANIMATION_STORAGE_PREFIX}scope`;
 const CONNECTOR_ANIMATION_DIRECTION_KEY = `${CONNECTOR_ANIMATION_STORAGE_PREFIX}direction`;
-
-function isRouteType(value: unknown): value is ConnectorRouteType {
-    return value === "orthogonal" || value === "bezier" || value === "straight";
-}
 
 function parseStorageValue<T>(raw: string | null): T | undefined {
     if (!raw) return undefined;
