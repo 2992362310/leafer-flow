@@ -1,4 +1,4 @@
-import { App, type IAppConfig, type IPointData, type IUI } from "leafer";
+import { App, Text, type IAppConfig, type IPointData, type IUI } from "leafer";
 import type { IExecuteCommand, TCallback } from "./types";
 import { TOOL_NAME } from "./constants";
 import { HistoryManager } from "./core/history";
@@ -148,6 +148,19 @@ export default class Editor {
 
     const render = () => this.syncConnectorsAfterRender();
     const transform = () => this.saveAfterTransform();
+    const textEditClose = (event: { editTarget?: IUI }) => {
+      const target = event.editTarget;
+      if (!(target instanceof Text)) return;
+      const text = target.text;
+      if (text === undefined) return;
+      const id = this.renderer.getId(target);
+      queueMicrotask(() => {
+        if (this.disposed) return;
+        const node = this.document.getNode(id);
+        if (node?.type !== "Text" || node.data.text === text) return;
+        this.documentCommands.updateNode(id, { text });
+      });
+    };
     const { app } = this;
     const editor = app.editor;
     app.on("render.end", render);
@@ -157,6 +170,8 @@ export default class Editor {
       editor.on(event, transform);
       this.cleanups.push(() => editor.off(event, transform));
     }
+    editor.on("innerEditor.close", textEditClose);
+    this.cleanups.push(() => editor.off("innerEditor.close", textEditClose));
     // Labels follow inside Connector.update via attachLabel; this is a safety net.
     this.cleanups.push(onConnectorGeometryUpdated((connector) => {
       if (this.disposed || this.syncingConnectors || connector.app !== this.app) return;
