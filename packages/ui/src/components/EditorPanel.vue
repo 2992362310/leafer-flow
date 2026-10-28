@@ -54,7 +54,7 @@ const visiblePanels = computed(() => {
   <Transition name="slide-fade">
     <div v-if="panelState.hasSelection.value && propertyPanelContext && mode === 'float'"
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed z-10 overflow-hidden transition-[height]"
-      :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }">
+      :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }" @pointerdown.stop @click.stop>
       <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
         <div class="text-xs font-bold">属性</div>
         <div class="flex items-center gap-0.5">

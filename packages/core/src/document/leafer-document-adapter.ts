@@ -168,13 +168,14 @@ export class LeaferDocumentAdapter {
                     resolveAsset: (id) => this.resources.resolve(id, document),
                 }) : this.placeholder(node);
                 const visual = Array.isArray(view.children) ? view.children : [];
+                const children = [...visual, ...node.children.map(encode)];
                 childOffsets.set(node.id, visual.length);
                 return {
                     ...view,
                     ...(typeof node.data.locked === "boolean" ? { locked: node.data.locked } : {}),
                     ...(typeof node.data.visible === "boolean" ? { visible: node.data.visible } : {}),
                     ...(typeof node.data.zIndex === "number" ? { zIndex: node.data.zIndex } : {}),
-                    children: [...visual, ...node.children.map(encode)],
+                    ...(children.length ? { children } : {}),
                 };
             };
             const markVisual = (runtime: IUI) => {

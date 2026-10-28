@@ -29,6 +29,21 @@ function assertWithinAssetLimit(mimeType: string, size: number, limits: Resource
   }
 }
 
+function isValidBase64(encoded: string): boolean {
+  if (encoded.length % 4 !== 0) return false;
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  const dataLength = encoded.length - padding;
+  for (let index = 0; index < dataLength; index++) {
+    const code = encoded.charCodeAt(index);
+    if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+      || (code >= 48 && code <= 57) || code === 43 || code === 47)) return false;
+  }
+  for (let index = dataLength; index < encoded.length; index++) {
+    if (encoded.charCodeAt(index) !== 61) return false;
+  }
+  return true;
+}
+
 export function validateResource(asset: DocumentAsset): number {
   if (!asset.id?.trim() || !asset.mimeType?.trim()) throw new Error("Resource id and MIME type are required");
   if (["__proto__", "prototype", "constructor"].includes(asset.id)) throw new Error("Reserved resource id");
@@ -38,9 +53,7 @@ export function validateResource(asset: DocumentAsset): number {
     throw new Error("Resource must include embedded data URLs");
   }
   const encoded = asset.source.slice(prefix.length);
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
-    throw new Error("Invalid embedded resource data");
-  }
+  if (!isValidBase64(encoded)) throw new Error("Invalid embedded resource data");
   if (!Number.isSafeInteger(asset.size) || asset.size <= 0) throw new Error("Invalid resource size");
   const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
   if (encoded.length !== Math.ceil(asset.size / 3) * 4 || padding !== (3 - asset.size % 3) % 3) {
