@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { getShortcutConfig } from "@leafer-flow/core/core/shortcut-config";
+import { onMounted, onUnmounted, ref, watch } from "vue";
+import { getShortcutConfig, SHORTCUT_CONFIG_CHANGED_EVENT } from "@leafer-flow/core/core/shortcut-config";
 import { useDraggable } from "../composables/useDraggable";
 import { usePanelDock, usePanelMode } from "../composables/usePanelDock";
 import PanelFlyoutWrapper from "./PanelFlyoutWrapper.vue";
@@ -14,6 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const config = getShortcutConfig();
+const shortcutRevision = ref(0);
 const editing = ref(false);
 const editingAction = ref<string | null>(null);
 const editingKey = ref("");
@@ -111,7 +112,15 @@ const groups: ShortcutGroup[] = [
   },
 ];
 
+function refreshShortcuts() {
+  shortcutRevision.value++;
+}
+
+onMounted(() => window.addEventListener(SHORTCUT_CONFIG_CHANGED_EVENT, refreshShortcuts));
+onUnmounted(() => window.removeEventListener(SHORTCUT_CONFIG_CHANGED_EVENT, refreshShortcuts));
+
 function getKeyForAction(action: string): string {
+  void shortcutRevision.value;
   const key = config.getByAction(action);
   return key ? formatKey(key) : "—";
 }
@@ -210,46 +219,26 @@ watch(
 
 <template>
   <!-- 浮动面板：与 AI 助手一致，无全屏遮罩 -->
-  <div
-    v-if="props.open && mode === 'float'"
+  <div v-if="props.open && mode === 'float'"
     class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 w-[32rem] max-h-[80vh] flex flex-col"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-    tabindex="0"
-    @keydown="handleCaptureKey"
-    @click.stop
-  >
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }" tabindex="0" @keydown="handleCaptureKey" @click.stop>
     <div
       class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200 shrink-0"
-      @mousedown="startDrag"
-    >
+      @mousedown="startDrag">
       <div class="flex items-center gap-2">
         <Icon name="info" class="h-4 w-4" />
         <span class="text-xs font-bold">快捷键</span>
       </div>
       <div class="flex gap-1">
-        <button
-          class="btn btn-ghost btn-xs btn-square"
-          title="收纳到右侧槽"
-          @click.stop="togglePanelDock('shortcut-help')"
-          @mousedown.stop
-        >
+        <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('shortcut-help')"
+          @mousedown.stop>
           <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
         </button>
-        <button
-          class="btn btn-xs"
-          :class="editing ? 'btn-primary' : 'btn-ghost'"
-          @click.stop="editing = !editing; editingAction = null"
-          @mousedown.stop
-        >
+        <button class="btn btn-xs" :class="editing ? 'btn-primary' : 'btn-ghost'"
+          @click.stop="editing = !editing; editingAction = null" @mousedown.stop>
           {{ editing ? "完成" : "自定义" }}
         </button>
-        <button
-          v-if="editing"
-          class="btn btn-ghost btn-xs"
-          title="重置为默认"
-          @click.stop="handleReset"
-          @mousedown.stop
-        >
+        <button v-if="editing" class="btn btn-ghost btn-xs" title="重置为默认" @click.stop="handleReset" @mousedown.stop>
           重置
         </button>
         <button class="btn btn-ghost btn-xs btn-square" title="关闭" @click.stop="closePanel" @mousedown.stop>
@@ -273,12 +262,8 @@ watch(
                 <span class="text-xs text-primary animate-pulse">按下快捷键...</span>
                 <span v-if="conflictError" class="text-xs text-error">{{ conflictError }}</span>
               </template>
-              <kbd
-                v-else
-                class="kbd kbd-xs bg-base-200"
-                :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
-                @click="startEdit(item.action)"
-              >
+              <kbd v-else class="kbd kbd-xs bg-base-200" :class="editing ? 'cursor-pointer hover:bg-primary/20' : ''"
+                @click="startEdit(item.action)">
                 {{ getKeyForAction(item.action) }}
               </kbd>
             </div>

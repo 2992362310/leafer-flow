@@ -30,7 +30,8 @@ function handleUndock() {
 <template>
   <div
     class="fixed z-40 flex flex-col rounded-2xl border border-base-200/80 bg-base-100/95 shadow-xl backdrop-blur-sm overflow-hidden"
-    :style="{ width: props.width + 'px', right: '3.5rem', top: '4rem', maxHeight: 'calc(100vh - 5rem)' }" @click.stop>
+    :style="{ width: props.width + 'px', maxWidth: 'calc(100vw - 4.5rem)', right: '3.5rem', top: '4rem', maxHeight: 'calc(100vh - 5rem)' }"
+    @click.stop>
     <div class="flex shrink-0 items-center justify-between border-b border-base-200/80 px-4 py-2.5">
       <div class="flex items-center gap-2">
         <Icon :name="props.icon" class="h-4 w-4 text-base-content/60" />

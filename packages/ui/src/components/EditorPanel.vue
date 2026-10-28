@@ -56,7 +56,10 @@ const visiblePanels = computed(() => {
       class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed z-10 overflow-hidden transition-[height]"
       :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }" @pointerdown.stop @click.stop>
       <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
-        <div class="text-xs font-bold">属性</div>
+        <div class="flex items-center gap-1.5 text-xs font-bold">
+          <Icon name="sliders" class="h-4 w-4" />
+          属性
+        </div>
         <div class="flex items-center gap-0.5">
           <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('property-panel')"
             @mousedown.stop>
@@ -80,7 +83,7 @@ const visiblePanels = computed(() => {
     </div>
   </Transition>
 
-  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="property-panel" title="属性" icon="layer" :width="256">
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="property-panel" title="属性" icon="sliders" :width="256">
     <div class="p-3 pt-2">
       <div v-if="!panelState.hasSelection.value" class="text-xs opacity-50 text-center py-6">请先选中元素</div>
       <template v-else-if="props.editor && propertyPanelContext">

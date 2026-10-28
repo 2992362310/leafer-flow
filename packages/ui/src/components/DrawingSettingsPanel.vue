@@ -82,7 +82,7 @@ function updateSnap(value: boolean) {
     <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
       @mousedown="startDrag">
       <div class="flex items-center gap-2">
-        <Icon name="template" class="h-4 w-4" />
+        <Icon name="settings" class="h-4 w-4" />
         <span class="text-xs font-bold">绘图设置</span>
       </div>
       <div class="flex gap-1">
@@ -131,7 +131,7 @@ function updateSnap(value: boolean) {
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="drawing-settings" title="绘图设置" icon="template"
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="drawing-settings" title="绘图设置" icon="settings"
     :width="288">
     <div class="p-3 space-y-4">
       <div>

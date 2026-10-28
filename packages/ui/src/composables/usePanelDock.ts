@@ -11,12 +11,12 @@ export interface DockPanelMeta {
 const STORAGE_KEY = "leafer-flow-docked-panels";
 
 const hostPanelMeta: Record<DockPanelId, DockPanelMeta> = {
-  "shape-library": { id: "shape-library", label: "图形库", icon: "template" },
-  "property-panel": { id: "property-panel", label: "属性", icon: "settings" },
+  "shape-library": { id: "shape-library", label: "图形库", icon: "shapes" },
+  "property-panel": { id: "property-panel", label: "属性", icon: "sliders" },
   "layer-panel": { id: "layer-panel", label: "图层", icon: "layer" },
   "action-bar": { id: "action-bar", label: "操作工具", icon: "toolbar" },
-  "event-log": { id: "event-log", label: "事件日志", icon: "clear" },
-  "status-bar": { id: "status-bar", label: "状态信息", icon: "load" },
+  "event-log": { id: "event-log", label: "事件日志", icon: "activity" },
+  "status-bar": { id: "status-bar", label: "状态信息", icon: "info" },
 };
 
 export function createPanelDock() {
@@ -39,7 +39,8 @@ export function createPanelDock() {
       if (!raw) return;
       const parsed = JSON.parse(raw) as string[];
       if (!Array.isArray(parsed)) return;
-      dockedIds.value = parsed.filter(isDockPanelId);
+      dockedIds.value = parsed.filter((id) => isDockPanelId(id) && id !== "tool-manager");
+      if (dockedIds.value.length !== parsed.length) persist();
     } catch (error) {
       console.warn("读取停靠面板状态失败", error);
     }

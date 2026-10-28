@@ -118,7 +118,7 @@ function savePosition(next: { x: number; y: number }) {
           <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场</div>
           <div class="flex flex-wrap gap-2">
             <button class="btn btn-sm h-9 min-w-20" @click="emit('openPluginMarket')">
-              <Icon name="agent" class="h-4 w-4" />插件
+              <Icon name="plugin" class="h-4 w-4" />插件
             </button>
             <button class="btn btn-sm h-9 min-w-20" @click="emit('openTemplateMarket')">
               <Icon name="template" class="h-4 w-4" />模板
@@ -155,7 +155,7 @@ function savePosition(next: { x: number; y: number }) {
         <div class="mb-2 text-[11px] font-semibold tracking-wide text-base-content/55">市场</div>
         <div class="flex flex-wrap gap-2">
           <button class="btn btn-sm h-9 min-w-20" @click="emit('openPluginMarket')">
-            <Icon name="agent" class="h-4 w-4" />插件
+            <Icon name="plugin" class="h-4 w-4" />插件
           </button>
           <button class="btn btn-sm h-9 min-w-20" @click="emit('openTemplateMarket')">
             <Icon name="template" class="h-4 w-4" />模板

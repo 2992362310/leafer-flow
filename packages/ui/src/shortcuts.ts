@@ -29,11 +29,15 @@ export function useEditorShortcuts(options: ShortcutOptions) {
     const entry = config.getByKey(key);
 
     if (entry) {
-      e.preventDefault();
       if (entry.type === "action") {
+        e.preventDefault();
         onAction(entry.action);
       } else if (entry.type === "tool") {
-        switchTool(entry.action);
+        const activeTool = resolveToolShortcut?.(key);
+        if (entry.action === TOOL_NAME.SELECT || activeTool === entry.action) {
+          e.preventDefault();
+          switchTool(entry.action);
+        }
       }
       return;
     }

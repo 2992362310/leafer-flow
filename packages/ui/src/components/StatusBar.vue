@@ -61,36 +61,22 @@ const statusClass = computed(() => (isSelectMode.value ? "alert-success" : "aler
 </script>
 
 <template>
-  <div
-    v-if="mode === 'float'"
-    class="card bg-base-100 shadow-lg w-64 fixed z-20"
-    :class="{ 'h-12': isCollapsed }"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-  >
+  <div v-if="mode === 'float'" class="card bg-base-100 shadow-lg w-64 fixed z-20" :class="{ 'h-12': isCollapsed }"
+    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
     <div class="card-body p-3">
-      <div
-        class="flex justify-between items-center mb-2 cursor-move select-none"
-        @mousedown="startDrag"
-      >
+      <div class="flex justify-between items-center mb-2 cursor-move select-none" @mousedown="startDrag">
         <h3 class="card-title text-sm flex items-center">
           <Icon name="info" class="h-4 w-4 mr-1" />
           状态信息
         </h3>
         <div class="flex space-x-1">
-          <button
-            @click.stop="togglePanelDock('status-bar')"
-            @mousedown.stop
-            class="btn btn-xs btn-ghost btn-square hover:text-primary transition-colors duration-200"
-            title="收纳到右侧槽"
-          >
+          <button @click.stop="togglePanelDock('status-bar')" @mousedown.stop
+            class="btn btn-xs btn-ghost btn-square hover:text-primary transition-colors duration-200" title="收纳到右侧槽">
             <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
           </button>
-          <button
-            @click.stop="toggleCollapse()"
-            @mousedown.stop
+          <button @click.stop="toggleCollapse()" @mousedown.stop
             class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
-            :title="isCollapsed ? '展开状态' : '折叠状态'"
-          >
+            :title="isCollapsed ? '展开状态' : '折叠状态'">
             <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
           </button>
         </div>
@@ -105,11 +91,9 @@ const statusClass = computed(() => (isSelectMode.value ? "alert-success" : "aler
           <div class="badge badge-neutral text-xs">当前工具：{{ currentToolName }}</div>
         </div>
 
-        <div
-          v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
-          class="alert alert-warning py-2 px-3 text-xs"
-        >
-          <Icon name="clear" class="stroke-current shrink-0 h-4 w-4" />
+        <div v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
+          class="alert alert-warning py-2 px-3 text-xs">
+          <Icon name="warning" class="stroke-current shrink-0 h-4 w-4" />
           <span>正在绘制 {{ currentToolName }}（ESC 或右键取消）</span>
         </div>
 
@@ -122,13 +106,7 @@ const statusClass = computed(() => (isSelectMode.value ? "alert-success" : "aler
     </div>
   </div>
 
-  <PanelFlyoutWrapper
-    v-else-if="mode === 'flyout'"
-    panel-id="status-bar"
-    title="状态信息"
-    icon="info"
-    :width="256"
-  >
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="status-bar" title="状态信息" icon="info" :width="256">
     <div class="p-3 text-xs space-y-2">
       <div v-if="elementCount !== undefined">
         <div class="badge badge-ghost text-xs">元素总数：{{ elementCount }}</div>
@@ -138,11 +116,9 @@ const statusClass = computed(() => (isSelectMode.value ? "alert-success" : "aler
         <div class="badge badge-neutral text-xs">当前工具：{{ currentToolName }}</div>
       </div>
 
-      <div
-        v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
-        class="alert alert-warning py-2 px-3 text-xs"
-      >
-        <Icon name="clear" class="stroke-current shrink-0 h-4 w-4" />
+      <div v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
+        class="alert alert-warning py-2 px-3 text-xs">
+        <Icon name="warning" class="stroke-current shrink-0 h-4 w-4" />
         <span>正在绘制 {{ currentToolName }}（ESC 或右键取消）</span>
       </div>
 

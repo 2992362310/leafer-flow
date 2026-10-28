@@ -74,7 +74,10 @@ function jumpTo(index: number) {
     <div class="bg-base-100 shadow-xl border border-base-200 rounded-lg overflow-hidden">
       <div class="flex items-center justify-between px-3 py-2 border-b border-base-200 cursor-move select-none"
         @mousedown="startDrag">
-        <span class="text-xs font-medium">撤销历史</span>
+        <span class="flex items-center gap-1.5 text-xs font-medium">
+          <Icon name="history" class="h-4 w-4" />
+          撤销历史
+        </span>
         <div class="flex items-center gap-1">
           <button class="btn btn-xs btn-ghost btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('history-panel')"
             @mousedown.stop>
@@ -103,7 +106,7 @@ function jumpTo(index: number) {
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="history-panel" title="撤销历史" icon="undo" :width="288">
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="history-panel" title="撤销历史" icon="history" :width="288">
     <div class="overflow-y-auto max-h-80 p-1 space-y-0.5">
       <div v-for="entry in entries" :key="entry.index"
         class="flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-200" :class="{

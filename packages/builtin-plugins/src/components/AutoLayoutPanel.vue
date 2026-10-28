@@ -73,7 +73,7 @@ async function apply(nextDirection: LayoutDirection) {
     <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
       @mousedown="startDrag">
       <div class="flex items-center gap-2">
-        <Icon name="distribute_vertical" class="h-4 w-4" />
+        <Icon name="auto-layout" class="h-4 w-4" />
         <span class="text-xs font-bold">智能布局</span>
       </div>
       <div class="flex gap-1">
@@ -113,7 +113,7 @@ async function apply(nextDirection: LayoutDirection) {
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="auto-layout-panel" title="智能布局" icon="distribute_vertical"
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="auto-layout-panel" title="智能布局" icon="auto-layout"
     :width="288">
     <div class="p-3 space-y-4">
       <div>

@@ -114,7 +114,7 @@ defineExpose({
     <div class="card-body p-3">
       <div class="flex justify-between items-center mb-2 cursor-move select-none" @mousedown="startDrag">
         <h3 class="card-title text-sm flex items-center">
-          <Icon name="info" class="h-4 w-4 mr-1" />
+          <Icon name="activity" class="h-4 w-4 mr-1" />
           事件日志
         </h3>
         <div class="flex space-x-1">
@@ -143,14 +143,14 @@ defineExpose({
           <span class="flex-1 wrap-break-word">{{ log.message }}</span>
         </div>
         <div v-if="eventLog.length === 0" class="text-gray-400 text-center py-2">
-          <Icon name="select" class="h-6 w-6 mx-auto mb-1 opacity-50" />
+          <Icon name="info" class="h-6 w-6 mx-auto mb-1 opacity-50" />
           暂无事件...
         </div>
       </div>
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="event-log" title="事件日志" icon="info" :width="384">
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="event-log" title="事件日志" icon="activity" :width="384">
     <div class="p-3">
       <div class="flex justify-end mb-2">
         <button class="btn btn-xs btn-ghost" @click="handleClear">
@@ -165,7 +165,7 @@ defineExpose({
           <span class="flex-1 break-all">{{ log.message }}</span>
         </div>
         <div v-if="eventLog.length === 0" class="text-gray-400 text-center py-2">
-          <Icon name="select" class="h-6 w-6 mx-auto mb-1 opacity-50" />
+          <Icon name="info" class="h-6 w-6 mx-auto mb-1 opacity-50" />
           暂无事件...
         </div>
       </div>

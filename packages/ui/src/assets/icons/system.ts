@@ -1,13 +1,78 @@
 export const systemIcons = {
-  template: {
-    path: "M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z",
-    viewBox: "0 0 24 24",
-    title: "模板",
-  },
-  agent: {
+  plugin: {
     path: "M9 3h6l1 3H8L9 3zm3 3a6 6 0 016 6v1h1a1 1 0 010 2h-1v1a6 6 0 01-12 0v-1H5a1 1 0 010-2h1v-1a6 6 0 016-6zm0 4a2 2 0 100 4 2 2 0 000-4z",
     viewBox: "0 0 24 24",
     title: "插件",
+  },
+  search: {
+    path: "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM21 21l-4.35-4.35",
+    viewBox: "0 0 24 24",
+    title: "搜索",
+  },
+  shapes: {
+    path: "M3 4h7v7H3zM16.5 3l4 7h-8zM6.5 15a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM17 15l4 7h-8z",
+    viewBox: "0 0 24 24",
+    title: "图形库",
+  },
+  "auto-layout": {
+    path: "M4 4h5v5H4zM15 15h5v5h-5zM13 6h6m-3-3 3 3-3 3M11 18H5m3-3-3 3 3 3",
+    viewBox: "0 0 24 24",
+    title: "智能布局",
+  },
+  map: {
+    path: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6zm6-3v15m6-12v15",
+    viewBox: "0 0 24 24",
+    title: "缩略图",
+  },
+  history: {
+    path: "M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5m4-1v5l4 2",
+    viewBox: "0 0 24 24",
+    title: "历史记录",
+  },
+  activity: {
+    path: "M3 12h4l3-8 4 16 3-8h4",
+    viewBox: "0 0 24 24",
+    title: "事件日志",
+  },
+  sliders: {
+    path: "M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4",
+    viewBox: "0 0 24 24",
+    title: "属性设置",
+  },
+  fit: {
+    path: "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6",
+    viewBox: "0 0 24 24",
+    title: "适应内容",
+  },
+  center: {
+    path: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v3m0 14v3M2 12h3m14 0h3",
+    viewBox: "0 0 24 24",
+    title: "居中内容",
+  },
+  "flip-horizontal": {
+    path: "M12 3v18M8 7l-4 5 4 5M16 7l4 5-4 5",
+    viewBox: "0 0 24 24",
+    title: "水平翻转",
+  },
+  "flip-vertical": {
+    path: "M3 12h18M7 8l5-4 5 4M7 16l5 4 5-4",
+    viewBox: "0 0 24 24",
+    title: "垂直翻转",
+  },
+  image: {
+    path: "M4 4h16v16H4zM5 16l4-5 3 3 3-4 4 6M15 8h.01",
+    viewBox: "0 0 24 24",
+    title: "图片",
+  },
+  video: {
+    path: "M4 6h11v12H4zM15 10l5-3v10l-5-3z",
+    viewBox: "0 0 24 24",
+    title: "视频",
+  },
+  "file-code": {
+    path: "M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10zM13 3v7h7m-11 4-2 2 2 2m6-4 2 2-2 2m-2-5-2 6",
+    viewBox: "0 0 24 24",
+    title: "SVG 文件",
   },
   "arrow-down": {
     path: "M19 9l-7 7-7-7",
@@ -64,7 +129,7 @@ export const systemIcons = {
     viewBox: "0 0 24 24",
     title: "解锁",
   },
-  insert_image: {
+  "insert-image": {
     path: "M4 4h16v16H4V4zm4 12l3-4 2 2.5L16 11l4 5H8z",
     viewBox: "0 0 24 24",
     title: "插入图片",

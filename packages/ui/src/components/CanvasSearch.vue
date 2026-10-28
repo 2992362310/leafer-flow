@@ -151,7 +151,7 @@ function getElementLabel(el: IUI): string {
     <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200"
       @mousedown="startDrag">
       <div class="flex items-center gap-2">
-        <Icon name="select" class="h-4 w-4" />
+        <Icon name="search" class="h-4 w-4" />
         <span class="text-xs font-bold">搜索</span>
       </div>
       <div class="flex gap-1">
@@ -185,7 +185,7 @@ function getElementLabel(el: IUI): string {
     </div>
   </div>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="canvas-search" title="搜索" icon="select" :width="320">
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="canvas-search" title="搜索" icon="search" :width="320">
     <div class="p-3">
       <input ref="inputRef" v-model="query" type="search" placeholder="搜索元素..."
         class="input input-sm input-bordered w-full mb-2" @input="search" @keydown="handleKeydown" />

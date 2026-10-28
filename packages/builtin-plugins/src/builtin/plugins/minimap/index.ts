@@ -23,7 +23,7 @@ export const minimapPlugin: EditorPluginModule = {
     ctx.editor.overlayPanels.register({
       id: "minimap-panel",
       label: "缩略图",
-      icon: "visible",
+      icon: "map",
       pluginId: PLUGIN_ID,
       component: defineAsyncComponent(() => import("./MinimapPanel.vue")),
       visibilityMode: "self-visible",
@@ -44,7 +44,7 @@ export const minimapPlugin: EditorPluginModule = {
     ctx.editor.actionButtons.register({
       id: "minimap",
       label: "缩略图",
-      icon: "select",
+      icon: "map",
       pluginId: PLUGIN_ID,
       kind: "button",
       surface: "panel",
@@ -54,7 +54,7 @@ export const minimapPlugin: EditorPluginModule = {
           id: "toggle-minimap",
           label: "切换缩略图",
           command: "toggleMinimap",
-          icon: "select",
+          icon: "map",
           panelId: "minimap-panel",
           order: 10,
         },

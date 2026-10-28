@@ -126,13 +126,13 @@ export const LAYER_TOOLS_PANEL_SECTIONS: ActionToolPanelSection[] = [
       {
         id: "flip-horizontal",
         command: ACTION_NAME.FLIP_HORIZONTAL,
-        icon: "distribute_horizontal",
+        icon: "flip-horizontal",
         label: "水平翻转",
       },
       {
         id: "flip-vertical",
         command: ACTION_NAME.FLIP_VERTICAL,
-        icon: "distribute_vertical",
+        icon: "flip-vertical",
         label: "垂直翻转",
       },
     ],

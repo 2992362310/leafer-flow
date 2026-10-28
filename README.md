@@ -134,9 +134,10 @@ pnpm typecheck
 
 当前编辑器采用插件化结构：
 
-- `Editor` 负责 Leafer 画布生命周期、history、autosave、序列化和连接线同步等核心能力。
+- `Editor` 负责 Leafer 运行时生命周期，并协调 history、autosave、资源和文档渲染。
+- `DocumentStore` 保存版本化文档模型；Leafer 适配器负责文档投影与交互回读，`DocumentCommands` 提供统一的文档编辑入口。
 - `PluginManager` 负责插件激活 / 停用。
-- `ToolRegistry`、`CommandRegistry`、`MenuRegistry`、`ActionButtonRegistry`、`ViewControlRegistry`、`PropertyPanelRegistry` 负责收集插件贡献。
+- `ToolRegistry`、`NodeTypeRegistry`、`CommandRegistry`、`MenuRegistry`、`ActionButtonRegistry`、`ViewControlRegistry`、`OverlayPanelRegistry`、`PropertyPanelRegistry` 负责收集插件贡献。
 - 工具栏、图形库、右键菜单、顶部按钮和视图控件优先从 registry 派生。
 - 插件市场当前管理内置插件源，可即时启用 / 禁用非必需插件。
 
@@ -157,12 +158,14 @@ pnpm typecheck
 | `view-controls`       | 视图控件                             |
 | `file-actions`        | 文件操作                             |
 | `export-actions`      | 导出操作                             |
+| `templates`           | 模板注册与管理服务                   |
 | `template-actions`    | 模板插入                             |
 | `connector-animation` | 连线流动动画                         |
 | `basic-tools`         | 基础绘制工具                         |
 | `flow-shapes`         | 流程图节点                           |
 | `bpmn-shapes`         | BPMN 节点                            |
 | `architecture-shapes` | 架构图节点                           |
+| `task-node`           | 任务节点与属性面板                   |
 | `agent`               | AI 助手                              |
 | `auto-layout`         | 自动布局（选区/全图）                |
 | `diagram-lint`        | 规范检查与自动修复                   |
@@ -172,14 +175,16 @@ pnpm typecheck
 
 ## 数据与保存
 
-保存文件和自动恢复数据使用统一的 Leafer Flow 文档结构：
+手动保存的 JSON 文件和自动恢复数据使用相同的 Leafer Flow 文档快照结构。当前文档版本为 5，节点、连线、资源和设置分别保存在 `nodes`、`edges`、`assets` 和 `settings` 中：
 
 ```json
 {
   "schema": "leafer-flow.document",
-  "schemaVersion": 1,
-  "documentType": "file",
-  "savedAt": "2026-06-09T00:00:00.000Z",
+  "version": 5,
+  "id": "document-id",
+  "nodes": [],
+  "edges": [],
+  "assets": {},
   "settings": {
     "connectorRouteType": "orthogonal",
     "connectorFlowAnimation": {
@@ -188,14 +193,11 @@ pnpm typecheck
       "scope": "all",
       "direction": "forward"
     }
-  },
-  "tree": {
-    "children": []
   }
 }
 ```
 
-其中 `documentType` 用于区分手动保存文件和自动保存数据；`settings` 用于保存连线中心相关配置，确保加载与自动恢复后行为一致。
+`settings` 保存连线策略等文档级配置。自动恢复会将快照写入 localStorage；数据较大时使用 IndexedDB。手动保存会下载同结构的 JSON 文件。
 
 ## 技术栈
 
@@ -207,9 +209,7 @@ pnpm typecheck
 
 ## 后续重点
 
-- 审计所有 action 是否统一通过 `commitMutation()` 提交 mutation。
-- 为 connector label / custom data / group 建立 round-trip 验收用例。
-- 补充 action/core 层自动化测试，覆盖剪贴板、编组、文件保存和自动恢复链路。
+- 补充文档文件导入、导出与自动恢复的端到端验收，重点覆盖资源、连接线标签和自定义数据。
 - 完善插件配置 UI，支持更多插件的配置入口。
 - 扩展插件源：远程插件源与本地开发插件源。
 - 扩展高级能力：导入 Draw.io / Visio、多人协作与评论能力。

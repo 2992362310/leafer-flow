@@ -64,8 +64,7 @@ function getToolbarGroupTitle(definition: ToolDefinition) {
 }
 
 function createToolTip(definition: ToolDefinition) {
-  const shortcut = getToolShortcutLabel(definition.tool);
-  return shortcut ? `${definition.label} (${shortcut})` : definition.label;
+  return definition.label;
 }
 
 function getClassToolIcon(definition: ToolDefinition) {

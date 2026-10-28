@@ -226,7 +226,7 @@ function handleConfigClose() {
       class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none border-b border-base-200 shrink-0"
       @mousedown="startDrag">
       <div class="flex items-center gap-2 min-w-0">
-        <Icon name="agent" class="h-4 w-4 shrink-0" />
+        <Icon name="plugin" class="h-4 w-4 shrink-0" />
         <div class="min-w-0">
           <div class="text-xs font-bold leading-4">插件市场</div>
           <div class="text-[10px] text-base-content/55 truncate">启停后即时刷新工具与图形库</div>
@@ -286,7 +286,7 @@ function handleConfigClose() {
       :config="configuringPluginConfig" :editor="editor" @close="handleConfigClose" />
   </div>
 
-  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="plugin-market" title="插件市场" icon="agent" :width="400">
+  <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="plugin-market" title="插件市场" icon="plugin" :width="400">
     <div class="flex flex-col">
       <div class="p-3 border-b border-base-200 space-y-2">
         <PluginMarketStats :total="marketStats.total" :active="marketStats.active" :required="marketStats.required"

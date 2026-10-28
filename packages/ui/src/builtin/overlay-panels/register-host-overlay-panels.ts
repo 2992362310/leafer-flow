@@ -15,7 +15,7 @@ export function registerHostOverlayPanels(
   editor.overlayPanels.register({
     id: "canvas-search",
     label: "搜索",
-    icon: "select",
+    icon: "search",
     pluginId: BUILTIN_PLUGIN_ID,
     component: defineAsyncComponent(() => import("../../components/CanvasSearch.vue")),
     visibilityMode: "open-prop",
@@ -26,7 +26,7 @@ export function registerHostOverlayPanels(
   editor.overlayPanels.register({
     id: "history-panel",
     label: "历史",
-    icon: "undo",
+    icon: "history",
     pluginId: BUILTIN_PLUGIN_ID,
     component: defineAsyncComponent(() => import("../../components/HistoryPanel.vue")),
     visibilityMode: "open-prop",
@@ -37,7 +37,7 @@ export function registerHostOverlayPanels(
   editor.overlayPanels.register({
     id: "plugin-market",
     label: "插件市场",
-    icon: "export",
+    icon: "plugin",
     pluginId: BUILTIN_PLUGIN_ID,
     component: marketPanels.pluginMarket,
     visibilityMode: "open-prop",
@@ -59,7 +59,7 @@ export function registerHostOverlayPanels(
   editor.overlayPanels.register({
     id: "drawing-settings",
     label: "绘图设置",
-    icon: "template",
+    icon: "settings",
     pluginId: BUILTIN_PLUGIN_ID,
     component: defineAsyncComponent(() => import("../../components/DrawingSettingsPanel.vue")),
     visibilityMode: "open-prop",

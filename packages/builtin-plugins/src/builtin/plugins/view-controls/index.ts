@@ -52,7 +52,7 @@ const VIEW_CONTROLS: ViewControlContribution[] = [
     label: "适应内容",
     command: ACTION_NAME.VIEW_FIT,
     pluginId: PLUGIN_ID,
-    icon: "select",
+    icon: "fit",
     order: 40,
   },
   {
@@ -60,7 +60,7 @@ const VIEW_CONTROLS: ViewControlContribution[] = [
     label: "居中内容",
     command: ACTION_NAME.VIEW_CENTER,
     pluginId: PLUGIN_ID,
-    icon: "align_center",
+    icon: "center",
     order: 50,
   },
 ];

@@ -584,7 +584,10 @@ function toggleCollapse() {
     <div
       class="flex items-center justify-between px-2 py-1 bg-base-200/50 cursor-move select-none border-b border-base-200"
       @mousedown="startDrag">
-      <span v-if="!isCollapsed" class="text-[10px] font-medium">缩略图</span>
+      <span v-if="!isCollapsed" class="flex items-center gap-1 text-[10px] font-medium">
+        <Icon name="map" class="h-3.5 w-3.5" />
+        缩略图
+      </span>
       <div class="flex items-center gap-0.5">
         <button class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0" title="收纳到右侧槽"
           @click.stop="togglePanelDock('minimap-panel')">

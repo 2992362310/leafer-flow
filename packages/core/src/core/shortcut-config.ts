@@ -2,6 +2,7 @@ import { ACTION_NAME } from "../constants";
 import { buildDefaultToolShortcutEntries } from "./tool-shortcuts";
 
 const STORAGE_KEY = "leafer-flow-shortcuts";
+export const SHORTCUT_CONFIG_CHANGED_EVENT = "leafer-flow:shortcuts-changed";
 
 export interface ShortcutEntry {
   key: string;
@@ -46,6 +47,7 @@ export class ShortcutConfig {
   private shortcuts: ShortcutEntry[];
   private keyToAction = new Map<string, ShortcutEntry>();
   private actionToKey = new Map<string, string>();
+  private toolDefaults = new Map<string, string>();
 
   constructor() {
     this.shortcuts = this.loadFromStorage();
@@ -67,6 +69,17 @@ export class ShortcutConfig {
     return this.actionToKey.get(action);
   }
 
+  ensureToolShortcut(action: string, defaultKey?: string): void {
+    if (!defaultKey) return;
+    this.toolDefaults.set(action, defaultKey.toLowerCase());
+    if (this.shortcuts.some((shortcut) => shortcut.action === action)) return;
+
+    const key = defaultKey.toLowerCase();
+    if (key && this.keyToAction.has(key)) return;
+    this.shortcuts.push({ key, action, type: "tool" });
+    this.rebuildMaps();
+  }
+
   /** 更新某个操作的快捷键 */
   setShortcut(action: string, newKey: string): boolean {
     // 检查新快捷键是否已被其他操作占用
@@ -75,11 +88,19 @@ export class ShortcutConfig {
       return false; // 已被占用
     }
 
-    const entry = this.shortcuts.find((s) => s.action === action);
-    if (!entry) return false;
+    let entry = this.shortcuts.find((shortcut) => shortcut.action === action);
+    if (!entry) {
+      entry = { key: newKey, action, type: "tool" };
+      this.shortcuts.push(entry);
+      this.keyToAction.set(newKey, entry);
+      this.actionToKey.set(action, newKey);
+      this.saveToStorage();
+      if (typeof window !== "undefined") window.dispatchEvent(new Event(SHORTCUT_CONFIG_CHANGED_EVENT));
+      return true;
+    }
 
     // 移除旧映射
-    this.keyToAction.delete(entry.key);
+    if (entry.key) this.keyToAction.delete(entry.key);
     this.actionToKey.delete(action);
 
     // 设置新映射
@@ -88,22 +109,32 @@ export class ShortcutConfig {
     this.actionToKey.set(action, newKey);
 
     this.saveToStorage();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(SHORTCUT_CONFIG_CHANGED_EVENT));
     return true;
   }
 
   /** 重置为默认快捷键 */
   resetToDefaults(): void {
     this.shortcuts = [...DEFAULT_SHORTCUTS];
+    const actions = new Set(this.shortcuts.map((shortcut) => shortcut.action));
+    for (const [action, key] of this.toolDefaults) {
+      if (actions.has(action)) continue;
+      if (key && this.shortcuts.some((shortcut) => shortcut.key === key)) continue;
+      this.shortcuts.push({ key, action, type: "tool" });
+      actions.add(action);
+    }
     this.rebuildMaps();
     this.saveToStorage();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(SHORTCUT_CONFIG_CHANGED_EVENT));
   }
 
   private rebuildMaps(): void {
     this.keyToAction.clear();
     this.actionToKey.clear();
     for (const entry of this.shortcuts) {
+      if (!entry.key) continue;
       this.keyToAction.set(entry.key, entry);
-      this.actionToKey.set(entry.action, entry.key);
+      if (!this.actionToKey.has(entry.action)) this.actionToKey.set(entry.action, entry.key);
     }
   }
 
@@ -113,7 +144,14 @@ export class ShortcutConfig {
       if (raw) {
         const parsed = JSON.parse(raw) as ShortcutEntry[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const validEntries = parsed.filter((entry): entry is ShortcutEntry =>
+            Boolean(entry) && typeof entry.action === "string" && typeof entry.key === "string"
+            && Boolean(entry.key) && (entry.type === "action" || entry.type === "tool"),
+          );
+          if (validEntries.length !== parsed.length) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(validEntries));
+          }
+          return validEntries;
         }
       }
     } catch {

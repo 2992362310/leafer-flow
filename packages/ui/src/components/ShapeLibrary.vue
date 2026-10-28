@@ -313,15 +313,13 @@ function rememberShape(tool: string) {
 <template>
   <aside v-if="mode === 'float'" ref="panelRef" :class="panelClass" :style="panelStyle">
     <div class="flex touch-none cursor-move items-center justify-between border-b border-base-200"
-      :class="collapsed ? 'px-0.5 py-1.5' : 'px-3 py-2'" title="拖动面板"
-      @pointerdown="handlePanelDragStart">
-      <button v-if="collapsed" class="btn btn-ghost btn-xs btn-square cursor-move" title="拖动图形库面板"
-        >
-        <Icon name="layer" class="h-3.5 w-3.5 opacity-75" />
+      :class="collapsed ? 'px-0.5 py-1.5' : 'px-3 py-2'" title="拖动面板" @pointerdown="handlePanelDragStart">
+      <button v-if="collapsed" class="btn btn-ghost btn-xs btn-square cursor-move" title="拖动图形库面板">
+        <Icon name="shapes" class="h-3.5 w-3.5 opacity-75" />
       </button>
 
       <div v-else class="flex items-center gap-1.5 text-sm font-semibold">
-        <Icon name="template" class="h-4 w-4 opacity-75" />
+        <Icon name="shapes" class="h-4 w-4 opacity-75" />
         <span>图形库</span>
       </div>
 
@@ -340,7 +338,7 @@ function rememberShape(tool: string) {
     <div v-if="collapsed" class="flex h-[calc(100%-2.5rem)] flex-col items-center gap-1.5 p-1.5">
       <div
         class="flex w-full flex-col items-center gap-1 rounded-md border border-base-200/80 bg-base-200/30 px-1 py-1.5 text-[10px] text-base-content/70">
-        <Icon name="template" class="h-4 w-4 opacity-80" />
+        <Icon name="shapes" class="h-4 w-4 opacity-80" />
         <span class="[writing-mode:vertical-rl] font-medium tracking-[0.2em]">图形库</span>
       </div>
 
@@ -380,7 +378,7 @@ function rememberShape(tool: string) {
     </div>
   </aside>
 
-  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="shape-library" title="图形库" icon="template" :width="256">
+  <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="shape-library" title="图形库" icon="shapes" :width="256">
     <div class="flex flex-col">
       <div class="p-2">
         <input v-model="query" class="input input-bordered input-xs w-full" type="search"

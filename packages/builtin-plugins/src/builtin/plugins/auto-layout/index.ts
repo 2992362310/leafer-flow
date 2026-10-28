@@ -76,7 +76,7 @@ export const autoLayoutPlugin: EditorPluginModule = {
     ctx.editor.overlayPanels.register({
       id: "auto-layout-panel",
       label: "智能布局",
-      icon: "distribute_vertical",
+      icon: "auto-layout",
       pluginId: PLUGIN_ID,
       component: defineAsyncComponent(() => import("../../../components/AutoLayoutPanel.vue")),
       visibilityMode: "open-prop",
@@ -167,7 +167,7 @@ export const autoLayoutPlugin: EditorPluginModule = {
     ctx.editor.actionButtons.register({
       id: "auto-layout",
       label: "智能布局",
-      icon: "distribute_vertical",
+      icon: "auto-layout",
       pluginId: PLUGIN_ID,
       kind: "button",
       surface: "arrange",
@@ -177,7 +177,7 @@ export const autoLayoutPlugin: EditorPluginModule = {
           id: "toggle-auto-layout-panel",
           label: "智能布局",
           command: "toggleAutoLayoutPanel",
-          icon: "distribute_vertical",
+          icon: "auto-layout",
           panelId: "auto-layout-panel",
         },
       ],

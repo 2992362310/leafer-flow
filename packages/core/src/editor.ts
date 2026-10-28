@@ -171,9 +171,9 @@ export default class Editor {
     app.on("render.end", render);
     app.tree.on("render.end", render);
     this.cleanups.push(() => app.off("render.end", render), () => app.tree.off("render.end", render));
-    for (const event of ["move.end", "resize.end", "rotate.end"]) {
-      editor.on(event, transform);
-      this.cleanups.push(() => editor.off(event, transform));
+    for (const event of ["move.end", "zoom.end", "rotate.end"]) {
+      app.on(event, transform);
+      this.cleanups.push(() => app.off(event, transform));
     }
     const updateConnectorHandles = () => this.updateConnectorHandles();
     editor.on("editor.select", updateConnectorHandles);

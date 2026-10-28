@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { TOOL_NAME } from "@leafer-flow/core/constants";
+import { getShortcutConfig, SHORTCUT_CONFIG_CHANGED_EVENT } from "@leafer-flow/core/core/shortcut-config";
 import type { ToolToolbarGroup, ToolToolbarItem } from "@leafer-flow/core/api/tool";
 
 const props = defineProps<{
@@ -14,6 +15,15 @@ const emit = defineEmits<{
 }>();
 
 const currentTool = computed(() => props.selectedTool ?? TOOL_NAME.SELECT);
+const shortcutConfig = getShortcutConfig();
+const shortcutRevision = ref(0);
+
+function refreshShortcuts() {
+  shortcutRevision.value++;
+}
+
+onMounted(() => window.addEventListener(SHORTCUT_CONFIG_CHANGED_EVENT, refreshShortcuts));
+onUnmounted(() => window.removeEventListener(SHORTCUT_CONFIG_CHANGED_EVENT, refreshShortcuts));
 
 interface ToolItem {
   tool: string;
@@ -40,9 +50,19 @@ function toToolItems(items: ToolToolbarItem[]): ToolItem[] {
   return items.map((item) => ({
     tool: item.tool,
     icon: item.icon,
-    tip: item.tip,
-    shortcut: item.shortcut,
+    tip: getToolTip(item),
+    shortcut: getToolShortcut(item.tool),
   }));
+}
+
+function getToolShortcut(tool: string) {
+  void shortcutRevision.value;
+  return shortcutConfig.getByAction(tool)?.toUpperCase();
+}
+
+function getToolTip(item: ToolToolbarItem) {
+  const shortcut = getToolShortcut(item.tool);
+  return shortcut ? `${item.tip} (${shortcut})` : item.tip;
 }
 
 function handleClick(tool: string) {
@@ -105,10 +125,7 @@ defineExpose({
 <template>
   <div class="join">
     <div class="tooltip tooltip-bottom" :data-tip="selectTool.tip">
-      <button
-        @click.prevent="handleClick(selectTool.tool)"
-        :class="getButtonClass(selectTool.tool)"
-      >
+      <button @click.prevent="handleClick(selectTool.tool)" :class="getButtonClass(selectTool.tool)">
         <Icon :name="selectTool.icon" class="h-5 w-5" />
         <span class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono">
           {{ selectTool.shortcut }}
@@ -121,19 +138,11 @@ defineExpose({
         <span class="divider divider-horizontal mx-0 my-1"></span>
 
         <template v-if="!shouldCollapseGroup(group.items)">
-          <div
-            v-for="item in group.items"
-            :key="item.tool"
-            class="tooltip tooltip-bottom"
-            :data-tip="item.tip"
-          >
+          <div v-for="item in group.items" :key="item.tool" class="tooltip tooltip-bottom" :data-tip="item.tip">
             <button @click.prevent="handleClick(item.tool)" :class="getButtonClass(item.tool)">
               <Icon :name="item.icon" class="h-5 w-5" />
-              <span
-                v-if="item.shortcut"
-                class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono"
-                >{{ item.shortcut }}</span
-              >
+              <span v-if="item.shortcut" class="absolute bottom-0.5 right-1 text-[9px] opacity-60 font-mono">{{
+                item.shortcut }}</span>
             </button>
           </div>
         </template>
@@ -141,17 +150,11 @@ defineExpose({
         <div v-else class="dropdown dropdown-bottom">
           <div class="tooltip tooltip-bottom" :data-tip="group.title">
             <button tabindex="0" role="button" :class="getGroupButtonClass(group.items)">
-              <Icon
-                v-if="getGroupIcon(group.items)"
-                :name="getGroupIcon(group.items)!"
-                class="h-5 w-5"
-              />
+              <Icon v-if="getGroupIcon(group.items)" :name="getGroupIcon(group.items)!" class="h-5 w-5" />
             </button>
           </div>
-          <ul
-            tabindex="0"
-            class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200 max-h-[70vh] overflow-y-auto"
-          >
+          <ul tabindex="0"
+            class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow border border-base-200 max-h-[70vh] overflow-y-auto">
             <li v-for="item in group.items" :key="item.tool">
               <button @click.prevent="handleClick(item.tool)" class="text-xs">
                 <Icon :name="item.icon" class="h-4 w-4" />

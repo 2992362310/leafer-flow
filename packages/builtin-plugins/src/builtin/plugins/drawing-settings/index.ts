@@ -19,7 +19,7 @@ const DRAWING_SETTINGS_COMMAND: CommandContribution = {
 const DRAWING_SETTINGS_BUTTON: ActionButtonGroupContribution = {
   id: "drawing-settings",
   label: "绘图设置",
-  icon: "template",
+  icon: "settings",
   pluginId: PLUGIN_ID,
   kind: "button",
   surface: "panel",
@@ -29,7 +29,7 @@ const DRAWING_SETTINGS_BUTTON: ActionButtonGroupContribution = {
       id: "drawing-settings-toggle",
       label: "绘图设置",
       command: "toggleDrawingSettings",
-      icon: "template",
+      icon: "settings",
       panelId: "drawing-settings",
       order: 10,
     },
