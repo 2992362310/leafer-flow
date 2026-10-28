@@ -40,7 +40,9 @@ export function doLoad(editor: Editor): Promise<{ success: boolean; message: str
 
       try {
         const text = await file.text();
-        editor.document.replace(JSON.parse(text), "load", "Open document");
+        const document = JSON.parse(text);
+        await editor.resources.hydrateAssets(document.assets);
+        editor.document.replace(document, "load", "Open document");
         await editor.autoSave.save();
         resolve({ success: true, message: "文件已加载" });
       } catch (error) {

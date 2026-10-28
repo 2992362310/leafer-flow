@@ -40,8 +40,8 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
     ],
   },
   {
-    id: "image",
-    label: "插入图片/SVG",
+    id: "media",
+    label: "媒体",
     icon: "insert_image",
     pluginId: BUILTIN_PLUGIN_ID,
     kind: "button",
@@ -58,6 +58,12 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         id: "import-svg",
         label: "导入 SVG",
         command: ACTION_NAME.IMPORT_SVG,
+        icon: "insert_image",
+      },
+      {
+        id: "insert-video",
+        label: "插入视频",
+        command: ACTION_NAME.INSERT_VIDEO,
         icon: "insert_image",
       },
     ],

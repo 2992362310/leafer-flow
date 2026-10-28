@@ -7,6 +7,7 @@ import ts from 'typescript';
 
 const uiVue = createRequire(new URL('../packages/ui/package.json', import.meta.url))('vue');
 const builtinRequire = createRequire(new URL('../packages/builtin-plugins/package.json', import.meta.url));
+const coreRequire = createRequire(new URL('../packages/core/package.json', import.meta.url));
 
 function loadModule(filename, dependencies = {}, globals = {}) {
   const source = fs.readFileSync(new URL(`../${filename}`, import.meta.url), 'utf8');
@@ -52,6 +53,38 @@ function createOverlayRegistry() {
   });
   return new OverlayPanelRegistry();
 }
+
+test('image filter settings normalize and round-trip Leafer filter entries', () => {
+  const filters = loadModule('packages/core/src/document/image-filters.ts');
+  assert.equal(JSON.stringify(filters.normalizeImageFilterSettings({ exposure: 4, contrast: -0.5, unknown: 1 })), JSON.stringify({
+    exposure: 1,
+    contrast: -0.5,
+    saturation: 0,
+  }));
+  const runtimeFilters = filters.toLeaferImageFilters({ exposure: 0, saturation: 0.3 });
+  assert.equal(runtimeFilters.length, 1);
+  assert.equal(runtimeFilters[0].type, 'saturation');
+  assert.equal(runtimeFilters[0].value, 0.3);
+  assert.equal(JSON.stringify(filters.fromLeaferImageFilters(runtimeFilters)), JSON.stringify({
+    exposure: 0,
+    contrast: 0,
+    saturation: 0.3,
+  }));
+});
+
+test('binary asset store supports put, get and delete', async () => {
+  const { BinaryAssetStore } = loadModule('packages/core/src/document/binary-asset-store.ts', {}, {
+    navigator: undefined,
+    Blob,
+  });
+  const store = new BinaryAssetStore();
+  const asset = new Blob(['media-bytes'], { type: 'video/mp4' });
+  await store.put('asset-test', asset);
+  const restored = await store.get('asset-test');
+  assert.equal(await restored.text(), 'media-bytes');
+  await store.delete('asset-test');
+  assert.equal(await store.get('asset-test'), undefined);
+});
 
 test('overlay registration accepts plugin ids and release handles cannot remove replacements', () => {
   const registry = createOverlayRegistry();
@@ -138,13 +171,20 @@ test('dynamic dock metadata is instance scoped and unload removes active flyouts
 });
 
 function createDocumentRuntime(limits = {}) {
-  const resourceModule = loadModule('packages/core/src/document/resources.ts', {}, {
-    crypto, structuredClone, URL, Uint8Array, TextEncoder, atob, btoa,
+  const binaryAssetStore = loadModule('packages/core/src/document/binary-asset-store.ts', {}, {
+    navigator: undefined, Blob, Response,
+  });
+  const resourceModule = loadModule('packages/core/src/document/resources.ts', {
+    './binary-asset-store': binaryAssetStore,
+    '@noble/hashes/sha2.js': coreRequire('@noble/hashes/sha2.js'),
+  }, {
+    crypto, structuredClone, URL, Blob, Uint8Array, TextEncoder, atob, btoa,
   });
   const model = loadModule('packages/core/src/document/model.ts', { './resources': resourceModule }, { crypto });
   const { DocumentStore } = loadModule('packages/core/src/document/document-store.ts', { './model': model }, { structuredClone });
   const operations = loadModule('packages/core/src/document/element-operations.ts', {}, { crypto });
   const flowGraph = loadModule('packages/core/src/core/flow-graph.ts');
+  const imageFilters = loadModule('packages/core/src/document/image-filters.ts');
   const { DocumentCommands } = loadModule('packages/core/src/document/commands.ts', {
     './element-operations': operations,
     '../core/flow-graph': flowGraph,
@@ -154,6 +194,7 @@ function createDocumentRuntime(limits = {}) {
   const { registerBuiltinNodeTypes } = loadModule('packages/core/src/core/builtin-node-types.ts', {
     './flow-graph-view': { createFlowGraphNode() { throw new Error('Rendering not available in document test'); } },
     './flow-node-shape': { FLOW_BOX_SIZE_PROP: '__flowBoxSize', FLOW_SHAPE_KIND_PROP: '__flowShapeKind' },
+    '../document/image-filters': imageFilters,
   }, { structuredClone });
   const { DocumentClipboard } = loadModule('packages/core/src/document/clipboard.ts', {
     './resources': resourceModule,
@@ -323,6 +364,10 @@ test('resources prepare portable content and deduplicate atomic node imports', a
   const first = await resources.prepare(file);
   const repeated = await resources.prepare(file);
   assert.equal(first.id, repeated.id);
+  const streamed = await resources.importStream({ id: 'streamed', mimeType: file.type, size: file.size }, file.stream());
+  assert.equal(streamed.source, first.source);
+  await assert.rejects(resources.importStream({ id: 'streamed', mimeType: file.type, size: 1 }, new Blob(['bad']).stream()), /metadata mismatch/);
+  assert.equal(await (await resources.getBlob('streamed')).text(), 'image-content');
   assert.equal(Object.keys(document.snapshot().assets).length, 0);
   commands.insertNode({ id: 'image-one', type: 'Image', version: 1, data: { assetId: first.id }, children: [] }, undefined, [first]);
   commands.insertNode({ id: 'image-two', type: 'Image', version: 1, data: { nested: { assetIds: ['alias'] }, assetId: 'alias' }, children: [] }, undefined, [{ ...repeated, id: 'alias' }]);
@@ -332,10 +377,20 @@ test('resources prepare portable content and deduplicate atomic node imports', a
   const packaged = JSON.parse(JSON.stringify(document.snapshot()));
   assert.equal(resources.resolve(first.id, packaged), first.source);
   assert.equal(packaged.assets[first.id].source.startsWith('data:image/png;base64,'), true);
+  const restored = createDocumentRuntime();
+  await restored.resources.hydrateAssets(packaged.assets);
+  restored.document.replace(packaged, 'load', 'Restore packaged resource');
+  assert.equal(restored.resources.resolve(first.id), first.source);
+  const second = await resources.prepare(new Blob(['second-image'], { type: 'image/png' }));
+  const invalidAsset = { ...first, id: 'invalid', source: 'blob:temporary' };
+  await assert.rejects(restored.resources.hydrateAssets({ first, second, invalid: invalidAsset }), /embedded data URLs/);
+  await assert.rejects(restored.resources.getBlob(second.id), /Missing stored resource/);
 });
 
 test('resources reject invalid references, nonportable sources and capacity violations atomically', async () => {
   const { document, commands, resources } = createDocumentRuntime({ maxAssetBytes: 4, maxDocumentBytes: 5 });
+  assert.throws(() => resources.validateFile(new Blob(['12345'], { type: 'image/png' })), /size limit/);
+  assert.throws(() => resources.validateFile(new Blob(['1'])), /MIME type/);
   await assert.rejects(resources.prepare(new Blob(['12345'], { type: 'text/plain' })), /size limit/);
   const first = await resources.prepare(new Blob(['123'], { type: 'text/plain' }));
   commands.insertNode({ id: 'first', type: 'Rect', version: 1, data: { nested: { assetId: first.id } }, children: [] }, undefined, [first]);
@@ -344,9 +399,17 @@ test('resources reject invalid references, nonportable sources and capacity viol
   assert.throws(() => commands.insertNode({ id: 'second', type: 'Rect', version: 1, data: {}, children: [] }, undefined, [second]), /size limit/);
   assert.equal(document.revision, revision);
   assert.equal(document.getNode('second'), undefined);
+  assert.equal(resources.pruneUnused(), 1);
   assert.throws(() => commands.updateNode('first', { nested: { assetId: 'missing' } }), /Missing document asset/);
   assert.throws(() => commands.insertNode({ id: 'bad', type: 'Image', version: 1, data: { assetId: 'bad' }, children: [] }, undefined, [{ id: 'bad', mimeType: 'image/png', source: 'blob:temporary' }]), /embedded data URLs/);
   assert.equal(document.revision, revision);
+});
+
+test('videos have a separate asset limit while sharing the document resource limit', () => {
+  const { resources } = createDocumentRuntime({ maxAssetBytes: 4, maxVideoBytes: 8, maxDocumentBytes: 12 });
+  assert.doesNotThrow(() => resources.validateFile(new Blob(['12345678'], { type: 'video/mp4' })));
+  assert.throws(() => resources.validateFile(new Blob(['123456789'], { type: 'video/mp4' })), /Video resource.*size limit/);
+  assert.throws(() => resources.validateFile(new Blob(['12345'], { type: 'image/png' })), /Resource.*size limit/);
 });
 
 test('resources retain pinned assets and cleanup is undoable without losing content', async () => {
@@ -382,6 +445,58 @@ test('resources resolve through image projection without duplicating document as
   assert.equal(roundTrip.nodes[0].data.assetId, asset.id);
   assert.equal(roundTrip.nodes[0].data.url, undefined);
   assert.deepEqual(structuredClone(roundTrip.nodes), snapshot.nodes);
+});
+
+test('image filter projection preserves the embedded asset and filter settings', async () => {
+  const { document, commands, resources, adapter } = createNodeProjection();
+  const asset = await resources.prepare(new Blob(['filtered-image'], { type: 'image/png' }));
+  commands.insertNode({
+    id: 'filtered-image', type: 'Image', version: 1,
+    data: { assetId: asset.id, width: 80, height: 40, imageFilters: { exposure: 0.4, contrast: 0, saturation: -0.2 } },
+    children: [],
+  }, undefined, [asset]);
+
+  const snapshot = document.snapshot();
+  adapter.render(snapshot);
+  const view = adapter.getNode('filtered-image');
+  assert.equal(view.fill.type, 'image');
+  assert.equal(view.fill.url, asset.source);
+  assert.deepEqual(structuredClone(view.fill.filter), [
+    { type: 'exposure', value: 0.4 },
+    { type: 'saturation', value: -0.2 },
+  ]);
+
+  const roundTrip = adapter.readInteraction(snapshot);
+  assert.equal(roundTrip.nodes[0].data.assetId, asset.id);
+  assert.equal(roundTrip.nodes[0].data.imageFilters.exposure, 0.4);
+  assert.equal(roundTrip.nodes[0].data.imageFilters.saturation, -0.2);
+  assert.equal(roundTrip.nodes[0].data.fill, undefined);
+  assert.equal(Object.keys(roundTrip.assets).length, 1);
+});
+
+test('video node projection preserves its asset but not transient playback state', async () => {
+  const { document, commands, resources, adapter } = createNodeProjection();
+  const asset = await resources.prepare(new Blob(['video-content'], { type: 'video/mp4' }));
+  commands.insertNode({
+    id: 'video', type: 'Video', version: 1,
+    data: { assetId: asset.id, width: 640, height: 360, muted: true, loop: false },
+    children: [],
+  }, undefined, [asset]);
+
+  const snapshot = document.snapshot();
+  adapter.render(snapshot);
+  const view = adapter.getNode('video');
+  assert.equal(view.tag, 'Video');
+  assert.equal(view.url, asset.source);
+  view.currentTime = 3;
+  view.paused = false;
+
+  const roundTrip = adapter.readInteraction(snapshot);
+  assert.equal(roundTrip.nodes[0].data.assetId, asset.id);
+  assert.equal(roundTrip.nodes[0].data.muted, true);
+  assert.equal(roundTrip.nodes[0].data.currentTime, undefined);
+  assert.equal(roundTrip.nodes[0].data.paused, undefined);
+  assert.equal(Object.keys(roundTrip.assets).length, 1);
 });
 
 test('node types apply defaults and reject invalid creation without changing the document', () => {
@@ -451,10 +566,12 @@ function createNodeProjection() {
     tree: new View({ tag: 'Group' }),
     editor: { list: [], cancel() { this.list = []; }, select(nodes) { this.list = Array.isArray(nodes) ? nodes : [nodes]; } },
   };
+  const imageFilters = loadModule('packages/core/src/document/image-filters.ts');
   const { LeaferDocumentAdapter } = loadModule('packages/core/src/document/leafer-document-adapter.ts', {
     '../core/connector': { Connector, createConnector: () => new Connector() },
     '../constants': { CUSTOM_DATA_PROP: '__flowCustomData' },
     '../core/group-selection': { normalizeAtomicGroups() { } },
+    './image-filters': imageFilters,
     '../core/connector-labels': {
       persistConnectorLabel() { }, syncConnectorLabels() { },
       CONNECTOR_LABEL_PROP: '__connectorLabelFor',

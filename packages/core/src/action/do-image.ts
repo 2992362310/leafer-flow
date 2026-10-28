@@ -21,7 +21,7 @@ export function doImage(editor: Editor): Promise<CommandResult> {
       try {
         if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
         const resource = await editor.resources.prepare(file);
-        const img = await loadImage(resource.source);
+        const img = await loadImage(editor.resources.resolve(resource.id));
         if (editor.isDisposed) throw new Error("编辑器已关闭");
 
         // 计算合适的尺寸（最大 300px，保持比例）

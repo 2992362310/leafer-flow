@@ -82,6 +82,7 @@ export const ACTION_NAME = {
   SELECT_ALL: "selectAll",
   FIND: "find",
   INSERT_IMAGE: "insertImage",
+  INSERT_VIDEO: "insertVideo",
   IMPORT_SVG: "importSVG",
   ALIGN_LEFT: "alignLeft",
   ALIGN_CENTER: "alignCenter",

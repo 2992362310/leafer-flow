@@ -9,6 +9,8 @@ export { createDocument, validateDocument } from './document/model';
 export type { EditorDocument, DocumentNode, DocumentEdge, DocumentAsset, DocumentEndpoint, JsonObject, JsonValue } from './document/model';
 export type { DocumentChange, DocumentChangeOrigin, DocumentProjection } from './document/document-store';
 export type { FlowDocumentSettings } from './document/model';
+export { IMAGE_FILTERS, normalizeImageFilterSettings } from './document/image-filters';
+export type { ImageFilterSettings, ImageFilterType } from './document/image-filters';
 export { NodeTypeRegistry } from './core/node-type-registry';
 export type { NodeTypeContribution, NodeRenderContext } from './api/node-type';
 export { ResourceService } from './document/resources';

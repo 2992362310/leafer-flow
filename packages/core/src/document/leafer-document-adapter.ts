@@ -14,6 +14,7 @@ import {
 import type { DocumentEdge, DocumentEndpoint, DocumentNode, EditorDocument, JsonObject } from "./model";
 import type { NodeTypeRegistry } from "../core/node-type-registry";
 import type { ResourceService } from "./resources";
+import { fromLeaferImageFilters } from "./image-filters";
 
 const TRANSFORM_KEYS = ["x", "y", "width", "height", "rotation", "scaleX", "scaleY", "skewX", "skewY", "opacity"] as const;
 
@@ -126,9 +127,22 @@ export class LeaferDocumentAdapter {
                 delete data[CONNECTOR_LABEL_PROP];
                 delete data[CONNECTOR_LABEL_OFFSET_X_PROP];
                 delete data[CONNECTOR_LABEL_OFFSET_Y_PROP];
-                if (type === "Image" && typeof data.url === "string") {
-                    data.assetId = this.resources.capture(next, data.url);
-                    delete data.url;
+                if (type === "Image" || type === "Video") {
+                    const fill = data.fill && typeof data.fill === "object" && !Array.isArray(data.fill)
+                        ? data.fill as JsonObject
+                        : undefined;
+                    const imageFill = type === "Image" && fill?.type === "image" ? fill : undefined;
+                    const source = typeof imageFill?.url === "string" ? imageFill.url : data.url;
+                    if (typeof source === "string") {
+                        data.assetId = this.resources.capture(next, source);
+                        delete data.url;
+                    }
+                    if (imageFill) {
+                        const filters = fromLeaferImageFilters(imageFill.filter);
+                        if (filters.exposure || filters.contrast || filters.saturation) data.imageFilters = filters;
+                        else delete data.imageFilters;
+                        delete data.fill;
+                    }
                 }
                 output.push({ id, type, version, data, children: visit(this.documentChildren(node), id), ...(label ? { label } : {}) });
             }

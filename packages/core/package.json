@@ -29,6 +29,7 @@
     "./action/do-svg-import": "./src/action/do-svg-import.ts",
     "./action/do-undo": "./src/action/do-undo.ts",
     "./action/do-ungroup": "./src/action/do-ungroup.ts",
+    "./action/do-video": "./src/action/do-video.ts",
     "./action/do-view": "./src/action/do-view.ts",
     "./api/action-button": "./src/api/action-button.ts",
     "./api/command": "./src/api/command.ts",
@@ -65,9 +66,11 @@
     "./utils/selection": "./src/utils/selection.ts"
   },
   "dependencies": {
-    "leafer": "catalog:",
     "@leafer-ui/interface": "catalog:",
-    "vue": "catalog:",
-    "leafer-x-easy-snap": "catalog:"
+    "@noble/hashes": "catalog:",
+    "fflate": "catalog:",
+    "leafer": "catalog:",
+    "leafer-x-easy-snap": "catalog:",
+    "vue": "catalog:"
   }
 }

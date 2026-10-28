@@ -4,11 +4,12 @@ import { createFlowGraphNode } from "./flow-graph-view";
 import { FLOW_BOX_SIZE_PROP, FLOW_SHAPE_KIND_PROP, type FlowNodeKind } from "./flow-node-shape";
 import type { FlowGraphNode, FlowGraphNodeStyle } from "./flow-graph";
 import type { IUI } from "leafer";
+import { toLeaferImageFilters } from "../document/image-filters";
 
 export const FLOW_NODE_DOCUMENT_TYPE = "leafer-flow.flow-node";
 
 export function registerBuiltinNodeTypes(registry: NodeTypeRegistry) {
-    for (const type of ["UI", "Group", "Box", "Frame", "Rect", "Ellipse", "Polygon", "Star", "Line", "Path", "Text", "Image"]) {
+    for (const type of ["UI", "Group", "Box", "Frame", "Rect", "Ellipse", "Polygon", "Star", "Line", "Path", "Text", "Image", "Video"]) {
         registry.register({
             type,
             version: 1,
@@ -17,13 +18,23 @@ export function registerBuiltinNodeTypes(registry: NodeTypeRegistry) {
             render(node, context) {
                 const data = structuredClone(node.data);
                 delete data.customData;
-                if (type === "Image" && typeof data.assetId === "string") {
-                    data.url = context.resolveAsset(data.assetId);
+                if (type === "Image" || type === "Video") {
+                    const filters = type === "Image" ? toLeaferImageFilters(data.imageFilters) : [];
+                    if (type === "Image") delete data.imageFilters;
+                    if (typeof data.assetId === "string") {
+                        const url = context.resolveAsset(data.assetId);
+                        if (filters.length) {
+                            data.fill = { type: "image", url, mode: "stretch", filter: filters };
+                            delete data.url;
+                        } else {
+                            data.url = url;
+                        }
+                    }
                     delete data.assetId;
                 }
                 return { ...data, tag: type };
             },
-            read: (view) => view,
+            read: type === "Video" ? (_view, previous) => structuredClone(previous) : (view) => view,
         });
     }
     registry.register({

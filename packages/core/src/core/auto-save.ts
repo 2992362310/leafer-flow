@@ -1,6 +1,7 @@
 import { DocumentStore } from "../document/document-store";
+import type { ResourceService } from "../document/resources";
 
-const STORAGE_KEY = "leafer-flow.document.v2";
+const STORAGE_KEY = "leafer-flow.document.v5";
 const IDB_DB_NAME = "leafer-flow-documents";
 const IDB_STORE_NAME = "autosave";
 const IDB_KEY = "current";
@@ -20,7 +21,7 @@ export class AutoSave {
   private saves = new Set<Promise<boolean>>();
   private writeQueue: Promise<boolean> = Promise.resolve(true);
 
-  constructor(private document: DocumentStore) {
+  constructor(private document: DocumentStore, private resources?: ResourceService) {
     this.dbReady = this.openDB();
   }
 
@@ -105,7 +106,9 @@ export class AutoSave {
       }
 
       if (!raw || this.disposed) return { loaded: false };
-      this.document.replace(JSON.parse(raw), "load", "Restore document");
+      const document = JSON.parse(raw);
+      await this.resources?.hydrateAssets(document.assets);
+      this.document.replace(document, "load", "Restore document");
       return { loaded: true };
     } catch (error) {
       console.warn("自动加载失败:", error);

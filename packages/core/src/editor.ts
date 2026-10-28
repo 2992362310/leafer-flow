@@ -87,7 +87,7 @@ export default class Editor {
       },
     }));
     this.history = new HistoryManager(this.document);
-    this.autoSave = new AutoSave(this.document);
+    this.autoSave = new AutoSave(this.document, this.resources);
     this.pluginManager = new PluginManager(this);
     this.toolRegistry = new ToolRegistry(this);
     this.commands = new CommandRegistry(this);

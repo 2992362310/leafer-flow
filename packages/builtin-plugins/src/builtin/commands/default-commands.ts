@@ -14,6 +14,7 @@ import { doFlip } from "@leafer-flow/core/action/do-flip";
 import { doFormatPainterCopy, doFormatPainterApply } from "@leafer-flow/core/action/do-format-painter";
 import { doGroup } from "@leafer-flow/core/action/do-group";
 import { doImage } from "@leafer-flow/core/action/do-image";
+import { doVideo } from "@leafer-flow/core/action/do-video";
 import { doImportSVG } from "@leafer-flow/core/action/do-svg-import";
 import { doLayer, doToggleLock, doToggleVisible, doUnlockAll, doUnlockAtCursor } from "@leafer-flow/core/action/do-layer";
 import { doMoveLayer, type MoveLayerPayload } from "@leafer-flow/core/action/do-move-layer";
@@ -270,6 +271,12 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "插入图片",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doImage,
+  },
+  {
+    id: ACTION_NAME.INSERT_VIDEO,
+    label: "插入视频",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doVideo,
   },
   {
     id: ACTION_NAME.IMPORT_SVG,
