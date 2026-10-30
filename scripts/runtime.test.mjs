@@ -1115,6 +1115,8 @@ function loadAgentTools() {
     '../../../templates/defs': {},
     '../../../templates/insert': {},
     '../../templates/registry': {},
+    './agent-skills': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-skills.ts'),
+    './agent-question': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-question.ts'),
   }, { crypto });
 }
 
@@ -1123,11 +1125,19 @@ function createAgentService(globals = {}, toolModule = { getAgentTools: () => []
     './agent-config': { isConfigValid: () => true, getApiEndpoint: () => 'https://example.test/chat/completions' },
     './agent-tools': toolModule,
     './agent-client': { requestChat: (...args) => service.requestChat(...args) },
+    './agent-question': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-question.ts'),
   }, { AbortController, AbortSignal, structuredClone, TextDecoder, ...globals });
   const service = new AgentService({ beginTransaction() { }, endTransaction() { } }, { maxHistoryMessages: 6 });
   service.getCanvasContext = () => '';
   service.parseToolResult = parseToolResult;
   return service;
+}
+
+function loadAgentClient(globals) {
+  return loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-client.ts', {
+    './agent-config': { getApiEndpoint: config => config.provider === 'anthropic' ? 'https://example.test/messages' : 'https://example.test/chat/completions' },
+    './agent-anthropic': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-anthropic.ts', {}, globals),
+  }, globals);
 }
 
 test('agent stream flushes final SSE data and rejects truncated or invalid responses', async () => {
@@ -1137,13 +1147,109 @@ test('agent stream flushes final SSE data and rejects truncated or invalid respo
     ['data: invalid\ndata: [DONE]\n', false],
   ]) {
     let signal;
-    const { requestChat } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-client.ts', {
-      './agent-config': { getApiEndpoint: () => 'https://example.test/chat/completions' },
-    }, { AbortSignal, TextDecoder, fetch: async (_url, init) => { signal = init.signal; return new Response(body); } });
+    const { requestChat } = loadAgentClient({ AbortSignal, TextDecoder, fetch: async (_url, init) => { signal = init.signal; return new Response(body); } });
     const response = requestChat({}, [], { signal: new AbortController().signal, onToken() { } });
     if (valid) assert.equal((await response).content, 'ok');
     else await assert.rejects(response);
     assert.ok(signal instanceof AbortSignal);
+  }
+});
+
+test('agent capability probe requires a real schema-compliant tool call without editing the canvas', async () => {
+  for (const [toolCalls, valid] of [
+    [[], false],
+    [[{ id: 'probe', type: 'function', function: { name: 'verify_tool_call', arguments: '{}' } }], true],
+    [[{ id: 'probe', type: 'function', function: { name: 'other', arguments: '{}' } }], false],
+    [[{ id: 'probe', type: 'function', function: { name: 'verify_tool_call', arguments: '{' } }], false],
+    [[{ id: 'probe', type: 'function', function: { name: 'verify_tool_call', arguments: '{"unexpected":1}' } }], false],
+  ]) {
+    const { testToolCalling } = loadAgentClient({
+      AbortSignal, fetch: async (_url, init) => {
+        const request = JSON.parse(init.body);
+        assert.equal(request.tool_choice, 'required');
+        assert.equal(request.stream, false);
+        assert.equal(request.tools.length, 1);
+        assert.equal(request.tools[0].function.name, 'verify_tool_call');
+        return Response.json({ choices: [{ message: { content: '[工具执行] 成功', tool_calls: toolCalls } }] });
+      }
+    });
+    const probe = testToolCalling({}, new AbortController().signal);
+    if (valid) await probe;
+    else await assert.rejects(probe);
+  }
+});
+
+test('agent Claude translates history, tool errors and required choice into Messages API', async () => {
+  const { requestChat } = loadAgentClient({
+    AbortSignal, fetch: async (url, init) => {
+      assert.equal(url, 'https://example.test/messages');
+      assert.equal(init.headers['x-api-key'], 'test-key');
+      assert.equal(init.headers.Authorization, undefined);
+      assert.equal(init.headers['anthropic-version'], '2023-06-01');
+      const body = JSON.parse(init.body);
+      assert.equal(body.system, 'system');
+      assert.equal(body.tool_choice.type, 'any');
+      assert.equal(body.tools[0].input_schema.type, 'object');
+      assert.equal(body.messages.length, 3);
+      assert.equal(body.messages[1].content[0].type, 'tool_use');
+      assert.equal(body.messages[2].content.length, 2);
+      assert.equal(body.messages[2].content[0].is_error, true);
+      assert.equal(body.messages[2].content[1].is_error, false);
+      return Response.json({
+        stop_reason: 'tool_use', content: [
+          { type: 'text', text: '查询画布' },
+          { type: 'tool_use', id: 'next', name: 'get_canvas_info', input: {} },
+        ]
+      });
+    }
+  });
+  const reply = await requestChat({ provider: 'anthropic', apiKey: 'test-key', model: 'test' }, [
+    { role: 'system', content: 'system' }, { role: 'user', content: 'question' },
+    { role: 'assistant', content: '', tool_calls: ['a', 'b'].map(id => ({ id, type: 'function', function: { name: 'test', arguments: '{}' } })) },
+    { role: 'tool', tool_call_id: 'a', content: JSON.stringify({ success: false }) },
+    { role: 'tool', tool_call_id: 'b', content: JSON.stringify({ success: true }) },
+  ], { signal: new AbortController().signal, toolChoice: 'required', tools: [{ type: 'function', function: { name: 'test', description: 'test', parameters: { type: 'object', properties: {} } } }] });
+  assert.equal(reply.content, '查询画布');
+  assert.equal(reply.toolCalls[0].function.arguments, '{}');
+  assert.equal(reply.toolCalls[0].function.name, 'get_canvas_info');
+});
+
+test('agent Claude streams text and JSON tool arguments and rejects incomplete responses', async () => {
+  const events = [
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '处理中' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'a', name: 'test', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"count":' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '2}' } },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    { type: 'message_stop' },
+  ];
+  for (const [responseEvents, valid] of [
+    [events, true],
+    [events.slice(0, -1), false],
+    [[...events.slice(0, -2), { type: 'message_delta', delta: { stop_reason: 'max_tokens' } }, events.at(-1)], false],
+    [[{ type: 'error', error: { message: 'overloaded' } }], false],
+  ]) {
+    let tokens = '';
+    const { requestChat } = loadAgentClient({ AbortSignal, TextDecoder, fetch: async () => new Response(responseEvents.map(event => `data: ${JSON.stringify(event)}`).join('\r\n\r\n')) });
+    const pending = requestChat({ provider: 'anthropic' }, [], { signal: new AbortController().signal, onToken: token => { tokens += token; } });
+    if (valid) {
+      const reply = await pending;
+      assert.equal(tokens, '处理中');
+      assert.equal(reply.toolCalls[0].function.arguments, '{"count":2}');
+    } else await assert.rejects(pending);
+  }
+});
+
+test('agent Claude capability probe validates native tool use and rejects truncation', async () => {
+  for (const stopReason of ['tool_use', 'max_tokens']) {
+    const { testToolCalling } = loadAgentClient({
+      AbortSignal, fetch: async () => Response.json({
+        stop_reason: stopReason, content: [{ type: 'tool_use', id: 'probe', name: 'verify_tool_call', input: {} }],
+      })
+    });
+    const pending = testToolCalling({ provider: 'anthropic' }, new AbortController().signal);
+    if (stopReason === 'tool_use') await pending;
+    else await assert.rejects(pending);
   }
 });
 
@@ -1195,6 +1301,64 @@ test('agent cancellation prevents late tool execution and rejects concurrent ope
   assert.equal(service.getHistory().length, 0);
 });
 
+test('agent waits for answers without holding transactions and cancels ignored question callbacks', async () => {
+  const toolModule = loadAgentTools();
+  const args = { question: '方向？', options: ['横向', '纵向'] };
+  const questionCall = { id: 'question', type: 'function', function: { name: 'ask_user', arguments: JSON.stringify(args) } };
+  for (const cancel of [false, true]) {
+    const service = createAgentService({}, toolModule);
+    let depth = 0;
+    service.editor = { beginTransaction() { depth++; }, endTransaction() { depth--; } };
+    let resolveAnswer;
+    let questionOpened;
+    const opened = new Promise(resolve => { questionOpened = resolve; });
+    let requests = 0;
+    service.requestChat = async (_config, messages) => {
+      if (++requests === 1) return { content: '', toolCalls: [questionCall] };
+      const toolResult = messages.filter(message => message.role === 'tool').at(-1);
+      assert.equal(JSON.parse(JSON.parse(toolResult.content).result).selected[0], '横向');
+      return { content: '已确认方向', toolCalls: [] };
+    };
+    const pending = service.processMessage('创建流程', {
+      onQuestion(question) {
+        assert.equal(question.question, args.question);
+        assert.equal(depth, 0);
+        questionOpened();
+        return new Promise(resolve => { resolveAnswer = resolve; });
+      }
+    });
+    await opened;
+    assert.equal(requests, 1);
+    if (cancel) service.cancel();
+    else resolveAnswer({ selected: ['横向'], text: '' });
+    const response = await pending;
+    assert.equal(depth, 0);
+    assert.equal(requests, cancel ? 1 : 2);
+    assert.equal(response.toolCalls[0].success, !cancel);
+    if (cancel) {
+      resolveAnswer({ selected: ['横向'], text: '' });
+      await Promise.resolve();
+      assert.equal(requests, 1);
+    }
+  }
+});
+
+test('agent rejects mixed question and mutation batches before any tool executes', async () => {
+  const service = createAgentService({}, loadAgentTools());
+  let executions = 0;
+  let requests = 0;
+  service.executeToolCall = async () => { executions++; };
+  service.requestChat = async () => ++requests === 1 ? {
+    content: '', toolCalls: ['delete', 'ask_user'].map(name => ({
+      id: name, type: 'function', function: { name, arguments: '{}' },
+    }))
+  } : { content: '请先确认', toolCalls: [] };
+  const response = await service.processMessage('删除？');
+  assert.equal(executions, 0);
+  assert.equal(response.toolCalls.length, 2);
+  assert.ok(response.toolCalls.every(result => !result.success));
+});
+
 test('agent panel restores model history, guards busy actions and saves only settled messages', async () => {
   const service = createAgentService();
   const config = { maxHistoryMessages: 3 };
@@ -1213,6 +1377,7 @@ test('agent panel restores model history, guards busy actions and saves only set
     vue: { ...uiVue, onUnmounted() { } },
     './agent-config': { loadAgentConfig: () => config, isConfigValid: () => true },
     './agent-service': { AgentService: class { constructor() { return service; } }, parseToolResult: content => service.parseToolResult(content) },
+    './agent-question': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-question.ts'),
   }, {
     localStorage: {
       getItem: key => storage.get(key),
@@ -1233,11 +1398,65 @@ test('agent panel restores model history, guards busy actions and saves only set
   assert.equal(panel.historyCount.value, 4);
   assert.equal(writes, 1);
   const saved = JSON.parse(storage.get('leafer-flow.plugin.agent.history'));
-  assert.equal(saved.at(-1).content, 'new answer');
+  assert.ok(saved.at(-1).content.endsWith('new answer'));
+  assert.match(saved.at(-1).content, /未执行画布操作/);
+  assert.match(panel.error.value, /未执行画布操作/);
   assert.equal(panel.messages.value.at(-1).isStreaming, undefined);
   assert.equal(panel.shouldCompress.value, true);
   panel.clear();
   assert.equal(panel.historyCount.value, 0);
+});
+
+test('agent panel validates answers, settles once and clears pending questions on cancel', async () => {
+  for (const cancel of [false, true]) {
+    const service = createAgentService({}, loadAgentTools());
+    let questionOpened;
+    const opened = new Promise(resolve => { questionOpened = resolve; });
+    const execute = service.executeToolCall.bind(service);
+    service.executeToolCall = async (...args) => {
+      const result = execute(...args);
+      await Promise.resolve();
+      questionOpened();
+      return result;
+    };
+    let requests = 0;
+    service.requestChat = async () => ++requests === 1 ? {
+      content: '', toolCalls: [{
+        id: 'question', type: 'function', function: { name: 'ask_user', arguments: JSON.stringify({ question: '方向？', options: ['横向', '纵向'] }) },
+      }]
+    } : { content: '已确认', toolCalls: [] };
+    let writes = 0;
+    let saved;
+    const { useAgentChat } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/useAgentChat.ts', {
+      vue: { ...uiVue, onUnmounted() { } },
+      './agent-config': { loadAgentConfig: () => ({ maxHistoryMessages: 20 }), isConfigValid: () => true },
+      './agent-service': { AgentService: class { constructor() { return service; } }, parseToolResult: content => service.parseToolResult(content) },
+      './agent-question': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-question.ts'),
+    }, { localStorage: { getItem: () => null, setItem(_key, value) { writes++; saved = JSON.parse(value); } } });
+    const panel = useAgentChat({});
+    panel.inputMessage.value = '创建流程';
+    const pending = panel.send();
+    await opened;
+    assert.equal(panel.pendingQuestion.value.question, '方向？');
+    assert.equal(panel.isBusy.value, true);
+    assert.equal(writes, 0);
+    panel.answerQuestion({ selected: ['非法选项'], text: '' });
+    assert.ok(panel.pendingQuestion.value);
+    assert.ok(panel.error.value);
+    if (cancel) panel.cancel();
+    else {
+      panel.answerQuestion({ selected: ['纵向'], text: '分支在右侧' });
+      panel.answerQuestion({ selected: ['横向'], text: '' });
+    }
+    await pending;
+    assert.equal(panel.pendingQuestion.value, undefined);
+    assert.equal(panel.isBusy.value, false);
+    assert.equal(writes, 1);
+    assert.equal(requests, cancel ? 1 : 2);
+    const toolResult = JSON.parse(saved.find(message => message.role === 'tool').content);
+    assert.equal(toolResult.success, !cancel);
+    if (!cancel) assert.equal(JSON.parse(toolResult.result).selected[0], '纵向');
+  }
 });
 
 test('agent limits individual calls within one response and records skipped tool results', async () => {
@@ -1262,8 +1481,26 @@ test('agent stores the final fallback reply in its single history source', async
   const service = createAgentService();
   service.requestChat = async () => ({ content: '', toolCalls: [] });
   const reply = await service.processMessage('empty response');
-  assert.ok(reply.content);
+  assert.match(reply.content, /未执行画布操作/);
+  assert.doesNotMatch(reply.content, /操作完成/);
   assert.equal(service.getHistory().at(-1).content, reply.content);
+});
+
+test('agent distinguishes model claims from real tool execution and preserves failures', async () => {
+  const service = createAgentService();
+  service.requestChat = async () => ({ content: '[工具执行] 成功', toolCalls: [] });
+  const unexecuted = await service.processMessage('create a shape');
+  assert.match(unexecuted.content, /^本轮未调用编辑器工具/);
+  assert.match(unexecuted.warning, /未执行画布操作/);
+  assert.equal(unexecuted.toolCalls.length, 0);
+  let requests = 0;
+  service.requestChat = async () => ++requests === 1
+    ? { content: '', toolCalls: [{ id: 'a', type: 'function', function: { name: 'missing', arguments: '{}' } }] }
+    : { content: '全部完成', toolCalls: [] };
+  const failed = await service.processMessage('try again');
+  assert.match(failed.content, /^本轮有 1 次工具调用失败/);
+  assert.equal(failed.toolCalls[0].success, false);
+  assert.equal(service.getHistory().at(-1).content, failed.content);
 });
 
 test('agent batch creation balances its transaction on success and failure', () => {
@@ -1282,6 +1519,22 @@ test('agent batch creation balances its transaction on success and failure', () 
   }
 });
 
+test('agent batch layout prevents overlap for large nodes and undersized spacing', () => {
+  const tool = loadAgentTools().getAgentTools().find(candidate => candidate.name === 'batch_create_shapes');
+  for (const spacing of [{}, { spacing_x: 1, spacing_y: 1 }]) {
+    const positions = [];
+    const result = JSON.parse(tool.execute({
+      beginTransaction() { }, endTransaction() { },
+      createElementFromTool(_tool, point) { positions.push(point); return {}; },
+      renderer: { getId: () => `node-${positions.length}` },
+    }, { shape_type: 'rect', count: 4, columns: 2, width: 300, height: 180, ...spacing }));
+    assert.ok(positions[1].x - positions[0].x >= 330);
+    assert.ok(positions[2].y - positions[0].y >= 208);
+    assert.equal(result.layout.spacing_x, 330);
+    assert.equal(result.layout.spacing_y, 208);
+  }
+});
+
 test('agent catalog shares shape enums and exposes categories from the actual tools', () => {
   const { getAgentTools } = loadAgentTools();
   const tools = getAgentTools();
@@ -1296,6 +1549,12 @@ test('agent catalog shares shape enums and exposes categories from the actual to
   const details = JSON.parse(tools.find(tool => tool.name === 'get_tool_details').execute({}, { tool_name: 'modify_text' }));
   assert.equal(details.category, 'text');
   assert.ok(details.parameters.properties.ids);
+  const skills = JSON.parse(tools.find(tool => tool.name === 'list_skills').execute({}, {}));
+  assert.equal(skills.length, 4);
+  const skill = JSON.parse(tools.find(tool => tool.name === 'get_skill').execute({}, { name: 'create_flowchart' }));
+  assert.ok(skill.tools.includes('batch_create_shapes'));
+  assert.ok(skill.steps.length > 0);
+  assert.throws(() => tools.find(tool => tool.name === 'get_skill').execute({}, { name: 'missing' }));
 });
 
 test('agent validates tool arguments and rejects failed commands', async () => {
@@ -1306,9 +1565,31 @@ test('agent validates tool arguments and rejects failed commands', async () => {
     assert.throws(() => validateToolArguments(batch, args));
   }
   validateToolArguments(batch, { shape_type: 'rect', count: 2, columns: 0 });
+  assert.throws(() => validateToolArguments(batch, { shape_type: 'rect', count: 2, 制: 1 }), /允许参数:.*shape_type/);
+  assert.throws(() => validateToolArguments(batch, { shape_type: 'rect', count: 2, toString: 'invalid' }), /未知参数/);
+  assert.throws(() => validateToolArguments(batch, { shape_type: 'rect', count: 2, width: 0 }), /数值参数/);
   await assert.rejects(tools.find(tool => tool.name === 'delete').execute({
     commands: { execute: async () => ({ success: false, message: 'not selected' }) },
   }, {}));
+});
+
+test('agent question tool validates options, booleans and user answers without editing', async () => {
+  const { getAgentTools, validateToolArguments } = loadAgentTools();
+  const tool = getAgentTools().find(candidate => candidate.name === 'ask_user');
+  const args = { question: '排列方向？', options: ['横向', '纵向'] };
+  for (const invalid of [
+    { ...args, options: ['横向'] }, { ...args, options: ['横向', '横向'] },
+    { ...args, options: [' ', '纵向'] }, { ...args, multiple: 'true' },
+  ]) assert.throws(() => validateToolArguments(tool, invalid));
+  validateToolArguments(tool, { ...args, multiple: true });
+  const invoke = (answer, multiple = false) => tool.execute({}, { ...args, multiple }, { askUser: async () => answer });
+  assert.equal(JSON.parse(await invoke({ selected: ['横向'], text: '' })).selected[0], '横向');
+  assert.equal(JSON.parse(await invoke({ selected: [], text: ' 自定义方向 ' })).text, '自定义方向');
+  await assert.rejects(invoke({ selected: ['未知'], text: '' }));
+  await assert.rejects(invoke({ selected: ['横向', '纵向'], text: '' }));
+  await assert.rejects(invoke({ selected: [], text: '' }));
+  await assert.rejects(tool.execute({}, args));
+  assert.equal(JSON.parse(await invoke({ selected: ['横向', '纵向'], text: '' }, true)).selected.length, 2);
 });
 
 test('agent service reports validation and execution failures as structured results', async () => {
@@ -1340,13 +1621,46 @@ test('agent connects only existing document ids and never falls back to names or
   const editor = {
     document: { getNode: id => ['node-a', 'node-b'].includes(id) ? { id } : undefined },
     documentCommands: { insertEdge: edge => edges.push(edge) },
-    renderer: { getNode: () => undefined },
+    renderer: {
+      getNode: id => ['node-a', 'node-b'].includes(id)
+        ? { getBounds: () => ({ x: id === 'node-a' ? 0 : 200, y: 0, width: 120, height: 72 }) }
+        : undefined
+    },
   };
   assert.throws(() => connect.execute(editor, { from: '1', to: 'node-b' }));
   assert.throws(() => connect.execute(editor, { from: 'node-a', to: 'node-a' }));
   connect.execute(editor, { from: 'node-a', to: 'node-b' });
   assert.equal(edges[0].from.nodeId, 'node-a');
   assert.equal(edges[0].to.nodeId, 'node-b');
+});
+
+test('agent chooses connector ports from page bounds and rejects overlapping nodes', () => {
+  const connect = loadAgentTools().getAgentTools().find(tool => tool.name === 'connect_elements');
+  for (const [x, y, fromSide, toSide] of [
+    [300, 0, 'right', 'left'], [-300, 0, 'left', 'right'],
+    [0, 300, 'bottom', 'top'], [0, -300, 'top', 'bottom'],
+  ]) {
+    const edges = [];
+    const editor = {
+      document: { getNode: id => ({ id }) },
+      documentCommands: { insertEdge: edge => edges.push(edge) },
+      renderer: {
+        getNode: id => id === 'from' || id === 'to' ? {
+          getBounds(type, relative) {
+            assert.equal(type, 'box');
+            assert.equal(relative, 'page');
+            return { x: id === 'from' ? 0 : x, y: id === 'from' ? 0 : y, width: 120, height: 72 };
+          },
+        } : undefined
+      },
+    };
+    connect.execute(editor, { from: 'from', to: 'to' });
+    assert.equal(edges[0].from.port.side, fromSide);
+    assert.equal(edges[0].to.port.side, toSide);
+    editor.renderer.getNode = () => ({ getBounds: () => ({ x: 0, y: 0, width: 120, height: 72 }) });
+    assert.throws(() => connect.execute(editor, { from: 'from', to: 'to' }), /重叠/);
+    assert.equal(edges.length, 1);
+  }
 });
 
 test('agent configuration accepts only the current complete format and bounded settings', () => {
@@ -1356,6 +1670,13 @@ test('agent configuration accepts only the current complete format and bounded s
   });
   const config = { ...configModule.loadAgentConfig(), apiKey: 'example' };
   assert.equal(configModule.isConfigValid(config), true);
+  assert.equal(config.provider, 'openai');
+  assert.equal(configModule.AGENT_PROVIDERS.length, 10);
+  assert.equal(configModule.getApiEndpoint({ ...config, provider: 'anthropic', apiUrl: 'https://api.anthropic.com/v1/' }), 'https://api.anthropic.com/v1/messages');
+  assert.equal(configModule.getApiEndpoint({ ...config, provider: 'anthropic', apiUrl: 'https://example.test/v1/messages' }), 'https://example.test/v1/messages');
+  assert.equal(configModule.isConfigValid({ ...config, provider: 'missing' }), false);
+  assert.equal(configModule.isConfigValid({ ...config, provider: 'ollama', apiKey: '' }), true);
+  assert.equal(configModule.isConfigValid({ ...config, provider: 'custom', apiKey: '' }), false);
   configModule.saveAgentConfig(config);
   assert.equal(configModule.loadAgentConfig().apiKey, 'example');
   assert.equal(configModule.isConfigValid({ ...config, apiUrl: 'javascript:example' }), false);
@@ -1391,6 +1712,7 @@ for (const mode of ['standard', 'stream']) {
         './agent-config': { isConfigValid: () => true },
         './agent-tools': { getAgentTools: () => [] },
         './agent-client': { requestChat: () => response() },
+        './agent-question': loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-question.ts'),
       }, { AbortController, structuredClone });
       let depth = 0;
       let endings = 0;

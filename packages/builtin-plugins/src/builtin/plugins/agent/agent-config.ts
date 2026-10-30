@@ -1,4 +1,20 @@
+export const AGENT_PROVIDERS = [
+  { id: "openai", name: "OpenAI", protocol: "openai", apiUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+  { id: "deepseek", name: "DeepSeek", protocol: "openai", apiUrl: "https://api.deepseek.com", model: "deepseek-chat" },
+  { id: "qwen", name: "通义千问", protocol: "openai", apiUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus" },
+  { id: "doubao", name: "火山引擎 / 豆包", protocol: "openai", apiUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "" },
+  { id: "zhipu", name: "智谱 GLM", protocol: "openai", apiUrl: "https://open.bigmodel.cn/api/paas/v4", model: "" },
+  { id: "moonshot", name: "Kimi / Moonshot", protocol: "openai", apiUrl: "https://api.moonshot.cn/v1", model: "" },
+  { id: "gemini", name: "Google Gemini", protocol: "openai", apiUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "" },
+  { id: "anthropic", name: "Anthropic Claude", protocol: "anthropic", apiUrl: "https://api.anthropic.com/v1", model: "" },
+  { id: "ollama", name: "Ollama", protocol: "openai", apiUrl: "http://localhost:11434/v1", model: "" },
+  { id: "custom", name: "自定义 OpenAI 兼容", protocol: "openai", apiUrl: "", model: "" },
+] as const;
+
+export type AgentProvider = (typeof AGENT_PROVIDERS)[number]["id"];
+
 export interface AgentConfig {
+  provider: AgentProvider;
   apiUrl: string;
   apiKey: string;
   model: string;
@@ -7,6 +23,7 @@ export interface AgentConfig {
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
+  provider: "openai",
   apiUrl: "https://api.openai.com/v1",
   apiKey: "",
   model: "gpt-4o-mini",
@@ -20,6 +37,7 @@ function isStoredConfig(value: unknown): value is AgentConfig {
   if (!value || typeof value !== "object") return false;
   const config = value as Partial<AgentConfig>;
   return (
+    AGENT_PROVIDERS.some((provider) => provider.id === config.provider) &&
     typeof config.apiUrl === "string" &&
     typeof config.apiKey === "string" &&
     typeof config.model === "string" &&
@@ -55,12 +73,13 @@ export function saveAgentConfig(config: AgentConfig): void {
 
 export function getApiEndpoint(config: AgentConfig): string {
   const base = config.apiUrl.replace(/\/+$/, "");
-  if (base.endsWith("/chat/completions")) return base;
-  return `${base}/chat/completions`;
+  const path = config.provider === "anthropic" ? "/messages" : "/chat/completions";
+  if (base.endsWith(path)) return base;
+  return `${base}${path}`;
 }
 
 export function isConfigValid(config: AgentConfig): boolean {
-  if (!isStoredConfig(config) || !config.apiKey.trim() || !config.model.trim()) return false;
+  if (!isStoredConfig(config) || (config.provider !== "ollama" && !config.apiKey.trim()) || !config.model.trim()) return false;
   try {
     return ["https:", "http:"].includes(new URL(config.apiUrl).protocol);
   } catch {

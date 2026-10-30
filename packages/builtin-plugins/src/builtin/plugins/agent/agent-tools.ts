@@ -4,6 +4,8 @@ import { ACTION_NAME, TOOL_NAME } from "@leafer-flow/core/constants";
 import { getTemplateStyle, templateMap } from "../../../templates/defs";
 import { insertTemplateFlow } from "../../../templates/insert";
 import { TemplateRegistry } from "../../templates/registry";
+import { getAgentSkills } from "./agent-skills";
+import { validateUserAnswer, type AgentToolContext } from "./agent-question";
 
 const SHAPE_TOOLS: Record<string, string> = {
   rect: TOOL_NAME.DRAW_RECT,
@@ -84,30 +86,34 @@ function getTargetIds(editor: Editor, args: Record<string, unknown>): string[] {
 }
 
 type ToolCategory =
-  "file" | "edit" | "shape" | "layout" | "template" | "text" | "view" | "canvas" | "system";
+  "file" | "edit" | "shape" | "layout" | "template" | "text" | "view" | "canvas" | "system" | "interaction";
 
 interface ToolParameter {
-  type: "string" | "number" | "integer" | "array";
+  type: "string" | "number" | "integer" | "array" | "boolean";
   description?: string;
   enum?: string[];
   items?: ToolParameter;
   minimum?: number;
   maximum?: number;
   minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  minLength?: number;
+  maxLength?: number;
 }
 
 export interface AgentTool {
   name: string;
   description: string;
   parameters: { type: "object"; properties: Record<string, ToolParameter>; required?: string[] };
-  execute: (editor: Editor, args: Record<string, unknown>) => Promise<string> | string;
+  execute: (editor: Editor, args: Record<string, unknown>, context?: AgentToolContext) => Promise<string> | string;
   category: ToolCategory;
 }
 
 export function validateToolArguments(tool: AgentTool, args: Record<string, unknown>) {
   const validate = (name: string, value: unknown, rule: ToolParameter) => {
     if (rule.type === "array") {
-      if (!Array.isArray(value) || value.length < (rule.minItems ?? 0))
+      if (!Array.isArray(value) || value.length < (rule.minItems ?? 0) || value.length > (rule.maxItems ?? Infinity) || (rule.uniqueItems && new Set(value).size !== value.length))
         throw new Error(`无效的数组参数: ${name}`);
       const itemRule = rule.items;
       if (itemRule) value.forEach((item) => validate(name, item, itemRule));
@@ -120,15 +126,18 @@ export function validateToolArguments(tool: AgentTool, args: Record<string, unkn
         value > (rule.maximum ?? Infinity)
       )
         throw new Error(`无效的数值参数: ${name}`);
-    } else if (typeof value !== "string") throw new Error(`无效的字符串参数: ${name}`);
+    } else if (rule.type === "boolean") {
+      if (typeof value !== "boolean") throw new Error(`无效的布尔参数: ${name}`);
+    } else if (typeof value !== "string" || value.trim().length < (rule.minLength ?? 0) || value.length > (rule.maxLength ?? Infinity)) throw new Error(`无效的字符串参数: ${name}`);
     if (rule.enum && !rule.enum.includes(String(value))) throw new Error(`不支持的参数值: ${name}`);
   };
   for (const name of tool.parameters.required ?? []) {
     if (args[name] === undefined) throw new Error(`缺少参数: ${name}`);
   }
   for (const [name, value] of Object.entries(args)) {
-    const rule = tool.parameters.properties[name];
-    if (!rule) throw new Error(`未知参数: ${name}`);
+    if (!Object.hasOwn(tool.parameters.properties, name))
+      throw new Error(`未知参数: ${name}。允许参数: ${Object.keys(tool.parameters.properties).join(", ") || "无"}。请使用原始参数名，不要翻译。`);
+    const rule = tool.parameters.properties[name]!;
     validate(name, value, rule);
   }
 }
@@ -296,7 +305,7 @@ const AGENT_TOOLS: AgentTool[] = [
   {
     name: "batch_create_shapes",
     category: "shape",
-    description: "批量创建多个图形。支持指定每个图形的类型、位置、文本等。网格排列时自动计算位置。",
+    description: "按网格批量创建同类型图形，支持文本数组，自动按图形尺寸计算无重叠的排列步长。",
     parameters: {
       type: "object",
       properties: {
@@ -326,19 +335,23 @@ const AGENT_TOOLS: AgentTool[] = [
         },
         width: {
           type: "number",
+          minimum: 1,
           description: "每个图形的宽度（可选，默认 120）",
         },
         height: {
           type: "number",
+          minimum: 1,
           description: "每个图形的高度（可选，默认 72）",
         },
         spacing_x: {
           type: "number",
-          description: "水平间距（可选，默认 150）",
+          minimum: 0,
+          description: "水平坐标步长，至少为宽度 + 30（可选，默认宽度 + 30）",
         },
         spacing_y: {
           type: "number",
-          description: "垂直间距（可选，默认 100）",
+          minimum: 0,
+          description: "垂直坐标步长，至少为高度 + 28（可选，默认高度 + 28）",
         },
         columns: {
           type: "integer",
@@ -356,8 +369,8 @@ const AGENT_TOOLS: AgentTool[] = [
       const startY = typeof args.start_y === "number" ? args.start_y : 100;
       const width = typeof args.width === "number" ? args.width : 120;
       const height = typeof args.height === "number" ? args.height : 72;
-      const spacingX = typeof args.spacing_x === "number" ? args.spacing_x : 150;
-      const spacingY = typeof args.spacing_y === "number" ? args.spacing_y : 100;
+      const spacingX = Math.max(width + 30, typeof args.spacing_x === "number" ? args.spacing_x : 0);
+      const spacingY = Math.max(height + 28, typeof args.spacing_y === "number" ? args.spacing_y : 0);
       const columns =
         args.columns === 0 ? count : typeof args.columns === "number" ? args.columns : 5;
 
@@ -390,6 +403,7 @@ const AGENT_TOOLS: AgentTool[] = [
         return JSON.stringify({
           message: `已批量创建 ${created}/${count} 个 ${shapeType} 图形`,
           ids,
+          layout: { columns, spacing_x: spacingX, spacing_y: spacingY },
         });
       } finally {
         editor.endTransaction();
@@ -708,7 +722,7 @@ const AGENT_TOOLS: AgentTool[] = [
   {
     name: "connect_elements",
     category: "canvas",
-    description: "使用搜索或创建返回的文档 ID 连接两个节点。",
+    description: "使用文档 ID 连接两个节点，按相对位置自动选择端口；节点重叠时需先调整布局。",
     parameters: {
       type: "object",
       properties: {
@@ -730,12 +744,28 @@ const AGENT_TOOLS: AgentTool[] = [
       if (!editor.document.getNode(toId)) throw new Error(`目标节点不存在: ${toId}`);
       if (fromId === toId) throw new Error("不能连接节点自身");
 
+      const fromNode = editor.renderer.getNode(fromId);
+      const toNode = editor.renderer.getNode(toId);
+      if (!fromNode || !toNode) throw new Error("无法获取节点布局，请先查询画布确认节点状态。");
+      const fromBounds = fromNode.getBounds("box", "page");
+      const toBounds = toNode.getBounds("box", "page");
+      if (
+        fromBounds.x < toBounds.x + toBounds.width &&
+        fromBounds.x + fromBounds.width > toBounds.x &&
+        fromBounds.y < toBounds.y + toBounds.height &&
+        fromBounds.y + fromBounds.height > toBounds.y
+      ) throw new Error("两个节点的边界重叠，请先使用 set_style 调整位置后再连接。");
+      const dx = toBounds.x + toBounds.width / 2 - fromBounds.x - fromBounds.width / 2;
+      const dy = toBounds.y + toBounds.height / 2 - fromBounds.y - fromBounds.height / 2;
+      const horizontal = Math.abs(dx) >= Math.abs(dy);
+      const fromSide = horizontal ? (dx >= 0 ? "right" : "left") : (dy >= 0 ? "bottom" : "top");
+      const toSide = horizontal ? (dx >= 0 ? "left" : "right") : (dy >= 0 ? "top" : "bottom");
       const edgeId = crypto.randomUUID();
       editor.documentCommands.insertEdge({
         id: edgeId,
         parentId: null,
-        from: { nodeId: fromId, port: { side: "right", percent: 0.5 } },
-        to: { nodeId: toId, port: { side: "left", percent: 0.5 } },
+        from: { nodeId: fromId, port: { side: fromSide, percent: 0.5 } },
+        to: { nodeId: toId, port: { side: toSide, percent: 0.5 } },
         data: { routeType: "orthogonal" },
       });
       const connector = editor.renderer.getNode(edgeId);
@@ -746,6 +776,48 @@ const AGENT_TOOLS: AgentTool[] = [
 
   // 工具查询与自省
   {
+    name: "ask_user",
+    category: "interaction",
+    description: "向用户提出业务问题，提供单选/多选和补充回答；等待回答后继续。必须单独调用，禁止索取密钥等秘密信息。",
+    parameters: {
+      type: "object",
+      properties: {
+        question: { type: "string", minLength: 1, maxLength: 500, description: "需要用户确认的问题" },
+        options: { type: "array", minItems: 2, maxItems: 6, uniqueItems: true, items: { type: "string", minLength: 1, maxLength: 120 }, description: "2-6 个不同的可选回答" },
+        multiple: { type: "boolean", description: "是否允许多选，默认 false" },
+      },
+      required: ["question", "options"],
+    },
+    execute: async (_editor, args, context) => {
+      if (!context?.askUser) throw new Error("当前环境不支持交互式提问");
+      const question = { question: args.question as string, options: args.options as string[], multiple: args.multiple === true };
+      const answer = validateUserAnswer(question, await context.askUser(question));
+      return JSON.stringify(answer);
+    },
+  },
+  {
+    name: "list_skills",
+    category: "system",
+    description: "查询内置工作流 skill 目录，复杂任务先选择相关 skill。",
+    parameters: { type: "object", properties: {} },
+    execute: () => JSON.stringify(getAgentSkills().map(({ name, description }) => ({ name, description }))),
+  },
+  {
+    name: "get_skill",
+    category: "system",
+    description: "读取指定工作流 skill 的推荐工具和执行步骤；读取本身不执行画布修改。",
+    parameters: {
+      type: "object",
+      properties: { name: { type: "string", enum: getAgentSkills().map((skill) => skill.name) } },
+      required: ["name"],
+    },
+    execute: (_editor, args) => {
+      const skill = getAgentSkills().find((item) => item.name === args.name);
+      if (!skill) throw new Error(`未知 skill: ${String(args.name)}`);
+      return JSON.stringify(skill);
+    },
+  },
+  {
     name: "list_tools",
     description: "列出所有可用的 Agent 工具及其简要描述。用于了解 Agent 的能力。",
     parameters: {
@@ -754,7 +826,7 @@ const AGENT_TOOLS: AgentTool[] = [
         category: {
           type: "string",
           description:
-            "可选：按分类筛选工具。可选值: file(文件), edit(编辑), shape(图形), layout(布局), template(模板), text(文字), view(视图), canvas(画布), system(系统)",
+            "可选：按分类筛选工具。可选值: file(文件), edit(编辑), shape(图形), layout(布局), template(模板), text(文字), view(视图), canvas(画布), system(系统), interaction(用户交互)",
         },
       },
       required: [],

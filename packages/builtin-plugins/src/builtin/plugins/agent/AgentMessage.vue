@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { ToolCallResult } from "./agent-service";
+import type { UserAnswer } from "./agent-question";
 
 interface Props {
   role: "user" | "assistant";
@@ -18,12 +19,22 @@ const renderedContent = computed(() =>
     USE_PROFILES: { html: true },
   }),
 );
+
+function resultText(call: ToolCallResult): string {
+  if (call.name !== "ask_user" || !call.success) return call.result;
+  try {
+    const answer = JSON.parse(call.result) as UserAnswer;
+    return [...answer.selected, answer.text].filter(Boolean).join("；");
+  } catch {
+    return call.result;
+  }
+}
 </script>
 
 <template>
   <div class="chat" :class="role === 'user' ? 'chat-end' : 'chat-start'">
     <div class="chat-header text-[10px] opacity-50">
-      {{ role === "user" ? "你" : "AI 助手" }}
+      {{ role === "user" ? "你" : "模型回复" }}
     </div>
     <div class="chat-bubble text-xs max-w-[90%] min-w-0 break-words" :class="{
       'chat-bubble-primary': role === 'user',
@@ -39,12 +50,15 @@ const renderedContent = computed(() =>
       <template v-else>
         <!-- 工具调用结果 -->
         <div v-if="toolCalls && toolCalls.length > 0" class="space-y-2">
-          <div v-for="(call, index) in toolCalls" :key="index" class="bg-base-200/50 rounded p-2">
+          <div class="text-[11px] font-semibold">编辑器执行结果</div>
+          <div v-for="(call, index) in toolCalls" :key="index" class="rounded p-2 border"
+            :class="call.success ? 'bg-base-200/50 border-base-300' : 'bg-error/15 border-error/50 text-error'"
+            :role="call.success ? 'status' : 'alert'">
             <div class="flex items-center gap-1 text-[11px] font-medium mb-1">
               <Icon :name="call.success ? 'success' : 'error'" class="h-3 w-3 shrink-0" aria-hidden="true" />
-              {{ call.name }}
+              {{ call.success ? (call.name === 'ask_user' ? '已回答' : '成功') : '失败' }} · {{ call.name }}
             </div>
-            <div class="text-[11px] opacity-70">{{ call.result }}</div>
+            <div class="text-[11px]" :class="{ 'opacity-70': call.success }">{{ resultText(call) }}</div>
           </div>
         </div>
 

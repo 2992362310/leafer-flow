@@ -20,91 +20,10 @@ Do not use this skill for generic LeaferJS code generation. For Leafer framework
 
 ## Repository Facts
 
-- Stack: Vue 3 + Vite + TypeScript + LeaferJS.
-- Current build command: `pnpm run build`.
-- No automated test files are currently present.
-- This is a personal practice project, so token and execution cost should be kept low by default.
-- The editor is centered around `src/editor/editor.ts`, `src/editor/index.ts`, and the `src/editor/action` and `src/editor/core` directories.
-- Current documentation in `docs/` is intentionally sparse; prefer actual code paths over assuming historical docs are current.
+Use the live `list_tools` / `get_tool_details` tools or read `packages/builtin-plugins/src/builtin/plugins/agent/agent-tools.ts` for schemas and capabilities. Shape enums derive from `SHAPE_TOOLS`; never duplicate their count or names in documentation.
 
-## Architecture Map
+Use `list_skills` / `get_skill` for workflow guidance from `agent-skills.ts`. Keep this engineering skill focused on ownership, safety rules and validation rather than another static tool inventory.
 
-### UI layer
-
-Primary entry points:
-
-- `src/App.vue`
-- `src/components/EditorPanel.vue`
-- `src/components/ContextMenu.vue`
-- `src/components/EditorToolbar.vue`
-- `src/components/LayerTree/*`
-
-Current reality:
-
-- UI components still directly import and call many editor actions.
-- `App.vue` is an orchestration surface for initialization, shape drop, marquee selection, and user action dispatch.
-- `EditorPanel.vue` currently combines selection parsing, property state, and property mutation logic.
-
-### Editor core
-
-Primary entry points:
-
-- `src/editor/editor.ts`
-- `src/editor/index.ts`
-- `src/editor/core/*`
-- `src/editor/action/*`
-- `src/editor/tools/*`
-
-Current reality:
-
-- `src/editor/editor.ts` mixes lifecycle, tool execution, history listeners, and autosave startup.
-- `src/editor/index.ts` is both an initialization entry and a tool definition hub.
-- mutation side effects are still scattered across actions via repeated `history.save()` and `autoSave.save()` calls.
-
-### AI Agent Tools Layer
-
-The built-in AI Agent plugin (`src/editor/builtin/plugins/agent/`) exposes editor capabilities via LLM-callable tools:
-
-- `src/editor/builtin/plugins/agent/agent-service.ts` — LLM integration and message processing
-- `src/editor/builtin/plugins/agent/agent-tools.ts` — 45 tool definitions (file, edit, layout, shape, template, style, view, canvas)
-- `src/editor/builtin/plugins/agent/agent-config.ts` — API configuration and storage
-- `src/editor/builtin/plugins/agent/AgentChatPanel.vue` — UI chat interface
-
-**Tool categories:**
-
-1. **File ops** (4): save, load, export_png, export_svg
-2. **Edit ops** (8): undo, redo, delete, copy, cut, paste, duplicate, select_all
-3. **Layout** (8): align, distribute, group, ungroup, bring_forward/send_backward/bring_to_front/send_to_back
-4. **Shapes** (2): create_shape (56 types), batch_create_shapes (grid layout, batch create)
-5. **Templates** (1): insert_template (9 templates, with offset/scale support)
-6. **Styles** (2): set_style (position, size, colors, rotation, radius), modify_text (content, font, color)
-7. **View** (4): zoom_fit, zoom_in, zoom_out, zoom_reset
-8. **Canvas** (4): clear_canvas, get_canvas_info, get_selection_info, search_elements
-9. **Connectors** (1): connect_elements
-
-### High-risk modules
-
-Treat these as regression-prone:
-
-- `src/editor/tools/draw-arrow.ts`
-- `packages/core/src/document/leafer-document-adapter.ts`
-- `packages/core/src/document/clipboard.ts`
-- `src/editor/core/connector-labels.ts`
-- `src/editor/action/do-clipboard.ts`
-- `src/editor/action/do-group.ts`
-- `src/editor/action/do-ungroup.ts`
-- `src/editor/action/do-file.ts`
-- `src/editor/builtin/plugins/agent/agent-tools.ts` — adding/changing tools requires updating enum, toolMap, and SYSTEM_PROMPT together
-
-These files affect connector restoration, grouping semantics, clipboard remapping, history integrity, autosave behavior, or LLM-visible capabilities.
-
-## Preferred Engineering Rules
-
-### 1. Favor a single source of truth for tool metadata
-
-When adding or refactoring shapes, avoid spreading the same information across:
-
-- `src/editor/constants.ts`
 - `src/editor/index.ts`
 - `src/editor/shape-library.ts`
 
@@ -208,7 +127,7 @@ Because this repository has no automated tests yet:
 
 ### Pattern: adding or modifying an Agent tool
 
-When modifying `src/editor/builtin/plugins/agent/agent-tools.ts`:
+When modifying `packages/builtin-plugins/src/builtin/plugins/agent/agent-tools.ts`:
 
 1. Add the tool to the `getAgentTools()` array with:
    - `name`: tool identifier (snake_case)
@@ -216,24 +135,23 @@ When modifying `src/editor/builtin/plugins/agent/agent-tools.ts`:
    - `parameters`: JSON schema describing inputs
    - `execute`: implementation calling editor commands or applying changes
 
-2. Update `SYSTEM_PROMPT` in `agent-service.ts` to mention the new capability.
+2. Update related workflow recipes in `agent-skills.ts`; update `SYSTEM_PROMPT` when the service needs a new behavioral rule.
 
 3. If the tool creates or modifies shapes, verify:
-   - shape creation calls `editor.createElementFromTool()` or applies via `appendFlowGraph()`
-   - mutations end with `editor.commitMutation()` to sync history/autosave
-   - selection predicates pass through `get_selection_info` tool for LLM visibility
+   - use document commands and stable document IDs; do not mutate renderer children directly
+   - service transactions close in finally and never span a model request or user question
+   - selection predicates pass through `get_selection_info`; failures throw and become structured results
 
-4. Test the tool via:
-   - `Agent Chat Panel` UI at runtime
-   - Invoke via LLM message and validate tool_calls schema
-   - Verify result message clarity for the LLM to continue
+4. Validate the touched slice using `node --test --test-name-pattern="agent " scripts/runtime.test.mjs` when protocol, history or async behavior changes. For Vue changes, use the narrowest diagnostics or `pnpm --filter @leafer-flow/builtin-plugins typecheck`.
 
 **Common mistakes:**
 
 - forgetting to add the tool to `SYSTEM_PROMPT` → LLM doesn't know to use it
 - tool enum incomplete (shape_type enum mismatch with TOOL_NAME constants) → runtime error
 - missing `editor.commitMutation()` → changes visible but not persisted/undoable
-- parameter schema too strict or documentation unclear → LLM struggles to call correctly
+- silently accepting translated or unknown parameter names instead of guiding schema-correct retries
+- treating a plain text reply as proof of Function Calling support
+- allowing a cancelled question or late answer to resume editing
 
 ## Validation Order
 
@@ -288,7 +206,7 @@ Avoid these repository-specific mistakes:
 - treating docs as authoritative when nearby code contradicts them
 - adding test scaffolding or running broad verification for small local edits without user value
 - broad refactors without a focused validation step between edits
-- **Agent-specific**: adding a tool without updating both `enum` and `toolMap` in `agent-tools.ts` → enum mismatch error
+- **Agent-specific**: duplicating tool definitions in a separate enum/toolMap instead of deriving the catalog and schemas
 - **Agent-specific**: omitting `SYSTEM_PROMPT` update → LLM unaware of new capability
 - **Agent-specific**: tool parameter schema mismatched with TypeScript `args` type → LLM call parsing fails
 - **Agent-specific**: calling `editor.commands.execute()` without error handling → silent tool failure masks LLM confusion

@@ -2,10 +2,12 @@ import type Editor from "@leafer-flow/core/editor";
 import { type AgentConfig, isConfigValid } from "./agent-config";
 import { getAgentTools, validateToolArguments } from "./agent-tools";
 import { requestChat, type ChatMessage, type ToolCall } from "./agent-client";
+import { waitForUserAnswer, type AgentToolContext, type UserAnswer, type UserQuestion } from "./agent-question";
 
 export interface AgentResponse {
   content: string;
   toolCalls: ToolCallResult[];
+  warning?: string;
 }
 
 export interface ToolCallResult {
@@ -41,6 +43,7 @@ export interface StreamCallbacks {
   onToken?: (token: string) => void;
   onToolCall?: (toolCall: { name: string; arguments: Record<string, unknown> }) => void;
   onToolResult?: (result: ToolCallResult) => void;
+  onQuestion?: (question: UserQuestion, signal: AbortSignal) => Promise<UserAnswer>;
 }
 
 const SYSTEM_PROMPT = `你是 Leafer Flow 编辑器的 AI 助手，使用工具完成用户的画布编辑需求，用简洁中文报告实际结果。
@@ -51,7 +54,14 @@ const SYSTEM_PROMPT = `你是 Leafer Flow 编辑器的 AI 助手，使用工具�
 - 批量创建使用 batch_create_shapes，文字使用 modify_text，样式与几何属性使用 set_style。
 - 文字和样式工具自动处理节点内部结构，不要修改渲染子元素。
 - 工具结果 success=false 代表失败，不要宣称已完成。中断后先查询画布再决定是否重试，避免重复创建。
-- 用户询问能力时可使用 list_tools/get_tool_details 获取最新目录。`;
+- 只有真实工具调用能修改画布，不得用文字模拟“工具执行”或声称未调用工具的操作成功。
+- 参数名必须逐字使用 Schema 中的键，不要翻译或添加参数；校验失败后按错误提示修正，不要原样重复。
+- 流程图优先使用 insert_template；重复节点优先使用 batch_create_shapes，显式设置间距，避免节点重叠。
+- 自定义布局先查询画布，按节点宽高预留间隔，再使用 connect_elements 连接文档 ID；不要用普通箭头覆盖节点。
+- 复杂任务先 list_skills/get_skill 读取相应工作流；能力及参数通过 list_tools/get_tool_details 查询。
+- 关键需求不明确时调用 ask_user，提供简短问题和 2-6 个选项，允许用户补充文字；multiple=true 支持多选。
+- ask_user 必须单独调用，等待真实用户回答后再继续，不得代替用户回答或与画布修改放在同一批。
+- 不要通过 ask_user 索取 API Key、密码、令牌等秘密信息；密钥仅由用户在设置中配置。`;
 
 const SUMMARY_PROMPT = `请对以下对话历史进行简洁的摘要，保留关键信息：
 - 用户创建了哪些图形
@@ -70,7 +80,7 @@ export class AgentService {
   private readonly tools = new Map(getAgentTools().map((tool) => [tool.name, tool]));
   private readonly toolsSchema = getAgentTools().map(({ name, description, parameters }) => ({
     type: "function",
-    function: { name, description, parameters },
+    function: { name, description, parameters: { ...parameters, additionalProperties: false } },
   }));
   private operation?: AbortController;
 
@@ -251,7 +261,7 @@ export class AgentService {
     callbacks: StreamCallbacks = {},
   ): Promise<AgentResponse> {
     if (!isConfigValid(this.config)) {
-      throw new Error("请先在设置中配置 API URL 和 API Key。");
+      throw new Error("请先在设置中配置厂商、API 地址、模型及所需密钥。");
     }
     const operation = this.startOperation();
     this.history.push({ role: "user", content: userMessage });
@@ -272,14 +282,25 @@ export class AgentService {
           onToken: callbacks.onToken,
         });
         operation.signal.throwIfAborted();
-        const replyContent = content || (toolCalls.length ? "" : "操作完成");
+        let replyContent = content || (toolCalls.length ? "" : "模型未返回有效回复。");
+        let warning: string | undefined;
+        if (!toolCalls.length) {
+          const failedCount = allToolCalls.filter((call) => !call.success).length;
+          if (!allToolCalls.length) {
+            warning = "本轮未调用编辑器工具，未执行画布操作。如需编辑画布，请确认端点和模型支持 Function Calling（工具调用），并在设置中测试工具调用。";
+          } else if (failedCount) {
+            warning = `本轮有 ${failedCount} 次工具调用失败，请以工具执行结果为准，不能视为全部完成。`;
+          }
+          if (warning) replyContent = `${warning}\n\n${replyContent}`;
+        }
         this.history.push({
           role: "assistant",
           content: replyContent,
           ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
         });
-        if (!toolCalls.length) return { content: replyContent, toolCalls: allToolCalls };
+        if (!toolCalls.length) return { content: replyContent, toolCalls: allToolCalls, warning };
 
+        const invalidQuestionBatch = toolCalls.length > 1 && toolCalls.some((call) => call.function.name === "ask_user");
         for (const toolCall of toolCalls) {
           operation.signal.throwIfAborted();
           let result: ToolCallResult;
@@ -290,13 +311,26 @@ export class AgentService {
               success: false,
               result: "已达到工具调用上限，此操作未执行。",
             };
+          } else if (invalidQuestionBatch) {
+            toolCallCount++;
+            result = {
+              name: toolCall.function.name,
+              arguments: {},
+              success: false,
+              result: "ask_user 必须单独调用。此批次所有操作均未执行，请先询问并等待用户回答。",
+            };
           } else {
             toolCallCount++;
-            this.editor.beginTransaction();
+            const onQuestion = callbacks.onQuestion;
+            const context: AgentToolContext = {
+              askUser: onQuestion ? (question) => waitForUserAnswer(question, onQuestion, operation.signal) : undefined,
+            };
+            const isQuestion = toolCall.function.name === "ask_user";
+            if (!isQuestion) this.editor.beginTransaction();
             try {
-              result = await this.executeToolCall(toolCall, callbacks.onToolCall);
+              result = await this.executeToolCall(toolCall, callbacks.onToolCall, context);
             } finally {
-              this.editor.endTransaction();
+              if (!isQuestion) this.editor.endTransaction();
             }
           }
           allToolCalls.push(result);
@@ -310,7 +344,7 @@ export class AgentService {
         if (toolCallCount >= MAX_TOOL_CALLS) {
           const limitMessage = "已达到工具调用上限，已停止执行。已完成的修改予以保留。";
           this.history.push({ role: "assistant", content: limitMessage });
-          return { content: limitMessage, toolCalls: allToolCalls };
+          return { content: limitMessage, toolCalls: allToolCalls, warning: limitMessage };
         }
       }
     } catch (error) {
@@ -319,7 +353,7 @@ export class AgentService {
         : `处理消息时出错: ${error instanceof Error ? error.message : "未知错误"}`;
       this.completePendingCalls();
       this.history.push({ role: "assistant", content });
-      return { content, toolCalls: allToolCalls };
+      return { content, toolCalls: allToolCalls, warning: content };
     } finally {
       this.completePendingCalls();
       this.operation = undefined;
@@ -329,6 +363,7 @@ export class AgentService {
   private async executeToolCall(
     toolCall: ToolCall,
     onStart?: StreamCallbacks["onToolCall"],
+    context?: AgentToolContext,
   ): Promise<ToolCallResult> {
     const { name, arguments: argsStr } = toolCall.function;
 
@@ -359,7 +394,7 @@ export class AgentService {
     try {
       validateToolArguments(tool, args);
       onStart?.({ name, arguments: args });
-      const result = await tool.execute(this.editor, args);
+      const result = await tool.execute(this.editor, args, context);
       return {
         name,
         arguments: args,

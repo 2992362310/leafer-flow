@@ -12,6 +12,7 @@ import { useAgentChat } from "./useAgentChat";
 import type { AgentConfig } from "./agent-config";
 import AgentMessage from "./AgentMessage.vue";
 import AgentSettings from "./AgentSettings.vue";
+import AgentQuestion from "./AgentQuestion.vue";
 
 interface Props {
   editor: Editor;
@@ -34,6 +35,8 @@ const {
   status,
   inputMessage,
   activeTool,
+  pendingQuestion,
+  answerQuestion,
   error,
   messages: displayMessages,
   isReady,
@@ -76,19 +79,19 @@ function handleKeydown(e: KeyboardEvent) {
   <Transition name="slide-fade">
     <component :is="mode === 'flyout' ? PanelFlyoutWrapper : 'div'"
       v-if="mode === 'flyout' || (!isCollapsed && mode === 'float')" v-bind="mode === 'flyout'
-          ? { panelId: 'agent-chat', title: 'AI 助手', icon: 'agent', width: 352 }
-          : {}
+        ? { panelId: 'agent-chat', title: 'AI 助手', icon: 'agent', width: 352 }
+        : {}
         " :class="mode === 'float'
           ? 'shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed overflow-hidden z-20 rounded-lg'
           : ''
-        " :style="mode === 'float'
+          " :style="mode === 'float'
           ? {
             left: `${position.x}px`,
             top: `${position.y}px`,
             width: 'min(22rem, calc(100vw - 1rem))',
           }
           : {}
-        ">
+          ">
       <div class="flex flex-col min-h-0" style="height: min(70vh, calc(100vh - 9rem))">
         <!-- 标题栏 -->
         <div
@@ -134,6 +137,13 @@ function handleKeydown(e: KeyboardEvent) {
           <AgentSettings :config="config" @save="handleSaveConfig" @close="showSettings = false" />
         </div>
 
+        <div v-if="!isReady && !showSettings" role="status"
+          class="px-3 py-3 bg-warning/15 border-b border-warning/40 text-xs space-y-2 shrink-0">
+          <p class="font-semibold">尚未配置 API，无法发送画布指令</p>
+          <p>需要支持 Function Calling（工具调用）的端点和模型。</p>
+          <button class="btn btn-warning btn-xs" @click="showSettings = true">配置 API</button>
+        </div>
+
         <!-- 历史状态提示 -->
         <div v-if="shouldCompress && isReady && !showSettings"
           class="px-3 py-1.5 bg-info/10 text-info text-[11px] flex items-center justify-between">
@@ -144,12 +154,13 @@ function handleKeydown(e: KeyboardEvent) {
         </div>
 
         <!-- 消息列表 -->
-        <div v-if="error" role="alert" class="px-3 py-2 text-xs text-error break-words">
+        <div v-if="error" role="alert"
+          class="px-3 py-2 text-xs text-error bg-error/10 border-b border-error/30 break-words max-h-28 overflow-y-auto shrink-0">
           {{ error }}
         </div>
         <div ref="messagesContainerRef" class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
           <!-- 欢迎消息 -->
-          <div v-if="displayMessages.length === 0" class="text-center text-xs text-base-content/50 py-8">
+          <div v-if="displayMessages.length === 0 && isReady" class="text-center text-xs text-base-content/50 py-8">
             <p class="mb-2">👋 你好！我是 AI 助手</p>
             <p>告诉我你想做什么，比如：</p>
             <p class="mt-1">"创建一个审批流程"</p>
@@ -159,24 +170,27 @@ function handleKeydown(e: KeyboardEvent) {
 
           <!-- 消息列表 -->
           <AgentMessage v-for="(msg, index) in displayMessages" :key="index" :role="msg.role" :content="msg.content"
-            :tool-calls="msg.toolCalls" :is-loading="msg.isStreaming && !msg.content && !msg.toolCalls.length" />
+            :tool-calls="msg.toolCalls"
+            :is-loading="msg.isStreaming && !msg.content && !msg.toolCalls.length && !pendingQuestion" />
 
           <!-- 加载状态 -->
           <AgentMessage v-if="isLoading && !displayMessages.some((m) => m.isStreaming)" role="assistant" content=""
             :is-loading="true" />
-          <div v-if="activeTool" class="text-xs opacity-60">{{ activeTool }}</div>
+          <div v-if="activeTool && !pendingQuestion" class="text-xs opacity-60">{{ activeTool }}</div>
+        </div>
+
+        <div v-if="pendingQuestion"
+          class="p-3 border-t border-primary/30 bg-primary/5 max-h-[55%] overflow-y-auto shrink-0">
+          <AgentQuestion :question="pendingQuestion" @answer="answerQuestion" @cancel="cancel" />
         </div>
 
         <!-- 输入区域 -->
-        <div class="p-2 border-t border-base-200 bg-base-100">
-          <div v-if="!isReady" class="text-center text-xs text-warning py-2">
-            请先点击设置按钮配置 API
-          </div>
-          <div v-else class="join w-full">
-            <input v-model="inputMessage" type="text" placeholder="输入指令..."
-              class="input input-bordered input-xs join-item flex-1 min-w-0" :disabled="isBusy"
+        <div v-else class="p-2 border-t border-base-200 bg-base-100 shrink-0">
+          <div class="join w-full">
+            <input v-model="inputMessage" type="text" :placeholder="isReady ? '输入指令...' : '请先配置 API'"
+              class="input input-bordered input-xs join-item flex-1 min-w-0" :disabled="isBusy || !isReady"
               @keydown="handleKeydown" />
-            <button v-if="!isBusy" class="btn btn-primary btn-xs join-item" :disabled="!inputMessage.trim()"
+            <button v-if="!isBusy" class="btn btn-primary btn-xs join-item" :disabled="!isReady || !inputMessage.trim()"
               @click="handleSend">
               发送
             </button>

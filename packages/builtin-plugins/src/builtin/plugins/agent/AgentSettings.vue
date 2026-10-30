@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from "vue";
-import { type AgentConfig, isConfigValid } from "./agent-config";
-import { requestChat } from "./agent-client";
+import { AGENT_PROVIDERS, type AgentConfig, isConfigValid } from "./agent-config";
+import { testToolCalling } from "./agent-client";
 
 interface Props {
   config: AgentConfig;
@@ -27,6 +27,25 @@ watch(
   },
 );
 
+watch(localConfig, () => {
+  testController?.abort();
+  testController = undefined;
+  testStatus.value = "idle";
+  testMessage.value = "";
+}, { deep: true });
+
+function handleProviderChange(event: Event) {
+  const provider = AGENT_PROVIDERS.find((item) => item.id === (event.target as HTMLSelectElement).value);
+  if (!provider) return;
+  localConfig.value = {
+    ...localConfig.value,
+    provider: provider.id,
+    apiUrl: provider.apiUrl,
+    model: provider.model,
+    apiKey: "",
+  };
+}
+
 function handleSave() {
   emit("save", localConfig.value);
 }
@@ -35,25 +54,26 @@ async function handleTest() {
   if (testStatus.value === "testing") return;
   if (!isConfigValid(localConfig.value)) {
     testStatus.value = "error";
-    testMessage.value = "请先填写有效的 API URL、API Key 和模型";
+    testMessage.value = "请先填写有效的 API 地址、模型及所需密钥（Ollama 可不填密钥）";
     return;
   }
 
   testStatus.value = "testing";
-  testMessage.value = "正在测试连接...";
-  testController = new AbortController();
+  testMessage.value = "正在验证工具调用...";
+  const controller = new AbortController();
+  testController = controller;
 
   try {
-    await requestChat(localConfig.value, [{ role: "user", content: "只回复 OK" }], {
-      signal: testController.signal,
-    });
+    await testToolCalling({ ...localConfig.value }, controller.signal);
+    if (testController !== controller) return;
     testStatus.value = "success";
-    testMessage.value = "连接成功";
+    testMessage.value = "工具调用验证通过（未修改画布）。此探测不保证复杂参数和布局的生成质量。";
   } catch (error) {
+    if (testController !== controller) return;
     testStatus.value = "error";
-    testMessage.value = `连接错误: ${error instanceof Error ? error.message : "未知错误"}`;
+    testMessage.value = `工具调用验证失败: ${error instanceof Error ? error.message : "未知错误"}`;
   } finally {
-    testController = undefined;
+    if (testController === controller) testController = undefined;
   }
 }
 </script>
@@ -65,6 +85,14 @@ async function handleTest() {
       <button class="btn btn-ghost btn-xs" @click="emit('close')">✕</button>
     </div>
 
+    <label class="form-control w-full">
+      <div class="label p-1"><span class="label-text text-xs">模型厂商</span></div>
+      <select :value="localConfig.provider" class="select select-bordered select-xs w-full"
+        @change="handleProviderChange">
+        <option v-for="provider in AGENT_PROVIDERS" :key="provider.id" :value="provider.id">{{ provider.name }}</option>
+      </select>
+    </label>
+
     <!-- API URL -->
     <label class="form-control w-full">
       <div class="label p-1">
@@ -73,14 +101,16 @@ async function handleTest() {
       <input v-model="localConfig.apiUrl" type="text" placeholder="https://api.openai.com/v1"
         class="input input-bordered input-xs w-full" />
       <div class="label p-1">
-        <span class="label-text-alt text-[10px] opacity-50">OpenAI 兼容 API 地址</span>
+        <span class="label-text-alt text-[10px] opacity-70">
+          {{ localConfig.provider === 'anthropic' ? 'Claude 原生 Messages API' : 'OpenAI 兼容 Chat Completions API' }}
+        </span>
       </div>
     </label>
 
     <!-- API Key -->
     <label class="form-control w-full">
       <div class="label p-1">
-        <span class="label-text text-xs">API Key</span>
+        <span class="label-text text-xs">API Key{{ localConfig.provider === 'ollama' ? '（可选）' : '' }}</span>
       </div>
       <div class="join w-full">
         <input v-model="localConfig.apiKey" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..."
@@ -94,17 +124,17 @@ async function handleTest() {
     <!-- 模型 -->
     <label class="form-control w-full">
       <div class="label p-1">
-        <span class="label-text text-xs">模型</span>
+        <span class="label-text text-xs">{{ localConfig.provider === 'doubao' ? '模型 / 推理接入点 ID' : '模型 ID' }}</span>
       </div>
-      <input v-model="localConfig.model" type="text" placeholder="gpt-4o-mini"
+      <input v-model="localConfig.model" type="text" placeholder="填写账号中可用且支持工具调用的模型 ID"
         class="input input-bordered input-xs w-full" />
       <div class="label p-1">
-        <span class="label-text-alt text-[10px] opacity-50">如 gpt-4o、gpt-4o-mini、deepseek-chat 等</span>
+        <span class="label-text-alt text-[10px] opacity-70">选择可靠支持 Function Calling 的模型；复杂布局优先使用模板</span>
       </div>
     </label>
 
     <!-- 温度 -->
-    <label class="form-control w-full">
+    <label v-if="localConfig.provider !== 'anthropic'" class="form-control w-full">
       <div class="label p-1">
         <span class="label-text text-xs">温度</span>
         <span class="label-text-alt text-xs">{{ localConfig.temperature.toFixed(1) }}</span>
@@ -141,7 +171,7 @@ async function handleTest() {
     <div class="flex gap-2">
       <button class="btn btn-xs flex-1" :class="{ 'btn-disabled': testStatus === 'testing' }"
         :disabled="testStatus === 'testing'" @click="handleTest">
-        {{ testStatus === "testing" ? "测试中..." : "测试连接" }}
+        {{ testStatus === "testing" ? "测试中..." : "测试工具调用" }}
       </button>
       <button class="btn btn-primary btn-xs flex-1" @click="handleSave">保存设置</button>
     </div>
