@@ -170,6 +170,9 @@ catalogs:
     '@noble/hashes':
       specifier: ^2.4.0
       version: 2.4.0
+    dompurify:
+      specifier: ^3.4.17
+      version: 3.4.17
     fflate:
       specifier: ^0.8.3
       version: 0.8.3
@@ -279,6 +282,9 @@ importers:
       dagre:
         specifier: ^0.8.5
         version: 0.8.5
+      dompurify:
+        specifier: 'catalog:'
+        version: 3.4.17
       leafer:
         specifier: 'catalog:'
         version: 2.3.2(@leafer-ui/interface@2.3.2)(@leafer/interface@2.3.2)
@@ -1225,6 +1231,9 @@ packages:
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
 
+  '@types/trusted-types@2.0.7':
+    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
   '@vitejs/plugin-vue@6.0.10':
     resolution: {integrity: sha512-b80aUQh3n+qEzzZm5oQp3rT2QImeCx58K6eFl/RkJ3d65KW0kTuv5lNsLRVAjbW9YRUpo/wzmvzMgV34bTAItA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1472,6 +1481,9 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   electron-to-chromium@1.5.392:
     resolution: {integrity: sha512-1yQq3VQCZRwsnYc67Oc+1fge6Lwtn0hzi6zmEVkB61Zx21kTbwJAW4dFLadl5Rc1tKhG/kSpYXnfiAhu0f0a1g==}
@@ -3194,6 +3206,9 @@ snapshots:
     dependencies:
       undici-types: 8.9.0
 
+  '@types/trusted-types@2.0.7':
+    optional: true
+
   '@vitejs/plugin-vue@6.0.10(vite@8.3.5(@types/node@26.6.5)(jiti@2.7.0)(less@4.9.1)(yaml@2.9.0))(vue@3.5.44(typescript@6.0.3))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
@@ -3490,6 +3505,10 @@ snapshots:
   define-lazy-prop@3.0.0: {}
 
   detect-libc@2.1.2: {}
+
+  dompurify@3.4.17:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
 
   electron-to-chromium@1.5.392: {}
 

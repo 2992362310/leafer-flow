@@ -59,6 +59,12 @@ TypeScript 暂留 6.x 最新版 6.0.3：最新 `vue-tsc 3.3.13` 仍依赖 TypeSc
 
 基础绘图实现目前保留在引擎的 `tools/`；具体工具贡献和启用策略归插件包。单个功能不需要单独创建 workspace 包，独立发布或复用时再拆。
 
+### AI Agent
+
+内置 Agent 位于 `packages/builtin-plugins/src/builtin/plugins/agent/`：`agent-tools.ts` 是工具名称、分类、Schema 与执行逻辑的唯一来源；`agent-client.ts` 负责 HTTP、SSE、超时和取消；`agent-service.ts` 编排对话及工具调用；`useAgentChat.ts` 管理界面状态和持久化。Vue 面板只负责布局与交互。
+
+连接工具只接受文档 ID，查询不暴露内部渲染子元素。工具失败统一抛错，由服务转为结构化结果。协议历史是唯一存储来源，显示消息从它派生，不维护旧格式迁移。每个工具独立记录撤销，事务不得跨模型请求。修改后优先运行 `node --test --test-name-pattern="agent " scripts/runtime.test.mjs` 和插件包类型检查。
+
 ## 宿主策略与界面
 
 应用通过 `createBuiltinPlugins({ canUseTemplateAction })` 注入模板使用权限；插件不导入市场服务。不传策略的宿主默认允许模板使用。Web 应用显式传入原有购买策略。

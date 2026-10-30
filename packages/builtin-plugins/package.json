@@ -11,14 +11,15 @@
     "./builtin/plugins/diagram-lint/types": "./src/builtin/plugins/diagram-lint/types.ts"
   },
   "dependencies": {
-    "vue": "catalog:",
     "@leafer-flow/core": "workspace:*",
     "@leafer-flow/ui": "workspace:*",
-    "leafer": "catalog:",
-    "marked": "^18.1.1",
     "dagre": "^0.8.5",
+    "dompurify": "catalog:",
+    "leafer": "catalog:",
     "leafer-x-dot-matrix": "^1.0.2",
+    "leafer-x-easy-snap": "catalog:",
     "leafer-x-ruler": "^2.0.1",
-    "leafer-x-easy-snap": "catalog:"
+    "marked": "^18.1.1",
+    "vue": "catalog:"
   }
 }

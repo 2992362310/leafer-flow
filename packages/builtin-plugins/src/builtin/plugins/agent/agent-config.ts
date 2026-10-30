@@ -16,27 +16,36 @@ const DEFAULT_CONFIG: AgentConfig = {
 
 const STORAGE_KEY = "leafer-flow.plugin.agent.config";
 
+function isStoredConfig(value: unknown): value is AgentConfig {
+  if (!value || typeof value !== "object") return false;
+  const config = value as Partial<AgentConfig>;
+  return (
+    typeof config.apiUrl === "string" &&
+    typeof config.apiKey === "string" &&
+    typeof config.model === "string" &&
+    typeof config.temperature === "number" &&
+    Number.isFinite(config.temperature) &&
+    config.temperature >= 0 &&
+    config.temperature <= 2 &&
+    typeof config.maxHistoryMessages === "number" &&
+    Number.isInteger(config.maxHistoryMessages) &&
+    config.maxHistoryMessages >= 10 &&
+    config.maxHistoryMessages <= 50
+  );
+}
+
 export function loadAgentConfig(): AgentConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_CONFIG };
-
-    const saved = JSON.parse(raw) as Partial<AgentConfig>;
-    return {
-      apiUrl: saved.apiUrl || DEFAULT_CONFIG.apiUrl,
-      apiKey: saved.apiKey || DEFAULT_CONFIG.apiKey,
-      model: saved.model || DEFAULT_CONFIG.model,
-      temperature:
-        typeof saved.temperature === "number" ? saved.temperature : DEFAULT_CONFIG.temperature,
-      maxHistoryMessages:
-        typeof saved.maxHistoryMessages === "number" ? saved.maxHistoryMessages : DEFAULT_CONFIG.maxHistoryMessages,
-    };
+    const saved: unknown = raw ? JSON.parse(raw) : null;
+    return isStoredConfig(saved) ? saved : { ...DEFAULT_CONFIG };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
 }
 
 export function saveAgentConfig(config: AgentConfig): void {
+  if (!isStoredConfig(config)) throw new Error("无效的 AI 助手配置");
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch (error) {
@@ -51,5 +60,10 @@ export function getApiEndpoint(config: AgentConfig): string {
 }
 
 export function isConfigValid(config: AgentConfig): boolean {
-  return Boolean(config.apiUrl && config.apiKey && config.model);
+  if (!isStoredConfig(config) || !config.apiKey.trim() || !config.model.trim()) return false;
+  try {
+    return ["https:", "http:"].includes(new URL(config.apiUrl).protocol);
+  } catch {
+    return false;
+  }
 }

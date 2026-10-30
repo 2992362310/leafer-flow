@@ -959,13 +959,289 @@ test('nested history batches commit once', () => {
   assert.equal(state.history.undoCount, 2);
 });
 
+function loadAgentTools() {
+  return loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-tools.ts', {
+    '@leafer-flow/core/constants': { ACTION_NAME: {}, TOOL_NAME: { DRAW_RECT: 'rect' } },
+    '../../../templates/defs': {},
+    '../../../templates/insert': {},
+    '../../templates/registry': {},
+  }, { crypto });
+}
+
+function createAgentService(globals = {}, toolModule = { getAgentTools: () => [] }) {
+  const { AgentService, parseToolResult } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-service.ts', {
+    './agent-config': { isConfigValid: () => true, getApiEndpoint: () => 'https://example.test/chat/completions' },
+    './agent-tools': toolModule,
+    './agent-client': { requestChat: (...args) => service.requestChat(...args) },
+  }, { AbortController, AbortSignal, structuredClone, TextDecoder, ...globals });
+  const service = new AgentService({ beginTransaction() { }, endTransaction() { } }, { maxHistoryMessages: 6 });
+  service.getCanvasContext = () => '';
+  service.parseToolResult = parseToolResult;
+  return service;
+}
+
+test('agent stream flushes final SSE data and rejects truncated or invalid responses', async () => {
+  for (const [body, valid] of [
+    ['data:{"choices":[{"delta":{"content":"ok"}}]}\r\n\r\ndata:[DONE]', true],
+    ['data: {"choices":[{"delta":{"content":"partial"}}]}\n', false],
+    ['data: invalid\ndata: [DONE]\n', false],
+  ]) {
+    let signal;
+    const { requestChat } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-client.ts', {
+      './agent-config': { getApiEndpoint: () => 'https://example.test/chat/completions' },
+    }, { AbortSignal, TextDecoder, fetch: async (_url, init) => { signal = init.signal; return new Response(body); } });
+    const response = requestChat({}, [], { signal: new AbortController().signal, onToken() { } });
+    if (valid) assert.equal((await response).content, 'ok');
+    else await assert.rejects(response);
+    assert.ok(signal instanceof AbortSignal);
+  }
+});
+
+test('agent trims complete turns, repairs pending calls and compresses a valid transcript', async () => {
+  const service = createAgentService();
+  const call = { id: 'a', type: 'function', function: { name: 'test', arguments: '{}' } };
+  service.restoreHistory([
+    { role: 'user', content: 'old' },
+    { role: 'assistant', content: '', tool_calls: [call] },
+    { role: 'tool', content: JSON.stringify({ name: 'test', arguments: {}, success: true, result: 'ok' }), tool_call_id: 'a' },
+    { role: 'assistant', content: 'old done' },
+    { role: 'user', content: 'new' },
+    { role: 'assistant', content: '', tool_calls: [call] },
+  ]);
+  const history = service.getHistory();
+  assert.equal(history[0].content, 'new');
+  assert.equal(history.at(-1).role, 'tool');
+  history[0].content = 'changed';
+  assert.equal(service.getHistory()[0].content, 'new');
+  service.restoreHistory([
+    { role: 'user', content: 'old' }, { role: 'assistant', content: 'old done' },
+    { role: 'user', content: 'new' }, { role: 'assistant', content: 'new done' },
+  ]);
+  service.requestChat = async (_config, messages, options) => {
+    assert.equal(options.tools, undefined);
+    assert.equal(messages.length, 2);
+    assert.equal(messages[1].role, 'user');
+    return { content: 'summary', toolCalls: [] };
+  };
+  assert.equal((await service.compressHistory()).success, true);
+  assert.equal(service.getHistory()[1].content, 'new');
+});
+
+test('agent cancellation prevents late tool execution and rejects concurrent operations', async () => {
+  const service = createAgentService();
+  let resolve;
+  let executed = 0;
+  service.requestChat = () => new Promise(done => { resolve = done; });
+  service.executeToolCall = async () => { executed++; };
+  const pending = service.processMessage('first');
+  assert.throws(() => service.clearHistory());
+  await assert.rejects(service.processMessage('second'));
+  service.cancel();
+  resolve({ content: '', toolCalls: [{ id: 'a', type: 'function', function: { name: 'test', arguments: '{}' } }] });
+  await pending;
+  assert.equal(executed, 0);
+  assert.equal(service.getHistory().some(message => message.content === 'second'), false);
+  service.clearHistory();
+  assert.equal(service.getHistory().length, 0);
+});
+
+test('agent panel restores model history, guards busy actions and saves only settled messages', async () => {
+  const service = createAgentService();
+  const config = { maxHistoryMessages: 3 };
+  service.updateConfig(config);
+  let release;
+  service.requestChat = async (_config, messages) => {
+    assert.ok(messages.some(message => message.content === 'previous question'));
+    await new Promise(resolve => { release = resolve; });
+    return { content: 'new answer', toolCalls: [] };
+  };
+  const storage = new Map([['leafer-flow.plugin.agent.history', JSON.stringify([
+    { role: 'user', content: 'previous question' }, { role: 'assistant', content: 'previous answer' },
+  ])]]);
+  let writes = 0;
+  const { useAgentChat } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/useAgentChat.ts', {
+    vue: { ...uiVue, onUnmounted() { } },
+    './agent-config': { loadAgentConfig: () => config, isConfigValid: () => true },
+    './agent-service': { AgentService: class { constructor() { return service; } }, parseToolResult: content => service.parseToolResult(content) },
+  }, {
+    localStorage: {
+      getItem: key => storage.get(key),
+      setItem(key, value) { writes++; storage.set(key, value); },
+    },
+  });
+  const panel = useAgentChat({});
+  assert.equal(panel.historyCount.value, 2);
+  panel.inputMessage.value = 'new question';
+  const pending = panel.send();
+  await uiVue.nextTick();
+  panel.clear();
+  await panel.compress();
+  assert.equal(panel.messages.value.length, 4);
+  assert.equal(writes, 0);
+  release();
+  await pending;
+  assert.equal(panel.historyCount.value, 4);
+  assert.equal(writes, 1);
+  const saved = JSON.parse(storage.get('leafer-flow.plugin.agent.history'));
+  assert.equal(saved.at(-1).content, 'new answer');
+  assert.equal(panel.messages.value.at(-1).isStreaming, undefined);
+  assert.equal(panel.shouldCompress.value, true);
+  panel.clear();
+  assert.equal(panel.historyCount.value, 0);
+});
+
+test('agent limits individual calls within one response and records skipped tool results', async () => {
+  const service = createAgentService();
+  let executed = 0;
+  service.executeToolCall = async call => {
+    executed++;
+    return { name: call.function.name, arguments: {}, success: true, result: 'ok' };
+  };
+  const toolCalls = Array.from({ length: 12 }, (_, index) => ({
+    id: `tool-${index}`, type: 'function', function: { name: 'test', arguments: '{}' },
+  }));
+  service.requestChat = async () => ({ content: '', toolCalls });
+  await service.processMessage('many calls');
+  assert.equal(executed, 10);
+  const results = service.getHistory().filter(message => message.role === 'tool');
+  assert.equal(results.length, 12);
+  assert.notEqual(results.at(-1).content, 'ok');
+});
+
+test('agent stores the final fallback reply in its single history source', async () => {
+  const service = createAgentService();
+  service.requestChat = async () => ({ content: '', toolCalls: [] });
+  const reply = await service.processMessage('empty response');
+  assert.ok(reply.content);
+  assert.equal(service.getHistory().at(-1).content, reply.content);
+});
+
+test('agent batch creation balances its transaction on success and failure', () => {
+  const tool = loadAgentTools().getAgentTools().find(candidate => candidate.name === 'batch_create_shapes');
+  for (const fail of [false, true]) {
+    let depth = 1;
+    const execute = () => tool.execute({
+      beginTransaction() { depth++; },
+      endTransaction() { depth--; },
+      createElementFromTool() { if (fail) throw new Error('failed'); return {}; },
+      renderer: { getId: () => 'created-node' },
+    }, { shape_type: 'rect', count: 2 });
+    if (fail) assert.throws(execute);
+    else execute();
+    assert.equal(depth, 1);
+  }
+});
+
+test('agent catalog shares shape enums and exposes categories from the actual tools', () => {
+  const { getAgentTools } = loadAgentTools();
+  const tools = getAgentTools();
+  assert.equal(getAgentTools(), tools);
+  const single = tools.find(tool => tool.name === 'create_shape');
+  const batch = tools.find(tool => tool.name === 'batch_create_shapes');
+  assert.equal(JSON.stringify(single.parameters.properties.shape_type.enum), JSON.stringify(batch.parameters.properties.shape_type.enum));
+  const listing = JSON.parse(tools.find(tool => tool.name === 'list_tools').execute({}, { category: 'edit' }));
+  assert.ok(listing.some(tool => tool.name === 'delete'));
+  assert.ok(listing.every(tool => tool.category === 'edit'));
+  assert.equal(new Set(tools.map(tool => tool.name)).size, tools.length);
+  const details = JSON.parse(tools.find(tool => tool.name === 'get_tool_details').execute({}, { tool_name: 'modify_text' }));
+  assert.equal(details.category, 'text');
+  assert.ok(details.parameters.properties.ids);
+});
+
+test('agent validates tool arguments and rejects failed commands', async () => {
+  const { getAgentTools, validateToolArguments } = loadAgentTools();
+  const tools = getAgentTools();
+  const batch = tools.find(tool => tool.name === 'batch_create_shapes');
+  for (const args of [{ count: 2 }, { shape_type: 'rect', count: 1.5 }, { shape_type: 'rect', count: 21 }, { shape_type: 'missing', count: 2 }]) {
+    assert.throws(() => validateToolArguments(batch, args));
+  }
+  validateToolArguments(batch, { shape_type: 'rect', count: 2, columns: 0 });
+  await assert.rejects(tools.find(tool => tool.name === 'delete').execute({
+    commands: { execute: async () => ({ success: false, message: 'not selected' }) },
+  }, {}));
+});
+
+test('agent service reports validation and execution failures as structured results', async () => {
+  let executed = 0;
+  const toolModule = loadAgentTools();
+  const service = createAgentService({}, {
+    ...toolModule,
+    getAgentTools: () => [{
+      name: 'test', category: 'edit', description: 'test',
+      parameters: { type: 'object', properties: { count: { type: 'integer', minimum: 1 } }, required: ['count'] },
+      execute() { executed++; throw new Error('failed'); },
+    }],
+  });
+  const call = args => ({ id: 'tool', type: 'function', function: { name: 'test', arguments: JSON.stringify(args) } });
+  const invalid = await service.executeToolCall(call({ count: 0 }));
+  assert.equal(invalid.success, false);
+  assert.equal(executed, 0);
+  const failed = await service.executeToolCall(call({ count: 1 }));
+  assert.equal(failed.success, false);
+  assert.equal(executed, 1);
+  assert.equal(service.parseToolResult(JSON.stringify(failed)).name, 'test');
+  assert.throws(() => service.restoreHistory([{ role: 'tool', tool_call_id: 'tool', content: 'unstructured' }]));
+});
+
+test('agent connects only existing document ids and never falls back to names or indices', () => {
+  const tools = loadAgentTools().getAgentTools();
+  const connect = tools.find(tool => tool.name === 'connect_elements');
+  const edges = [];
+  const editor = {
+    document: { getNode: id => ['node-a', 'node-b'].includes(id) ? { id } : undefined },
+    documentCommands: { insertEdge: edge => edges.push(edge) },
+    renderer: { getNode: () => undefined },
+  };
+  assert.throws(() => connect.execute(editor, { from: '1', to: 'node-b' }));
+  assert.throws(() => connect.execute(editor, { from: 'node-a', to: 'node-a' }));
+  connect.execute(editor, { from: 'node-a', to: 'node-b' });
+  assert.equal(edges[0].from.nodeId, 'node-a');
+  assert.equal(edges[0].to.nodeId, 'node-b');
+});
+
+test('agent configuration accepts only the current complete format and bounded settings', () => {
+  let stored;
+  const configModule = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-config.ts', {}, {
+    URL, localStorage: { getItem: () => stored, setItem(_key, value) { stored = value; } },
+  });
+  const config = { ...configModule.loadAgentConfig(), apiKey: 'example' };
+  assert.equal(configModule.isConfigValid(config), true);
+  configModule.saveAgentConfig(config);
+  assert.equal(configModule.loadAgentConfig().apiKey, 'example');
+  assert.equal(configModule.isConfigValid({ ...config, apiUrl: 'javascript:example' }), false);
+  assert.throws(() => configModule.saveAgentConfig({ ...config, maxHistoryMessages: -1 }));
+  stored = JSON.stringify({ apiKey: 'old-format' });
+  assert.equal(configModule.loadAgentConfig().apiKey, '');
+});
+
+test('agent search returns document ids and style/text tools target them without changing selection', async () => {
+  const tools = loadAgentTools().getAgentTools();
+  const nodes = [{ id: '123-node', type: 'Task', data: { text: 'Approval', x: 50 }, children: [] }];
+  const calls = [];
+  const editor = {
+    document: { snapshot: () => ({ nodes, edges: [] }), getNode: id => nodes.find(node => node.id === id) },
+    app: { editor: { list: [] } },
+    commands: { async execute(name, payload) { calls.push({ name, payload }); return { success: true }; } },
+  };
+  const result = JSON.parse(tools.find(tool => tool.name === 'search_elements').execute(editor, { query: 'approval' }));
+  assert.equal(result.matches[0].id, '123-node');
+  await tools.find(tool => tool.name === 'set_style').execute(editor, { ids: ['123-node'], fill: 'red' });
+  await tools.find(tool => tool.name === 'modify_text').execute(editor, { ids: ['123-node'], text: 'Done' });
+  assert.equal(JSON.stringify(calls[0].payload), JSON.stringify({ ids: ['123-node'], patch: { fill: 'red' } }));
+  assert.equal(calls[1].payload.patch.text, 'Done');
+  assert.equal(editor.app.editor.list.length, 0);
+  assert.throws(() => tools.find(tool => tool.name === 'set_style').execute(editor, { ids: ['missing'], fill: 'red' }));
+  assert.equal(calls.length, 2);
+});
+
 for (const mode of ['standard', 'stream']) {
   for (const outcome of ['success', 'request failure', 'tool failure', 'limit']) {
     test(`agent ${mode} closes its history batch on ${outcome}`, async () => {
       const { AgentService } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-service.ts', {
         './agent-config': { isConfigValid: () => true },
         './agent-tools': { getAgentTools: () => [] },
-      });
+        './agent-client': { requestChat: () => response() },
+      }, { AbortController, structuredClone });
       let depth = 0;
       let endings = 0;
       let requests = 0;
@@ -977,26 +1253,27 @@ for (const mode of ['standard', 'stream']) {
       service.getCanvasContext = () => '';
       service.executeToolCall = async () => {
         if (outcome === 'tool failure') throw new Error('tool failed');
-        return { name: 'test', arguments: {}, result: 'ok' };
+        return { name: 'test', arguments: {}, success: true, result: 'ok' };
       };
       const toolCalls = [{ id: 'tool-1', type: 'function', function: { name: 'test', arguments: '{}' } }];
       function response() {
+        assert.equal(depth, 0, 'network requests must not hold history transactions');
         requests++;
         if (outcome === 'request failure' && requests > 1) throw new Error('request failed');
         return requests === 1 || outcome === 'limit'
           ? { content: '', toolCalls }
-          : { content: 'done', toolCalls: null };
+          : { content: 'done', toolCalls: [] };
       }
-      service.callLLM = async () => {
-        const next = response();
-        return { choices: [{ message: { content: next.content, tool_calls: next.toolCalls } }] };
-      };
-      service.callLLMStream = async () => response();
-      if (mode === 'standard') await service.processMessage('test');
-      else await service.processMessageStream('test', {});
+      await service.processMessage('test', mode === 'stream' ? { onToken() { } } : {});
       assert.equal(depth, 0);
-      assert.equal(endings, 1);
-      if (outcome === 'limit') assert.equal(requests, 11);
+      assert.equal(endings, outcome === 'limit' ? 10 : 1);
+      if (outcome === 'limit') assert.equal(requests, 10);
+      const history = service.getHistory();
+      for (const [index, message] of history.entries()) {
+        for (const call of message.tool_calls ?? []) {
+          assert.ok(history.slice(index + 1).some(result => result.role === 'tool' && result.tool_call_id === call.id));
+        }
+      }
     });
   }
 }
@@ -1199,6 +1476,25 @@ function createEditor(options = {}) {
   const { default: Editor } = loadModule('packages/core/src/editor.ts', dependencies, { window: {} });
   return { editor: new Editor({}), app, disposed, geometryHandlers };
 }
+
+test('editor commits canvas transforms on drag and gesture end, not during dragging', async () => {
+  const state = createEditor();
+  const commits = [];
+  state.editor.commitInteraction = options => commits.push(options);
+  state.app.emit('ready');
+  state.app.emit('drag.start');
+  state.app.emit('drag');
+  assert.equal(commits.length, 0);
+  for (const event of ['drag.end', 'move.end', 'zoom.end', 'rotate.end']) {
+    const before = commits.length;
+    state.app.emit(event);
+    assert.equal(commits.length, before + 1, event);
+    assert.equal(commits.at(-1).syncConnectorLabels, true);
+  }
+  await state.editor.dispose();
+  state.app.emit('drag.end');
+  assert.equal(commits.length, 4);
+});
 
 test('editor disposes once and releases instance-specific listeners and services', async () => {
   const state = createEditor();

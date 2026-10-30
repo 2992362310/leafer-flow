@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import type { ToolCallResult } from "./agent-service";
 
 interface Props {
-  role: "user" | "assistant" | "tool";
+  role: "user" | "assistant";
   content: string;
   toolCalls?: ToolCallResult[];
   isLoading?: boolean;
@@ -11,77 +13,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const renderedContent = ref("");
-
-let markedParserPromise: Promise<typeof import("marked")> | null = null;
-
-async function renderMarkdown(content: string) {
-  if (!content) {
-    renderedContent.value = "";
-    return;
-  }
-
-  try {
-    markedParserPromise ??= import("marked");
-    const { marked } = await markedParserPromise;
-
-    marked.setOptions({
-      breaks: true,
-      gfm: true,
-    });
-
-    renderedContent.value = marked.parse(content, { async: false });
-  } catch {
-    renderedContent.value = content;
-  }
-}
-
-watch(
-  () => props.content,
-  (content) => {
-    void renderMarkdown(content);
-  },
-  { immediate: true },
+const renderedContent = computed(() =>
+  DOMPurify.sanitize(marked.parse(props.content, { async: false, breaks: true, gfm: true }), {
+    USE_PROFILES: { html: true },
+  }),
 );
-
-function formatToolName(name: string): string {
-  const nameMap: Record<string, string> = {
-    save_file: "保存文件",
-    load_file: "加载文件",
-    export_png: "导出 PNG",
-    export_svg: "导出 SVG",
-    undo: "撤销",
-    redo: "重做",
-    delete: "删除",
-    copy: "复制",
-    cut: "剪切",
-    paste: "粘贴",
-    duplicate: "原位复制",
-    select_all: "全选",
-    align: "对齐",
-    distribute: "分布",
-    group: "编组",
-    ungroup: "取消编组",
-    bring_forward: "上移一层",
-    send_backward: "下移一层",
-    bring_to_front: "置于顶层",
-    send_to_back: "置于底层",
-    create_shape: "创建图形",
-    insert_template: "插入模板",
-    set_style: "修改属性",
-    modify_text: "修改文字",
-    zoom_fit: "适应画布",
-    zoom_in: "放大",
-    zoom_out: "缩小",
-    zoom_reset: "重置缩放",
-    clear_canvas: "清空画布",
-    get_canvas_info: "获取画布信息",
-    get_selection_info: "获取选中信息",
-    search_elements: "搜索元素",
-    connect_elements: "连接元素",
-  };
-  return nameMap[name] || name;
-}
 </script>
 
 <template>
@@ -89,7 +25,7 @@ function formatToolName(name: string): string {
     <div class="chat-header text-[10px] opacity-50">
       {{ role === "user" ? "你" : "AI 助手" }}
     </div>
-    <div class="chat-bubble text-xs max-w-[90%]" :class="{
+    <div class="chat-bubble text-xs max-w-[90%] min-w-0 break-words" :class="{
       'chat-bubble-primary': role === 'user',
       'chat-bubble-neutral': role === 'assistant',
     }">
@@ -105,15 +41,15 @@ function formatToolName(name: string): string {
         <div v-if="toolCalls && toolCalls.length > 0" class="space-y-2">
           <div v-for="(call, index) in toolCalls" :key="index" class="bg-base-200/50 rounded p-2">
             <div class="flex items-center gap-1 text-[11px] font-medium mb-1">
-              <Icon name="toolbar" class="h-3 w-3" aria-hidden="true" />
-              {{ formatToolName(call.name) }}
+              <Icon :name="call.success ? 'success' : 'error'" class="h-3 w-3 shrink-0" aria-hidden="true" />
+              {{ call.name }}
             </div>
             <div class="text-[11px] opacity-70">{{ call.result }}</div>
           </div>
         </div>
 
         <!-- Markdown 内容 -->
-        <div v-else class="markdown-body" v-html="renderedContent"></div>
+        <div v-if="content" class="markdown-body" :class="{ 'mt-2': toolCalls?.length }" v-html="renderedContent"></div>
       </template>
     </div>
   </div>

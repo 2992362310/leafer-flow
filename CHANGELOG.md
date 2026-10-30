@@ -4,6 +4,8 @@
 
 ### Changed
 
+- AI Agent 统一工具目录与参数校验，网络请求、执行编排和聊天状态分层；仅保留文档 ID 定位与单一历史存储格式，不提供旧接口兼容。
+- AI Agent 增加取消、超时和完整工具结果协议，浮动与侧栏共用面板内容，Markdown 输出通过 DOMPurify 净化。
 - 清理 monorepo 迁移遗留的旧 workspace、重复面板与注册代码，保留 core、ui、builtin-plugins 和 web 四个包。
 - 包边界检查新增重复包名与失效本地导入检测；lint 默认只读，自动修复使用 `lint:fix`。
 - 修复原有类型诊断与 lint 错误，部署前执行包边界、lint 和完整类型检查。

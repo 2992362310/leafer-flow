@@ -171,7 +171,7 @@ export default class Editor {
     app.on("render.end", render);
     app.tree.on("render.end", render);
     this.cleanups.push(() => app.off("render.end", render), () => app.tree.off("render.end", render));
-    for (const event of ["move.end", "zoom.end", "rotate.end"]) {
+    for (const event of ["drag.end", "move.end", "zoom.end", "rotate.end"]) {
       app.on(event, transform);
       this.cleanups.push(() => app.off(event, transform));
     }
