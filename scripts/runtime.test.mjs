@@ -983,6 +983,21 @@ test('document transactions validate references and discard failed edits', () =>
   assert.throws(() => document.transact('async', async () => { }), /must be synchronous/);
 });
 
+test('document transactions synchronize runtime state before applying property updates', () => {
+  const { document, commands } = createDocumentRuntime();
+  commands.insertNode({ id: 'node', type: 'Rect', version: 1, data: { x: 10, fill: 'red' }, children: [] });
+  document.setBeforeTransaction(() => {
+    const current = document.snapshot();
+    current.nodes[0].data.x = 40;
+    document.replace(current, 'interaction', 'Canvas interaction');
+  });
+
+  commands.updateNode('node', { fill: 'blue' });
+
+  assert.equal(document.getNode('node').data.x, 40);
+  assert.equal(document.getNode('node').data.fill, 'blue');
+});
+
 test('document projection failure restores the previous state without publishing', () => {
   const { document, commands } = createDocumentRuntime();
   commands.insertNode({ id: 'node', type: 'Rect', version: 1, data: { fill: 'red' }, children: [] });

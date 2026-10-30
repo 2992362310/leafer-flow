@@ -78,6 +78,7 @@ export default class Editor {
       this.resources,
       () => this.commitInteraction({ syncConnectorLabels: true }),
     );
+    this.document.setBeforeTransaction(() => this.commitInteraction({ syncConnectorLabels: true }));
     this.media = new MediaController(app, this.resources, (id) => this.renderer.getNode(id));
     this.cleanups.push(this.nodeTypes.subscribe(() => {
       if (!this.disposed) {

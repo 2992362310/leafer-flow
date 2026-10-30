@@ -17,6 +17,7 @@ export class DocumentStore {
     private editing = false;
     private revisionValue = 0;
     private projection?: DocumentProjection;
+    private beforeTransaction?: () => void;
 
     constructor(initial: EditorDocument = createDocument()) {
         validateDocument(initial);
@@ -47,6 +48,10 @@ export class DocumentStore {
         return () => { if (this.projection === projection) this.projection = undefined; };
     }
 
+    setBeforeTransaction(callback: () => void) {
+        this.beforeTransaction = callback;
+    }
+
     subscribe(listener: (change: DocumentChange) => void) {
         this.listeners.add(listener);
         return () => { this.listeners.delete(listener); };
@@ -54,6 +59,7 @@ export class DocumentStore {
 
     transact(label: string, edit: (draft: EditorDocument) => void): boolean {
         if (this.editing) throw new Error("Nested document transactions are not allowed");
+        this.beforeTransaction?.();
         this.editing = true;
         try {
             const draft = this.snapshot();
