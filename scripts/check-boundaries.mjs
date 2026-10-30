@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import { createRequire, isBuiltin } from 'node:module';
 import ts from 'typescript';
 
 const require = createRequire(new URL('../apps/web/package.json', import.meta.url));
@@ -35,6 +35,7 @@ function collect(directory) {
 }
 
 function localModuleExists(target) {
+  if (target.endsWith('.js') && fs.existsSync(`${target.slice(0, -3)}.ts`) && fs.statSync(`${target.slice(0, -3)}.ts`).isFile()) return true;
   return ['', '.ts', '.tsx', '.js', '.mjs', '.json', '.vue', '/index.ts', '/index.js'].some((suffix) => {
     const filename = `${target}${suffix}`;
     return fs.existsSync(filename) && fs.statSync(filename).isFile();
@@ -67,6 +68,7 @@ for (const workspace of workspaces) {
         }
       }
       for (const { fileName: specifier } of ts.preProcessFile(script).importedFiles) {
+        if (isBuiltin(specifier)) continue;
         if (specifier.startsWith('.')) {
           const target = path.resolve(path.dirname(filename), specifier);
           const sourceRoot = `${path.resolve(workspace.directory, 'src')}${path.sep}`;

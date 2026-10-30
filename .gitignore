@@ -22,6 +22,7 @@ coverage
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/tailwindcss.json
+!.vscode/mcp.json
 .idea
 *.suo
 *.ntvs*

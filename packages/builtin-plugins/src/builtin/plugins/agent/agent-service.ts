@@ -56,8 +56,12 @@ const SYSTEM_PROMPT = `你是 Leafer Flow 编辑器的 AI 助手，使用工具�
 - 工具结果 success=false 代表失败，不要宣称已完成。中断后先查询画布再决定是否重试，避免重复创建。
 - 只有真实工具调用能修改画布，不得用文字模拟“工具执行”或声称未调用工具的操作成功。
 - 参数名必须逐字使用 Schema 中的键，不要翻译或添加参数；校验失败后按错误提示修正，不要原样重复。
-- 流程图优先使用 insert_template；重复节点优先使用 batch_create_shapes，显式设置间距，避免节点重叠。
-- 自定义布局先查询画布，按节点宽高预留间隔，再使用 connect_elements 连接文档 ID；不要用普通箭头覆盖节点。
+- 开始绘制前先查询画布，结合用户需求和已有内容确定节点、关系与布局；不要收到“画流程图”等笼统请求就立即插入模板。
+- 关键内容（业务步骤、分支条件或绘制范围）缺失时，先 ask_user 确认；需求已明确时直接执行，不要为了配色等次要细节反复提问。
+- 模板不是默认绘制方式。仅在用户明确要求使用模板，或已确认预设模板的节点和关系符合需求时使用 insert_template；不能仅凭主题相近就套用，不要先插入无关模板再解释。
+- 定制流程按用户的实际步骤和分支组织节点；重复节点优先 batch_create_shapes，显式设置间距，避免节点重叠。
+- 按节点宽高预留间隔，再使用 connect_elements 连接文档 ID；不要用普通箭头覆盖节点。完成后查询核对文字、关系和布局。
+- 多步骤任务先用一两句话说明绘制思路，然后继续调用工具完成创建、连接和检查，不要只给计划，也不要逐步等待用户批准。
 - 复杂任务先 list_skills/get_skill 读取相应工作流；能力及参数通过 list_tools/get_tool_details 查询。
 - 关键需求不明确时调用 ask_user，提供简短问题和 2-6 个选项，允许用户补充文字；multiple=true 支持多选。
 - ask_user 必须单独调用，等待真实用户回答后再继续，不得代替用户回答或与画布修改放在同一批。
@@ -71,7 +75,8 @@ const SUMMARY_PROMPT = `请对以下对话历史进行简洁的摘要，保留�
 
 摘要应该简洁明了，不超过 200 字。`;
 
-const MAX_TOOL_CALLS = 10;
+const MAX_TOOL_CALLS = 100;
+const MAX_TOOL_ROUNDS = 40;
 
 export class AgentService {
   private editor: Editor;
@@ -268,6 +273,7 @@ export class AgentService {
     this.trimHistory();
     const allToolCalls: ToolCallResult[] = [];
     let toolCallCount = 0;
+    let toolRoundCount = 0;
 
     try {
       while (true) {
@@ -300,6 +306,7 @@ export class AgentService {
         });
         if (!toolCalls.length) return { content: replyContent, toolCalls: allToolCalls, warning };
 
+        toolRoundCount++;
         const invalidQuestionBatch = toolCalls.length > 1 && toolCalls.some((call) => call.function.name === "ask_user");
         for (const toolCall of toolCalls) {
           operation.signal.throwIfAborted();
@@ -341,8 +348,8 @@ export class AgentService {
           });
           callbacks.onToolResult?.(result);
         }
-        if (toolCallCount >= MAX_TOOL_CALLS) {
-          const limitMessage = "已达到工具调用上限，已停止执行。已完成的修改予以保留。";
+        if (toolCallCount >= MAX_TOOL_CALLS || toolRoundCount >= MAX_TOOL_ROUNDS) {
+          const limitMessage = `本轮已执行 ${toolCallCount} 次工具调用、${toolRoundCount} 轮工具请求，达到安全上限，已暂停。已完成的修改予以保留，可发送“继续”完成剩余任务。`;
           this.history.push({ role: "assistant", content: limitMessage });
           return { content: limitMessage, toolCalls: allToolCalls, warning: limitMessage };
         }

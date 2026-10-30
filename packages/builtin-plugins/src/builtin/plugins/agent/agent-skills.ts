@@ -4,9 +4,10 @@ const AGENT_SKILLS = [
         description: "创建流程图、审批流程、BPMN 或架构图",
         tools: ["get_canvas_info", "ask_user", "insert_template", "batch_create_shapes", "connect_elements", "zoom_fit"],
         steps: [
-            "先查询画布；需求有关键歧义时单独调用 ask_user 确认流程类型、方向或节点内容，等待回答。",
-            "匹配预设流程时优先 insert_template，不要凭空编造模板名。",
-            "自定义流程优先 batch_create_shapes；按宽高留出间距，竖排设置 columns=1。",
+            "先查询画布并理解用户的业务步骤、分支和绘制范围；关键内容缺失时单独调用 ask_user 确认，等待回答，不要立即绘制通用模板。",
+            "明确需求后简短说明节点、关系和布局思路并继续执行；不要为非关键细节反复询问。",
+            "默认按用户的实际内容定制流程；仅在用户明确要求模板，或已确认预设节点和关系符合需求时使用 insert_template，不要凭主题相近套用模板或编造模板名。",
+            "同类节点优先 batch_create_shapes；按宽高留出间距，竖排设置 columns=1。",
             "只用创建结果中的文档 ID 调用 connect_elements，不要用名称、序号或普通箭头替代连接。",
             "查询画布核对节点与连线，最后 zoom_fit；只报告工具实际完成的内容。",
         ],
@@ -31,7 +32,7 @@ const AGENT_SKILLS = [
             "使用宽高加间隔计算位置，不要将多个节点设置到同一坐标。",
             "align/distribute 操作当前选区，无法准确确定选区时不要调用。",
             "先移动节点再连接；connect_elements 自动选端口，重叠报错时先修复位置。",
-            "连接不保证避开其他所有节点；复杂分支优先模板，并在结束前复查。",
+            "连接不保证避开其他所有节点；复杂分支需预留分支通道、调整位置并在结束前复查，不要为简化布局改用不符合需求的模板。",
         ],
     },
     {

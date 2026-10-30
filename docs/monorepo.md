@@ -11,6 +11,7 @@
 | `packages/ui/src/`                              | 通用组件、面板、composables、命令和可见性上下文             |
 | `packages/builtin-plugins/src/builtin/plugins/` | 内置功能插件、命令和工具注册                                |
 | `packages/builtin-plugins/src/templates/`       | 模板定义及插入逻辑                                          |
+| `packages/mcp/src/`                             | Node.js MCP stdio 服务、本机 WebSocket 桥接及共享消息契约   |
 
 `core` 不允许导入 Vue 运行时或界面组件。现有面板协议仍使用 Vue `Component` 类型，后续有非 Vue 宿主需求时再抽离协议适配层。
 
@@ -28,6 +29,8 @@ pnpm --filter @leafer-flow/builtin-plugins add some-library
 ```
 
 内部依赖使用 `workspace:*`；本地源码由 Vite 直接消费，不需要逐包构建。当前包均为私有包，没有 npm 发布流程。生产产物为 `apps/web/dist`，根目录命令与迁移前保持一致。
+
+`@leafer-flow/mcp` 是 Node.js 服务例外：运行前执行 `pnpm mcp:build`，客户端直接以 `node packages/mcp/dist/index.js` 启动编译产物。浏览器仅依赖其 `@leafer-flow/mcp/protocol` 无运行时依赖入口，不得引入 SDK、Node 或 WebSocket 服务代码。
 
 `pnpm lint` 是只读检查，自动修复单独使用 `pnpm lint:fix`；不再用 lint 命令冒充格式化工具。部署流程在构建前运行包边界、lint 和完整类型检查。
 
@@ -64,6 +67,14 @@ TypeScript 暂留 6.x 最新版 6.0.3：最新 `vue-tsc 3.3.13` 仍依赖 TypeSc
 内置 Agent 位于 `packages/builtin-plugins/src/builtin/plugins/agent/`：`agent-tools.ts` 是工具名称、分类、Schema 与执行逻辑的唯一来源；`agent-client.ts` 负责 HTTP、SSE、超时和取消；`agent-service.ts` 编排对话及工具调用；`useAgentChat.ts` 管理界面状态和持久化。Vue 面板只负责布局与交互。
 
 连接工具只接受文档 ID，查询不暴露内部渲染子元素。工具失败统一抛错，由服务转为结构化结果。协议历史是唯一存储来源，显示消息从它派生，不维护旧格式迁移。每个工具独立记录撤销，事务不得跨模型请求。修改后优先运行 `node --test --test-name-pattern="agent " scripts/runtime.test.mjs` 和插件包类型检查。
+
+### MCP
+
+`packages/mcp/src/bridge.ts` 管理回环 WebSocket 鉴权、会话目录和超时/取消；`server.ts` 使用官方 SDK 发布工具与资源；`index.ts` 负责 stdio 和本机令牌文件。`protocol.ts` 是浏览器与服务共享的白名单和消息契约。
+
+Agent 插件中的 `mcp-bridge.ts` 从现有工具定义派生 Schema 并执行，不维护第二套画布操作；`McpConnection.vue` 只收集连接授权。默认只读，写入需显式授权，目标会话必须指定，文字/样式修改必须提供文档 ID。文档切换和插件卸载清理连接及排队请求；已完成操作不因超时或断线回滚。
+
+针对性验证：先 `pnpm mcp:build`，再 `node --test packages/mcp/test/mcp.test.mjs`；浏览器执行器用 `node --test --test-name-pattern="MCP browser" scripts/runtime.test.mjs`。NodeNext 的 `.js` 源导入允许解析到同名 `.ts`；包边界检查仍禁止越包私有路径。
 
 ## 宿主策略与界面
 

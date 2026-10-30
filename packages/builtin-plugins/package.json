@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@leafer-flow/core": "workspace:*",
+    "@leafer-flow/mcp": "workspace:*",
     "@leafer-flow/ui": "workspace:*",
     "dagre": "^0.8.5",
     "dompurify": "catalog:",

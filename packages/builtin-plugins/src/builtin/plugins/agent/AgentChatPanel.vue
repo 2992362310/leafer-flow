@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import type Editor from "@leafer-flow/core/editor";
 import {
   useDraggable,
@@ -13,6 +13,8 @@ import { AGENT_PROVIDERS, type AgentConfig } from "./agent-config";
 import AgentMessage from "./AgentMessage.vue";
 import AgentSettings from "./AgentSettings.vue";
 import AgentQuestion from "./AgentQuestion.vue";
+import McpConnection from "./McpConnection.vue";
+import { EditorMcpBridge, type ConnectionOptions } from "./mcp-bridge";
 
 interface Props {
   editor: Editor;
@@ -29,6 +31,25 @@ const { togglePanelDock } = usePanelDock();
 const mode = usePanelMode("agent-chat");
 
 const showSettings = ref(false);
+const showMcp = ref(false);
+const mcpStatus = ref<"disconnected" | "connecting" | "connected">("disconnected");
+const mcpError = ref("");
+const mcpSessionId = ref("");
+const mcpPort = ref(4318);
+const mcpWriteGranted = ref(false);
+const mcpBridge = new EditorMcpBridge(props.editor, (status, error, sessionId) => {
+  mcpStatus.value = status;
+  mcpError.value = error ?? "";
+  mcpSessionId.value = sessionId ?? "";
+});
+onUnmounted(() => mcpBridge.disconnect());
+
+function connectMcp(options: ConnectionOptions) {
+  mcpPort.value = options.port;
+  mcpWriteGranted.value = options.allowWrite;
+  try { mcpBridge.connect(options); }
+  catch (error) { mcpError.value = error instanceof Error ? error.message : "MCP 连接失败"; }
+}
 const messagesContainerRef = ref<HTMLElement | null>(null);
 const {
   config,
@@ -106,8 +127,13 @@ function handleKeydown(e: KeyboardEvent) {
               <Icon name="compress" class="h-4 w-4" />
             </button>
             <button class="agent-icon-button" :class="{ 'is-active': showSettings }" title="设置" aria-label="设置"
-              :aria-pressed="showSettings" :disabled="isBusy" @click="showSettings = !showSettings">
+              :aria-pressed="showSettings" :disabled="isBusy" @click="showSettings = !showSettings; showMcp = false">
               <Icon name="settings" class="h-4 w-4" />
+            </button>
+            <button class="agent-icon-button" :class="{ 'is-active': showMcp || mcpStatus === 'connected' }"
+              title="MCP 连接" aria-label="MCP 连接" :aria-pressed="showMcp" :disabled="isBusy"
+              @click="showMcp = !showMcp; showSettings = false">
+              <Icon :name="mcpStatus === 'connected' ? 'unlock' : 'lock'" class="h-4 w-4" />
             </button>
             <button class="agent-icon-button" title="清空历史" aria-label="清空历史"
               :disabled="isBusy || !displayMessages.length" @click="handleClearHistory">
@@ -126,7 +152,12 @@ function handleKeydown(e: KeyboardEvent) {
 
         <div v-if="error" role="alert" class="agent-error">{{ error }}</div>
 
-        <div v-if="showSettings" class="agent-settings-area">
+        <div v-if="showMcp" class="agent-settings-area">
+          <McpConnection :status="mcpStatus" :error="mcpError" :session-id="mcpSessionId" :connection-port="mcpPort"
+            :write-granted="mcpWriteGranted" @connect="connectMcp" @disconnect="mcpBridge.disconnect()"
+            @close="showMcp = false" />
+        </div>
+        <div v-else-if="showSettings" class="agent-settings-area">
           <AgentSettings :config="config" @save="handleSaveConfig" @close="showSettings = false" />
         </div>
         <template v-else>

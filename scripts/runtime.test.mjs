@@ -1120,6 +1120,88 @@ function loadAgentTools() {
   }, { crypto });
 }
 
+function loadMcpBrowser(globals = {}, toolModule = loadAgentTools()) {
+  return loadModule('packages/builtin-plugins/src/builtin/plugins/agent/mcp-bridge.ts', {
+    '@leafer-flow/mcp/protocol': loadModule('packages/mcp/src/protocol.ts'),
+    './agent-tools': toolModule,
+  }, { AbortController, crypto, TextEncoder, setTimeout, clearTimeout, ...globals });
+}
+
+test('MCP browser exposes only granted tools and requires explicit document targets', async () => {
+  const { getMcpToolDescriptors, executeMcpRequest } = loadMcpBrowser();
+  assert.equal(getMcpToolDescriptors(false).length, 3);
+  assert.equal(getMcpToolDescriptors(true).length, 8);
+  assert.ok(getMcpToolDescriptors(true).find(tool => tool.name === 'set_style').inputSchema.required.includes('ids'));
+  assert.equal(getMcpToolDescriptors(true).some(tool => tool.name === 'clear_canvas'), false);
+  let depth = 0;
+  let mutations = 0;
+  const editor = {
+    app: { tree: { children: [], scaleX: 1 }, editor: { list: [] } },
+    document: { snapshot: () => ({ id: 'document', nodes: [], edges: [] }) },
+    beginTransaction() { depth++; }, endTransaction() { depth--; },
+    createElementFromTool() { mutations++; return {}; }, renderer: { getId: () => `created-${mutations}` },
+  };
+  const request = (name, args = {}) => ({ type: 'request', id: 'request', kind: 'tool', name, arguments: args });
+  const signal = new AbortController().signal;
+  assert.equal((await executeMcpRequest(editor, request('create_shape', { shape_type: 'rect' }), false, signal)).success, false);
+  assert.equal((await executeMcpRequest(editor, request('clear_canvas'), true, signal)).success, false);
+  assert.equal((await executeMcpRequest(editor, request('modify_text', { text: 'wrong target' }), true, signal)).success, false);
+  assert.equal((await executeMcpRequest(editor, request('batch_create_shapes', { shape_type: 'rect', count: -1 }), true, signal)).success, false);
+  assert.equal(mutations, 0);
+  const created = await executeMcpRequest(editor, request('batch_create_shapes', { shape_type: 'rect', count: 2 }), true, signal);
+  assert.equal(created.success, true);
+  assert.equal(mutations, 2);
+  assert.equal(depth, 0);
+  const cancelled = new AbortController(); cancelled.abort();
+  assert.equal((await executeMcpRequest(editor, request('create_shape', { shape_type: 'rect' }), true, cancelled.signal)).success, false);
+  assert.equal(mutations, 2);
+  const document = await executeMcpRequest(editor, { ...request('document'), kind: 'resource' }, false, signal);
+  assert.equal(JSON.parse(document.result).id, 'document');
+});
+
+test('MCP browser closes on document changes and discards queued edits after disconnect', async () => {
+  let socket;
+  class FakeSocket {
+    static OPEN = 1;
+    readyState = 1;
+    sent = [];
+    constructor() { socket = this; }
+    send(value) { this.sent.push(JSON.parse(value)); }
+    close() { this.readyState = 3; }
+  }
+  let documentId = 'original';
+  let listener;
+  let depth = 0;
+  let mutations = 0;
+  let release;
+  let started;
+  const began = new Promise(resolve => { started = resolve; });
+  const { EditorMcpBridge } = loadMcpBrowser({ WebSocket: FakeSocket }, {
+    getAgentTools: () => [{
+      name: 'create_shape', description: 'test', parameters: { type: 'object', properties: {} },
+      execute: async () => { mutations++; started(); await new Promise(resolve => { release = resolve; }); return 'created'; },
+    }], validateToolArguments() { },
+  });
+  const statuses = [];
+  const bridge = new EditorMcpBridge({
+    document: { snapshot: () => ({ id: documentId }), subscribe(callback) { listener = callback; return () => { listener = undefined; }; } },
+    beginTransaction() { depth++; }, endTransaction() { depth--; },
+  }, (...status) => statuses.push(status));
+  bridge.connect({ port: 4318, token: 'mcp-test-token-not-a-real-secret-123456', allowWrite: true });
+  socket.onopen();
+  socket.onmessage({ data: JSON.stringify({ type: 'ready', sessionId: socket.sent[0].session.id }) });
+  assert.equal(statuses.at(-1)[0], 'connected');
+  for (const id of ['first', 'second']) socket.onmessage({ data: JSON.stringify({ type: 'request', id, kind: 'tool', name: 'create_shape', arguments: {} }) });
+  await began;
+  documentId = 'another'; listener();
+  assert.equal(statuses.at(-1)[0], 'disconnected');
+  assert.equal(listener, undefined);
+  release(); await bridge.queue;
+  assert.equal(mutations, 1);
+  assert.equal(depth, 0);
+  assert.equal(socket.sent.filter(message => message.type === 'result').length, 0);
+});
+
 function createAgentService(globals = {}, toolModule = { getAgentTools: () => [] }) {
   const { AgentService, parseToolResult } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-service.ts', {
     './agent-config': { isConfigValid: () => true, getApiEndpoint: () => 'https://example.test/chat/completions' },
@@ -1459,6 +1541,39 @@ test('agent panel validates answers, settles once and clears pending questions o
   }
 });
 
+test('agent drawing guidance inspects context and does not default to templates', async () => {
+  const service = createAgentService();
+  service.requestChat = async (_config, messages) => {
+    assert.match(messages[0].content, /开始绘制前先查询画布/);
+    assert.match(messages[0].content, /模板不是默认绘制方式/);
+    assert.doesNotMatch(messages[0].content, /流程图优先使用 insert_template/);
+    return { content: '请确认业务步骤', toolCalls: [] };
+  };
+  await service.processMessage('画流程图');
+  const { getAgentSkills } = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-skills.ts');
+  const workflow = getAgentSkills().find(skill => skill.name === 'create_flowchart');
+  assert.match(workflow.steps.join('\n'), /默认按用户的实际内容定制流程/);
+  assert.doesNotMatch(getAgentSkills().map(skill => skill.steps.join('\n')).join('\n'), /优先.*模板|优先 insert_template/);
+  const template = loadAgentTools().getAgentTools().find(tool => tool.name === 'insert_template');
+  assert.match(template.description, /不能代替定制绘制/);
+});
+
+test('agent allows more than ten tool calls and returns the model summary', async () => {
+  const service = createAgentService();
+  let requests = 0;
+  service.executeToolCall = async call => ({ name: call.function.name, arguments: {}, success: true, result: 'ok' });
+  service.requestChat = async () => ++requests === 1 ? {
+    content: '', toolCalls: Array.from({ length: 12 }, (_, index) => ({
+      id: `tool-${index}`, type: 'function', function: { name: 'test', arguments: '{}' },
+    })),
+  } : { content: '完成', toolCalls: [] };
+  const reply = await service.processMessage('many calls');
+  assert.equal(reply.toolCalls.length, 12);
+  assert.ok(reply.toolCalls.every(result => result.success));
+  assert.equal(reply.content, '完成');
+  assert.equal(reply.warning, undefined);
+});
+
 test('agent limits individual calls within one response and records skipped tool results', async () => {
   const service = createAgentService();
   let executed = 0;
@@ -1466,15 +1581,32 @@ test('agent limits individual calls within one response and records skipped tool
     executed++;
     return { name: call.function.name, arguments: {}, success: true, result: 'ok' };
   };
-  const toolCalls = Array.from({ length: 12 }, (_, index) => ({
+  const toolCalls = Array.from({ length: 102 }, (_, index) => ({
     id: `tool-${index}`, type: 'function', function: { name: 'test', arguments: '{}' },
   }));
   service.requestChat = async () => ({ content: '', toolCalls });
   await service.processMessage('many calls');
-  assert.equal(executed, 10);
+  assert.equal(executed, 100);
   const results = service.getHistory().filter(message => message.role === 'tool');
-  assert.equal(results.length, 12);
-  assert.notEqual(results.at(-1).content, 'ok');
+  assert.equal(results.length, 102);
+  assert.equal(JSON.parse(results.at(-1).content).success, false);
+});
+
+test('agent stops unbounded tool rounds and can continue in a new turn', async () => {
+  const service = createAgentService();
+  let requests = 0;
+  service.executeToolCall = async call => ({ name: call.function.name, arguments: {}, success: true, result: 'ok' });
+  service.requestChat = async () => ({
+    content: '', toolCalls: [{ id: `tool-${++requests}`, type: 'function', function: { name: 'test', arguments: '{}' } }],
+  });
+  const reply = await service.processMessage('many rounds');
+  assert.equal(requests, 40);
+  assert.equal(reply.toolCalls.length, 40);
+  assert.match(reply.warning, /安全上限/);
+  assert.match(reply.warning, /继续/);
+  service.requestChat = async () => ({ content: '完成剩余任务', toolCalls: [] });
+  const continued = await service.processMessage('继续');
+  assert.equal(continued.content.endsWith('完成剩余任务'), true);
 });
 
 test('agent stores the final fallback reply in its single history source', async () => {
@@ -1738,8 +1870,8 @@ for (const mode of ['standard', 'stream']) {
       }
       await service.processMessage('test', mode === 'stream' ? { onToken() { } } : {});
       assert.equal(depth, 0);
-      assert.equal(endings, outcome === 'limit' ? 10 : 1);
-      if (outcome === 'limit') assert.equal(requests, 10);
+      assert.equal(endings, outcome === 'limit' ? 40 : 1);
+      if (outcome === 'limit') assert.equal(requests, 40);
       const history = service.getHistory();
       for (const [index, message] of history.entries()) {
         for (const call of message.tool_calls ?? []) {

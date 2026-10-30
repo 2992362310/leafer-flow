@@ -415,7 +415,7 @@ const AGENT_TOOLS: AgentTool[] = [
   {
     name: "insert_template",
     category: "template",
-    description: "插入预设模板，支持自定义位置和缩放",
+    description: "插入固定内容的预设模板，支持位置和缩放；仅在用户明确要求模板或已确认模板内容符合需求时使用，不能代替定制绘制",
     parameters: {
       type: "object",
       properties: {
