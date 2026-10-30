@@ -23,6 +23,7 @@ import { NodeTypeRegistry } from "./core/node-type-registry";
 import { registerBuiltinNodeTypes } from "./core/builtin-node-types";
 import { ResourceService } from "./document/resources";
 import { DocumentClipboard } from "./document/clipboard";
+import { MediaController } from "./core/media-controller";
 
 const INIT_CONFIG = {
   view: window,
@@ -61,6 +62,7 @@ export default class Editor {
   public readonly documentCommands: DocumentCommands;
   public readonly resources: ResourceService;
   public readonly clipboard: DocumentClipboard;
+  public readonly media: MediaController;
 
   constructor(config: IAppConfig = INIT_CONFIG) {
     const app = new App(config);
@@ -76,17 +78,27 @@ export default class Editor {
       this.resources,
       () => this.commitInteraction({ syncConnectorLabels: true }),
     );
+    this.media = new MediaController(app, this.resources, (id) => this.renderer.getNode(id));
     this.cleanups.push(this.nodeTypes.subscribe(() => {
-      if (!this.disposed) this.renderer.render(this.document.snapshot());
+      if (!this.disposed) {
+        this.media.beforeRender();
+        this.renderer.render(this.document.snapshot());
+        this.media.sync(this.document.snapshot());
+      }
     }));
     this.cleanups.push(this.document.connect({
       apply: (document, origin) => {
         this.resources.validate(document);
         if (origin === "interaction") this.renderer.acceptInteraction(document);
-        else this.renderer.render(document);
+        else {
+          if (origin === "load") this.media.reset();
+          this.media.beforeRender();
+          this.renderer.render(document);
+          this.media.sync(document);
+        }
       },
     }));
-    this.history = new HistoryManager(this.document);
+    this.history = new HistoryManager(this.document, this.resources);
     this.autoSave = new AutoSave(this.document, this.resources);
     this.pluginManager = new PluginManager(this);
     this.toolRegistry = new ToolRegistry(this);
@@ -130,6 +142,7 @@ export default class Editor {
         () => this.autoSave.destroy(),
         () => this.pluginManager.destroy(),
         () => this.history.dispose(),
+        () => this.media.dispose(),
         () => this.clipboard.dispose(),
         () => this.resources.dispose(),
         () => this.document.dispose(),

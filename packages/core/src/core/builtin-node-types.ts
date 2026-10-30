@@ -9,16 +9,24 @@ import { toLeaferImageFilters } from "../document/image-filters";
 export const FLOW_NODE_DOCUMENT_TYPE = "leafer-flow.flow-node";
 
 export function registerBuiltinNodeTypes(registry: NodeTypeRegistry) {
-    for (const type of ["UI", "Group", "Box", "Frame", "Rect", "Ellipse", "Polygon", "Star", "Line", "Path", "Text", "Image", "Video"]) {
+    for (const type of ["UI", "Group", "Box", "Frame", "Rect", "Ellipse", "Polygon", "Star", "Line", "Path", "Text", "Image", "Video", "Audio"]) {
         registry.register({
             type,
             version: 1,
             label: type,
             acceptsChildren: ["Group", "Box", "Frame"].includes(type),
-            render(node, context) {
+            render(node, context): JsonObject {
                 const data = structuredClone(node.data);
                 delete data.customData;
+                if (type === "Audio") return {
+                    tag: "Group", x: data.x ?? 0, y: data.y ?? 0, width: data.width ?? 240, height: data.height ?? 64,
+                    children: [
+                        { tag: "Rect", width: data.width ?? 240, height: data.height ?? 64, fill: "#f0fdf4", stroke: "#16a34a", cornerRadius: 6 },
+                        { tag: "Text", x: 12, y: 20, width: Number(data.width ?? 240) - 24, text: String(data.name ?? "Audio"), fontSize: 14, fill: "#14532d", textAlign: "center" },
+                    ],
+                };
                 if (type === "Image" || type === "Video") {
+                    delete data.poster;
                     const filters = type === "Image" ? toLeaferImageFilters(data.imageFilters) : [];
                     if (type === "Image") delete data.imageFilters;
                     if (typeof data.assetId === "string") {
@@ -27,14 +35,14 @@ export function registerBuiltinNodeTypes(registry: NodeTypeRegistry) {
                             data.fill = { type: "image", url, mode: "stretch", filter: filters };
                             delete data.url;
                         } else {
-                            data.url = url;
+                            data.url = type === "Video" ? `${url}#${node.id}` : url;
                         }
                     }
                     delete data.assetId;
                 }
                 return { ...data, tag: type };
             },
-            read: type === "Video" ? (_view, previous) => structuredClone(previous) : (view) => view,
+            read: type === "Video" || type === "Audio" ? (_view, previous) => structuredClone(previous) : (view, previous) => ({ ...previous, ...view }),
         });
     }
     registry.register({

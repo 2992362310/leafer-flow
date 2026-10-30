@@ -86,6 +86,34 @@ test('binary asset store supports put, get and delete', async () => {
   assert.equal(await store.get('asset-test'), undefined);
 });
 
+test('OPFS assets preserve MIME metadata across storage instances', async () => {
+  const files = new Map();
+  const directory = {
+    async getDirectoryHandle() { return directory; },
+    async getFileHandle(name, options) {
+      if (!files.has(name) && !options?.create) throw new DOMException('missing', 'NotFoundError');
+      return {
+        async createWritable() {
+          const chunks = [];
+          return { async write(chunk) { chunks.push(chunk); }, async close() { files.set(name, new Blob(chunks)); } };
+        },
+        async getFile() { return files.get(name); },
+      };
+    },
+    async removeEntry(name) { files.delete(name); },
+  };
+  const { BinaryAssetStore } = loadModule('packages/core/src/document/binary-asset-store.ts', {}, {
+    navigator: { storage: { getDirectory: async () => directory } }, Blob, DOMException,
+  });
+  await new BinaryAssetStore().putStream('video', 'video/mp4', new Blob(['video-bytes']).stream());
+  const storage = new BinaryAssetStore();
+  const restored = await storage.get('video');
+  assert.equal(restored.type, 'video/mp4');
+  assert.equal(await restored.text(), 'video-bytes');
+  await storage.delete('video');
+  assert.equal(files.size, 0);
+});
+
 test('overlay registration accepts plugin ids and release handles cannot remove replacements', () => {
   const registry = createOverlayRegistry();
   let changes = 0;
@@ -178,7 +206,7 @@ function createDocumentRuntime(limits = {}) {
     './binary-asset-store': binaryAssetStore,
     '@noble/hashes/sha2.js': coreRequire('@noble/hashes/sha2.js'),
   }, {
-    crypto, structuredClone, URL, Blob, Uint8Array, TextEncoder, atob, btoa,
+    crypto, structuredClone, URL, Blob, Uint8Array, TextEncoder, TransformStream,
   });
   const model = loadModule('packages/core/src/document/model.ts', { './resources': resourceModule }, { crypto });
   const { DocumentStore } = loadModule('packages/core/src/document/document-store.ts', { './model': model }, { structuredClone });
@@ -364,27 +392,120 @@ test('resources prepare portable content and deduplicate atomic node imports', a
   const first = await resources.prepare(file);
   const repeated = await resources.prepare(file);
   assert.equal(first.id, repeated.id);
-  const streamed = await resources.importStream({ id: 'streamed', mimeType: file.type, size: file.size }, file.stream());
-  assert.equal(streamed.source, first.source);
-  await assert.rejects(resources.importStream({ id: 'streamed', mimeType: file.type, size: 1 }, new Blob(['bad']).stream()), /metadata mismatch/);
-  assert.equal(await (await resources.getBlob('streamed')).text(), 'image-content');
+  const streamed = await resources.importStream(first, file.stream());
+  assert.equal(streamed.id, first.id);
+  await assert.rejects(resources.importStream({ ...first, size: 1 }, new Blob(['bad']).stream()), /metadata mismatch/);
+  assert.equal(await (await resources.getBlob(first.id)).text(), 'image-content');
   assert.equal(Object.keys(document.snapshot().assets).length, 0);
   commands.insertNode({ id: 'image-one', type: 'Image', version: 1, data: { assetId: first.id }, children: [] }, undefined, [first]);
-  commands.insertNode({ id: 'image-two', type: 'Image', version: 1, data: { nested: { assetIds: ['alias'] }, assetId: 'alias' }, children: [] }, undefined, [{ ...repeated, id: 'alias' }]);
+  commands.insertNode({ id: 'image-two', type: 'Image', version: 1, data: { nested: { assetIds: [first.id] }, assetId: first.id }, children: [] }, undefined, [repeated]);
   assert.equal(Object.keys(document.snapshot().assets).length, 1);
   assert.equal(document.getNode('image-two').data.assetId, first.id);
   assert.equal(document.getNode('image-two').data.nested.assetIds[0], first.id);
   const packaged = JSON.parse(JSON.stringify(document.snapshot()));
-  assert.equal(resources.resolve(first.id, packaged), first.source);
-  assert.equal(packaged.assets[first.id].source.startsWith('data:image/png;base64,'), true);
+  assert.ok(resources.resolve(first.id, packaged).startsWith('blob:'));
+  assert.equal(packaged.assets[first.id].source, undefined);
+  assert.ok(JSON.stringify(packaged).length < 1000);
   const restored = createDocumentRuntime();
+  await restored.resources.importStream(first, file.stream());
   await restored.resources.hydrateAssets(packaged.assets);
   restored.document.replace(packaged, 'load', 'Restore packaged resource');
-  assert.equal(restored.resources.resolve(first.id), first.source);
+  assert.ok(restored.resources.resolve(first.id).startsWith('blob:'));
   const second = await resources.prepare(new Blob(['second-image'], { type: 'image/png' }));
-  const invalidAsset = { ...first, id: 'invalid', source: 'blob:temporary' };
-  await assert.rejects(restored.resources.hydrateAssets({ first, second, invalid: invalidAsset }), /embedded data URLs/);
+  const invalidAsset = { ...first, source: 'blob:temporary' };
+  await assert.rejects(restored.resources.hydrateAssets({ invalid: invalidAsset }), /restore document resources/);
   await assert.rejects(restored.resources.getBlob(second.id), /Missing stored resource/);
+});
+
+test('document packages stream binary assets and restore metadata-only documents', async () => {
+  const state = createDocumentRuntime();
+  const model = loadModule('packages/core/src/document/model.ts', {
+    './resources': loadModule('packages/core/src/document/resources.ts', {
+      './binary-asset-store': {}, '@noble/hashes/sha2.js': coreRequire('@noble/hashes/sha2.js'),
+    }),
+  }, { crypto });
+  const archive = loadModule('packages/core/src/document/document-package.ts', {
+    fflate: coreRequire('fflate'), './model': model,
+  }, { Blob, TextEncoder, TextDecoder, Uint8Array, TransformStream });
+  const asset = await state.resources.prepare(new Blob(['media bytes'], { type: 'video/mp4' }));
+  state.commands.insertNode({ id: 'media', type: 'Video', version: 1, data: { assetId: asset.id }, children: [] }, undefined, [asset]);
+  const snapshot = state.document.snapshot();
+  const file = await archive.exportDocumentPackage(snapshot, state.resources);
+  const restored = createDocumentRuntime();
+  const imported = await archive.importDocumentPackage(file, restored.resources);
+  restored.document.replace(imported, 'load', 'Package');
+  assert.deepEqual(structuredClone(imported), snapshot);
+  assert.equal(await (await restored.resources.getBlob(asset.id)).text(), 'media bytes');
+  assert.equal(JSON.stringify(imported).includes('base64'), false);
+  await assert.rejects(archive.importDocumentPackage(new Blob(['invalid']), restored.resources));
+  const { zipSync } = coreRequire('fflate');
+  const manifest = new TextEncoder().encode(JSON.stringify(snapshot));
+  await assert.rejects(archive.importDocumentPackage(new Blob([zipSync({ 'document.json': manifest }, { level: 0 })]), restored.resources), /incomplete/);
+  await assert.rejects(archive.importDocumentPackage(new Blob([zipSync({
+    'document.json': manifest,
+    [`assets/${asset.id}`]: new TextEncoder().encode('wrong bytes'),
+  }, { level: 0 })]), restored.resources), /hash mismatch/);
+  assert.equal(await (await restored.resources.getBlob(asset.id)).text(), 'media bytes');
+  await assert.rejects(archive.importDocumentPackage(new Blob([zipSync({ 'document.json': manifest })]), restored.resources), /unsupported package/);
+});
+
+test('media runtime restores video position, observes ended/errors and releases audio', async () => {
+  class Media extends EventTarget {
+    paused = true;
+    currentTime = 0;
+    duration = 10;
+    readyState = 1;
+    async play() { this.paused = false; this.dispatchEvent(new Event('play')); }
+    pause() { this.paused = true; this.dispatchEvent(new Event('pause')); }
+    removeAttribute() { this.src = ''; }
+    load() { }
+  }
+  const { MediaController } = loadModule('packages/core/src/core/media-controller.ts', {}, {
+    window: { document: { createElement: () => new Media() } },
+  });
+  const app = createEmitter();
+  let video = new Media();
+  const getView = () => ({ decoder: { decoder: video }, play() { }, pause() { video.pause(); }, set currentTime(value) { video.currentTime = value; } });
+  const runtime = new MediaController(app, { resolve: () => 'blob:media' }, getView);
+  const nodes = [
+    { id: 'video', type: 'Video', data: { assetId: 'v', volume: 0.5, muted: true }, children: [] },
+    { id: 'audio', type: 'Audio', data: { assetId: 'a', volume: 0.8 }, children: [] },
+  ];
+  runtime.sync({ nodes });
+  await runtime.toggle('video');
+  video.currentTime = 7;
+  video.dispatchEvent(new Event('timeupdate'));
+  runtime.beforeRender();
+  video = new Media();
+  runtime.sync({ nodes });
+  await Promise.resolve();
+  assert.equal(video.currentTime, 7);
+  assert.equal(video.paused, false);
+  assert.equal(video.volume, 0.5);
+  video.paused = true;
+  video.dispatchEvent(new Event('ended'));
+  assert.equal(runtime.getState('video').paused, true);
+  video.error = { message: 'decode failed' };
+  video.dispatchEvent(new Event('error'));
+  assert.equal(runtime.getState('video').error, 'decode failed');
+  await runtime.toggle('audio');
+  assert.equal(runtime.getState('audio').paused, false);
+  runtime.seek('audio', 20);
+  assert.equal(runtime.getState('audio').currentTime, 10);
+  runtime.reset();
+  assert.equal(runtime.getState('audio').paused, true);
+  runtime.dispose();
+  assert.equal(app.count(), 0);
+});
+
+test('media image headers reject oversized images before decoding', async () => {
+  let decoded = false;
+  const media = loadModule('packages/core/src/core/media-import.ts', {
+    'image-dimensions': { imageDimensionsFromData: () => ({ width: 10000, height: 10000 }) },
+  }, { Uint8Array, createImageBitmap() { decoded = true; } });
+  await assert.rejects(media.prepareImagePreview(new Blob(['header'])), /3200/);
+  assert.equal(decoded, false);
+  assert.equal(JSON.stringify(media.fitMedia(4000, 2000, 2048)), JSON.stringify({ width: 2048, height: 1024 }));
 });
 
 test('resources reject invalid references, nonportable sources and capacity violations atomically', async () => {
@@ -401,7 +522,7 @@ test('resources reject invalid references, nonportable sources and capacity viol
   assert.equal(document.getNode('second'), undefined);
   assert.equal(resources.pruneUnused(), 1);
   assert.throws(() => commands.updateNode('first', { nested: { assetId: 'missing' } }), /Missing document asset/);
-  assert.throws(() => commands.insertNode({ id: 'bad', type: 'Image', version: 1, data: { assetId: 'bad' }, children: [] }, undefined, [{ id: 'bad', mimeType: 'image/png', source: 'blob:temporary' }]), /embedded data URLs/);
+  assert.throws(() => commands.insertNode({ id: 'bad', type: 'Image', version: 1, data: { assetId: first.id }, children: [] }, undefined, [{ ...first, source: 'blob:temporary' }]), /unsupported fields/);
   assert.equal(document.revision, revision);
 });
 
@@ -415,7 +536,7 @@ test('videos have a separate asset limit while sharing the document resource lim
 test('resources retain pinned assets and cleanup is undoable without losing content', async () => {
   const { document, commands, resources } = createDocumentRuntime();
   const { HistoryManager } = loadModule('packages/core/src/core/history.ts');
-  const history = new HistoryManager(document);
+  const history = new HistoryManager(document, resources);
   const asset = await resources.prepare(new Blob(['retained'], { type: 'text/plain' }));
   commands.insertNode({ id: 'node', type: 'Rect', version: 1, data: { assetId: asset.id }, children: [] }, undefined, [asset]);
   const release = resources.retain([asset.id]);
@@ -426,7 +547,8 @@ test('resources retain pinned assets and cleanup is undoable without losing cont
   assert.equal(resources.pruneUnused(), 1);
   assert.equal(Object.keys(document.snapshot().assets).length, 0);
   history.undo();
-  assert.equal(resources.resolve(asset.id), asset.source);
+  assert.ok(resources.resolve(asset.id).startsWith('blob:'));
+  assert.equal(await (await resources.getBlob(asset.id)).text(), 'retained');
   history.undo();
   assert.equal(document.getNode('node').data.assetId, asset.id);
   resources.dispose();
@@ -439,7 +561,7 @@ test('resources resolve through image projection without duplicating document as
   commands.insertNode({ id: 'image', type: 'Image', version: 1, data: { assetId: asset.id, width: 80, height: 40 }, children: [] }, undefined, [asset]);
   const snapshot = document.snapshot();
   adapter.render(snapshot);
-  assert.equal(adapter.getNode('image').url, asset.source);
+  assert.equal(adapter.getNode('image').url, resources.resolve(asset.id));
   const roundTrip = adapter.readInteraction(snapshot);
   assert.equal(Object.keys(roundTrip.assets).length, 1);
   assert.equal(roundTrip.nodes[0].data.assetId, asset.id);
@@ -460,7 +582,7 @@ test('image filter projection preserves the embedded asset and filter settings',
   adapter.render(snapshot);
   const view = adapter.getNode('filtered-image');
   assert.equal(view.fill.type, 'image');
-  assert.equal(view.fill.url, asset.source);
+  assert.equal(view.fill.url, resources.resolve(asset.id));
   assert.deepEqual(structuredClone(view.fill.filter), [
     { type: 'exposure', value: 0.4 },
     { type: 'saturation', value: -0.2 },
@@ -487,7 +609,7 @@ test('video node projection preserves its asset but not transient playback state
   adapter.render(snapshot);
   const view = adapter.getNode('video');
   assert.equal(view.tag, 'Video');
-  assert.equal(view.url, asset.source);
+  assert.equal(view.url, `${resources.resolve(asset.id)}#video`);
   view.currentTime = 3;
   view.paused = false;
 
@@ -497,6 +619,19 @@ test('video node projection preserves its asset but not transient playback state
   assert.equal(roundTrip.nodes[0].data.currentTime, undefined);
   assert.equal(roundTrip.nodes[0].data.paused, undefined);
   assert.equal(Object.keys(roundTrip.assets).length, 1);
+});
+
+test('audio projection preserves media metadata and hides its visual children', async () => {
+  const { document, commands, resources, adapter } = createNodeProjection();
+  const asset = await resources.prepare(new Blob(['audio-content'], { type: 'audio/mpeg' }));
+  commands.insertNode({ id: 'audio', type: 'Audio', version: 1, data: { assetId: asset.id, name: 'Track', width: 240, height: 64 }, children: [] }, undefined, [asset]);
+  const snapshot = document.snapshot();
+  adapter.render(snapshot);
+  const roundTrip = adapter.readInteraction(snapshot);
+  assert.equal(roundTrip.nodes[0].type, 'Audio');
+  assert.equal(roundTrip.nodes[0].children.length, 0);
+  assert.equal(roundTrip.nodes[0].data.assetId, asset.id);
+  assert.equal(adapter.getNode('audio').children.length, 2);
 });
 
 test('node types apply defaults and reject invalid creation without changing the document', () => {
@@ -650,7 +785,7 @@ test('document clipboard remaps nested ids, connector bindings, labels and retai
   assert.equal(copiedEdge.from.nodeId, copiedImage.id);
   assert.equal(copiedEdge.to.nodeId, copiedTarget.id);
   assert.equal(copiedLabel.label.edgeId, copiedEdge.id);
-  assert.equal(resources.resolve(asset.id), asset.source);
+  assert.ok(resources.resolve(asset.id).startsWith('blob:'));
 });
 
 test('document cut remains undoable while clipboard retains resources for a later paste', async () => {
@@ -670,7 +805,7 @@ test('document cut remains undoable while clipboard retains resources for a late
   const ids = clipboard.paste();
   assert.equal(ids.length, 1);
   assert.equal(document.getNode(ids[0]).data.assetId, asset.id);
-  assert.equal(resources.resolve(asset.id), asset.source);
+  assert.ok(resources.resolve(asset.id).startsWith('blob:'));
 });
 
 test('presentation updates persist nested shape styles and flow-node text through history', () => {
@@ -1388,7 +1523,7 @@ function createAutoSave(globals = {}) {
   const timers = new Map();
   let nextTimer = 0;
   let restored = 0;
-  const { AutoSave } = loadModule('packages/core/src/core/auto-save.ts', {}, {
+  const { AutoSave } = loadModule('packages/core/src/core/auto-save.ts', { '../document/model': { validateDocument() { } } }, {
     localStorage: {
       getItem: key => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
@@ -1462,6 +1597,7 @@ function createEditor(options = {}) {
     './document/leafer-document-adapter': { LeaferDocumentAdapter: class { } },
     './document/commands': { DocumentCommands: class { } },
     './document/clipboard': { DocumentClipboard: class { dispose() { } } },
+    './core/media-controller': { MediaController: class { dispose() { } } },
     './action/document-commands': { registerDocumentCommands() { } },
     './core/node-type-registry': { NodeTypeRegistry: class { subscribe() { return () => { }; } } },
     './document/resources': { ResourceService: class { dispose() { } } },

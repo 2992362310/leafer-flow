@@ -13,8 +13,7 @@ import { doDelete } from "@leafer-flow/core/action/do-delete";
 import { doFlip } from "@leafer-flow/core/action/do-flip";
 import { doFormatPainterCopy, doFormatPainterApply } from "@leafer-flow/core/action/do-format-painter";
 import { doGroup } from "@leafer-flow/core/action/do-group";
-import { doImage } from "@leafer-flow/core/action/do-image";
-import { doVideo } from "@leafer-flow/core/action/do-video";
+import { doImage, doVideo, doAudio } from "@leafer-flow/core/action/do-media";
 import { doImportSVG } from "@leafer-flow/core/action/do-svg-import";
 import { doLayer, doToggleLock, doToggleVisible, doUnlockAll, doUnlockAtCursor } from "@leafer-flow/core/action/do-layer";
 import { doMoveLayer, type MoveLayerPayload } from "@leafer-flow/core/action/do-move-layer";
@@ -277,6 +276,12 @@ const CORE_COMMANDS: CommandContribution[] = [
     label: "插入视频",
     pluginId: BUILTIN_PLUGIN_ID,
     run: doVideo,
+  },
+  {
+    id: ACTION_NAME.INSERT_AUDIO,
+    label: "插入音频",
+    pluginId: BUILTIN_PLUGIN_ID,
+    run: doAudio,
   },
   {
     id: ACTION_NAME.IMPORT_SVG,

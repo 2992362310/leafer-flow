@@ -7,7 +7,7 @@ import ImageFilterPropertyPanel from "../../components/EditorPanel/builtin/Image
 import ShapeStylePanel from "../../components/EditorPanel/builtin/ShapeStylePropertyPanel.vue";
 import StylePresetPanel from "../../components/EditorPanel/builtin/StylePresetPropertyPanel.vue";
 import TextPropertyPanel from "../../components/EditorPanel/builtin/TextPropertyPanel.vue";
-import VideoPropertyPanel from "../../components/EditorPanel/builtin/VideoPropertyPanel.vue";
+import MediaPropertyPanel from "../../components/EditorPanel/builtin/MediaPropertyPanel.vue";
 
 const PLUGIN_ID = "leafer-flow.builtin-core";
 
@@ -17,10 +17,10 @@ function isSingleImage(context: PropertyPanelContext) {
   return node?.type === "Image";
 }
 
-function isSingleVideo(context: PropertyPanelContext) {
+function isSingleMedia(context: PropertyPanelContext) {
   if (!context.selectedElement || context.isMultiSelection) return false;
   const node = context.editor.document.getNode(context.editor.renderer.getId(context.selectedElement));
-  return node?.type === "Video";
+  return node?.type === "Video" || node?.type === "Audio";
 }
 
 export function registerDefaultPropertyPanels(editor: Editor) {
@@ -59,12 +59,12 @@ export function registerDefaultPropertyPanels(editor: Editor) {
       match: isSingleImage,
     },
     {
-      id: "builtin.video",
-      title: "视频",
+      id: "builtin.media",
+      title: "媒体播放",
       pluginId: PLUGIN_ID,
       order: 37,
-      component: VideoPropertyPanel,
-      match: isSingleVideo,
+      component: MediaPropertyPanel,
+      match: isSingleMedia,
     },
     {
       id: "builtin.connector",

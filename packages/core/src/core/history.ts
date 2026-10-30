@@ -1,5 +1,6 @@
 import { DocumentStore } from "../document/document-store";
 import type { EditorDocument } from "../document/model";
+import type { ResourceService } from "../document/resources";
 
 export interface HistoryEntry {
   index: number;
@@ -16,8 +17,10 @@ export class HistoryManager {
   private transactionDepth = 0;
 
   private unsubscribe: () => void;
+  private releaseResources?: () => void;
 
-  constructor(private document: DocumentStore) {
+  constructor(private document: DocumentStore, resources?: ResourceService) {
+    this.releaseResources = resources?.protect(() => [...this.undoStack, ...this.redoStack].flatMap((entry) => Object.keys(entry.data.assets)));
     this.unsubscribe = document.subscribe((change) => {
       if (change.origin === "history") return;
       if (change.origin === "load") {
@@ -140,6 +143,7 @@ export class HistoryManager {
   }
 
   dispose() {
+    this.releaseResources?.();
     this.unsubscribe();
     this.undoStack = [];
     this.redoStack = [];

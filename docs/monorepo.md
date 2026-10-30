@@ -121,6 +121,10 @@ import { usePanelDock } from "@leafer-flow/ui/composables";
 
 ## 高风险改动验收
 
+资源使用 v6 元数据契约：`DocumentAsset` 只保存内容 ID、MIME 和字节数，原始文件由 `BinaryAssetStore` 持久化，`ResourceService` 维护运行时 Blob URL。自动恢复先预热资源，再同步投影；关闭编辑器释放 URL，不删除已持久化文件。撤销栈和剪贴板保护资源，显式清理不得移除它们引用的字节。
+
+`.leafer` 为 ZIP 容器，`document.json` 必须位于首项，资源存于 `assets/<content-id>`。导入校验清单大小、资源总量、重复项、文件大小及内容哈希，只接受本程序写出的无压缩资源条目。PNG/SVG/PDF 仍为静态导出。媒体使用 `MediaController` 管理进度、错误和生命周期，不向文档写回播放时间。
+
 涉及连接线、序列化、剪贴板或历史时，按受影响范围验证以下流程，不以构建成功代替行为验证：
 
 - 新建连接线并添加标签，移动节点及拖动标签后位置保持正确。

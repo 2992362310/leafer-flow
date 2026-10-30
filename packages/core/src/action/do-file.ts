@@ -1,15 +1,15 @@
 import type Editor from "../editor";
+import { exportDocumentPackage, importDocumentPackage } from "../document/document-package";
 
-export function doSave(editor: Editor): { success: boolean; message: string } {
+export async function doSave(editor: Editor): Promise<{ success: boolean; message: string }> {
   try {
     const data = editor.document.snapshot();
-    const text = JSON.stringify(data, null, 2);
-    const blob = new Blob([text], { type: "application/json" });
+    const blob = await exportDocumentPackage(data, editor.resources);
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `flow-${Date.now()}.json`;
+    a.download = `flow-${Date.now()}.leafer`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -29,7 +29,8 @@ export function doLoad(editor: Editor): Promise<{ success: boolean; message: str
   return new Promise<{ success: boolean; message: string }>((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json";
+    input.accept = ".leafer";
+    input.oncancel = () => resolve({ success: false, message: "已取消" });
 
     input.onchange = async () => {
       const file = input.files?.[0];
@@ -39,9 +40,8 @@ export function doLoad(editor: Editor): Promise<{ success: boolean; message: str
       }
 
       try {
-        const text = await file.text();
-        const document = JSON.parse(text);
-        await editor.resources.hydrateAssets(document.assets);
+        const document = await importDocumentPackage(file, editor.resources);
+        if (editor.isDisposed) throw new Error("编辑器已关闭");
         editor.document.replace(document, "load", "Open document");
         await editor.autoSave.save();
         resolve({ success: true, message: "文件已加载" });

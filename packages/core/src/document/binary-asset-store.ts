@@ -49,10 +49,12 @@ export class BinaryAssetStore {
     private async openBackend(): Promise<AssetBackend> {
         if (typeof navigator === "undefined") return createMemoryBackend();
 
-        const storage = navigator.storage as StorageManager & { getDirectory?: () => Promise<OpfsDirectoryHandle> };
+        const storage = navigator.storage as StorageManager & {
+            getDirectory?: () => Promise<OpfsDirectoryHandle>;
+        };
         if (storage.getDirectory) {
             try {
-                const root = await storage.getDirectory() as unknown as OpfsDirectoryHandle;
+                const root = (await storage.getDirectory()) as unknown as OpfsDirectoryHandle;
                 const directory = await root.getDirectoryHandle("leafer-flow-assets", { create: true });
                 return createOpfsBackend(directory);
             } catch (error) {
@@ -68,22 +70,38 @@ export class BinaryAssetStore {
 function createMemoryBackend(): AssetBackend {
     const files = new Map<string, Blob>();
     return {
-        async put(id, file) { files.set(id, file); },
-        async putStream(id, type, stream) { files.set(id, await streamToBlob(stream, type)); },
-        async get(id) { return files.get(id); },
-        async delete(id) { files.delete(id); },
+        async put(id, file) {
+            files.set(id, file);
+        },
+        async putStream(id, type, stream) {
+            files.set(id, await streamToBlob(stream, type));
+        },
+        async get(id) {
+            return files.get(id);
+        },
+        async delete(id) {
+            files.delete(id);
+        },
     };
 }
 
 function createOpfsBackend(directory: OpfsDirectoryHandle): AssetBackend {
+    const put = async (id: string, type: string, stream: ReadableStream<Uint8Array>) => {
+        await writeStream(directory, id, stream);
+        await writeStream(directory, `${id}.mime`, new Blob([type]).stream());
+    };
     return {
         async put(id, file) {
-            await writeStream(directory, id, file.stream());
+            await put(id, file.type, file.stream());
         },
-        async putStream(id, _type, stream) { await writeStream(directory, id, stream); },
+        async putStream(id, type, stream) {
+            await put(id, type, stream);
+        },
         async get(id) {
             try {
-                return await (await directory.getFileHandle(id)).getFile();
+                const file = await (await directory.getFileHandle(id)).getFile();
+                const mime = await (await (await directory.getFileHandle(`${id}.mime`)).getFile()).text();
+                return file.slice(0, file.size, mime);
             } catch (error) {
                 if (isNotFound(error)) return undefined;
                 throw error;
@@ -92,6 +110,7 @@ function createOpfsBackend(directory: OpfsDirectoryHandle): AssetBackend {
         async delete(id) {
             try {
                 await directory.removeEntry(id);
+                await directory.removeEntry(`${id}.mime`);
             } catch (error) {
                 if (!isNotFound(error)) throw error;
             }
@@ -103,7 +122,8 @@ async function createIndexedDbBackend(): Promise<AssetBackend> {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open(DATABASE_NAME, 1);
         request.onupgradeneeded = () => {
-            if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME);
+            if (!request.result.objectStoreNames.contains(STORE_NAME))
+                request.result.createObjectStore(STORE_NAME);
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error ?? new Error("Unable to open asset database"));
@@ -111,23 +131,35 @@ async function createIndexedDbBackend(): Promise<AssetBackend> {
 
     const transaction = (mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest) =>
         new Promise<unknown>((resolve, reject) => {
-            const request = action(database.transaction(STORE_NAME, mode).objectStore(STORE_NAME));
-            request.onsuccess = () => resolve(request.result);
+            const tx = database.transaction(STORE_NAME, mode);
+            const request = action(tx.objectStore(STORE_NAME));
+            tx.oncomplete = () => resolve(request.result);
+            tx.onabort = () => reject(tx.error ?? new Error("Asset database transaction aborted"));
             request.onerror = () => reject(request.error ?? new Error("Asset database request failed"));
         });
 
     return {
-        async put(id, file) { await transaction("readwrite", (store) => store.put(file, id)); },
+        async put(id, file) {
+            await transaction("readwrite", (store) => store.put(file, id));
+        },
         async putStream(id, type, stream) {
             const file = await streamToBlob(stream, type);
             await transaction("readwrite", (store) => store.put(file, id));
         },
-        async get(id) { return await transaction("readonly", (store) => store.get(id)) as Blob | undefined; },
-        async delete(id) { await transaction("readwrite", (store) => store.delete(id)); },
+        async get(id) {
+            return (await transaction("readonly", (store) => store.get(id))) as Blob | undefined;
+        },
+        async delete(id) {
+            await transaction("readwrite", (store) => store.delete(id));
+        },
     };
 }
 
-async function writeStream(directory: OpfsDirectoryHandle, id: string, stream: ReadableStream<Uint8Array>) {
+async function writeStream(
+    directory: OpfsDirectoryHandle,
+    id: string,
+    stream: ReadableStream<Uint8Array>,
+) {
     const handle = await directory.getFileHandle(id, { create: true });
     const writable = await handle.createWritable();
     const reader = stream.getReader();

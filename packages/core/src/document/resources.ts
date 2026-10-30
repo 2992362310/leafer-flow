@@ -29,36 +29,15 @@ function assertWithinAssetLimit(mimeType: string, size: number, limits: Resource
   }
 }
 
-function isValidBase64(encoded: string): boolean {
-  if (encoded.length % 4 !== 0) return false;
-  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
-  const dataLength = encoded.length - padding;
-  for (let index = 0; index < dataLength; index++) {
-    const code = encoded.charCodeAt(index);
-    if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122)
-      || (code >= 48 && code <= 57) || code === 43 || code === 47)) return false;
-  }
-  for (let index = dataLength; index < encoded.length; index++) {
-    if (encoded.charCodeAt(index) !== 61) return false;
-  }
-  return true;
-}
-
 export function validateResource(asset: DocumentAsset): number {
-  if (!asset.id?.trim() || !asset.mimeType?.trim()) throw new Error("Resource id and MIME type are required");
-  if (["__proto__", "prototype", "constructor"].includes(asset.id)) throw new Error("Reserved resource id");
-  if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(asset.mimeType)) throw new Error("Invalid resource MIME type");
-  const prefix = `data:${asset.mimeType};base64,`;
-  if (typeof asset.source !== "string" || !asset.source.toLowerCase().startsWith(prefix.toLowerCase())) {
-    throw new Error("Resource must include embedded data URLs");
-  }
-  const encoded = asset.source.slice(prefix.length);
-  if (!isValidBase64(encoded)) throw new Error("Invalid embedded resource data");
-  if (!Number.isSafeInteger(asset.size) || asset.size <= 0) throw new Error("Invalid resource size");
-  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
-  if (encoded.length !== Math.ceil(asset.size / 3) * 4 || padding !== (3 - asset.size % 3) % 3) {
-    throw new Error("Embedded resource size mismatch");
-  }
+  if (!/^asset-[a-f0-9]{64}$/.test(asset.id))
+    throw new Error("Invalid content-addressed resource id");
+  if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(asset.mimeType))
+    throw new Error("Invalid resource MIME type");
+  if (Object.keys(asset).some((key) => !["id", "mimeType", "size"].includes(key)))
+    throw new Error("Resource metadata contains unsupported fields");
+  if (!Number.isSafeInteger(asset.size) || asset.size <= 0)
+    throw new Error("Invalid resource size");
   return asset.size;
 }
 
@@ -68,7 +47,8 @@ export function collectResourceReferences(document: EditorDocument): Set<string>
     if (!value || typeof value !== "object") return;
     if (!Array.isArray(value)) {
       if (value.assetId !== undefined) {
-        if (typeof value.assetId !== "string" || !value.assetId.trim()) throw new Error("Invalid resource reference");
+        if (typeof value.assetId !== "string" || !value.assetId.trim())
+          throw new Error("Invalid resource reference");
         references.add(value.assetId);
       }
       if (value.assetIds !== undefined) {
@@ -82,7 +62,10 @@ export function collectResourceReferences(document: EditorDocument): Set<string>
     for (const child of Object.values(value)) visit(child);
   };
   const nodes = (items: EditorDocument["nodes"]) => {
-    for (const node of items) { visit(node.data); nodes(node.children); }
+    for (const node of items) {
+      visit(node.data);
+      nodes(node.children);
+    }
   };
   nodes(document.nodes);
   for (const edge of document.edges) visit(edge.data);
@@ -93,7 +76,8 @@ export function collectResourceReferences(document: EditorDocument): Set<string>
 export class ResourceService {
   private limits: ResourceLimits;
   private retained = new Map<string, { count: number; asset: DocumentAsset }>();
-  private prepared = new Set<string>();
+  private cache = new Map<string, { asset: DocumentAsset; url: string }>();
+  private referenceSources = new Set<() => Iterable<string>>();
   private disposed = false;
 
   constructor(
@@ -113,56 +97,39 @@ export class ResourceService {
       throw new Error("Resource MIME type is required");
     }
     assertWithinAssetLimit(file.type, file.size, this.limits);
+    if (!file.size) throw new Error("Resource is empty");
   }
 
   async prepare(file: Blob): Promise<DocumentAsset> {
     this.validateFile(file);
     const mimeType = file.type.toLowerCase();
-    const hasher = sha256.create();
-    hasher.update(new TextEncoder().encode(`${mimeType}\0`));
-    const reader = file.stream().getReader();
-    try {
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        hasher.update(chunk.value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
+    const id = await hashBlob(file, mimeType);
     this.assertActive();
-    const hash = Array.from(hasher.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    const id = `asset-${hash}`;
     const existing = await this.storage.get(id);
-    const source = await toDataUrl(file);
-    const stored = existing ?? file;
-    if (!existing) await this.storage.put(id, file);
-    if (stored.size !== file.size || stored.type.toLowerCase() !== mimeType) {
+    if (!existing || existing.size !== file.size || existing.type !== mimeType)
       await this.storage.put(id, file);
-    }
-    this.prepared.add(id);
-    return { id, mimeType, size: file.size, source };
+    const asset = { id, mimeType, size: file.size };
+    this.cacheAsset(asset, file);
+    return asset;
   }
 
   async hydrateAssets(assets: Record<string, DocumentAsset>) {
     this.assertActive();
-    const previous = new Map<string, Blob | undefined>();
+    const loaded: Array<{ asset: DocumentAsset; file: Blob }> = [];
     try {
       for (const asset of Object.values(assets)) {
         validateResource(asset);
         assertWithinAssetLimit(asset.mimeType, asset.size, this.limits);
-        const file = await fromDataUrl(asset);
-        if (!previous.has(asset.id)) previous.set(asset.id, await this.storage.get(asset.id));
-        await this.storage.put(asset.id, file);
+        const file = await this.storage.get(asset.id);
+        if (!file || file.size !== asset.size || file.type !== asset.mimeType)
+          throw new Error(`Missing or invalid stored resource: ${asset.id}`);
+        loaded.push({ asset, file });
       }
+      this.assertActive();
+      for (const { asset, file } of loaded) this.cacheAsset(asset, file);
     } catch (error) {
-      for (const [id, file] of previous) {
-        if (file) await this.storage.put(id, file);
-        else await this.storage.delete(id);
-      }
-      throw error;
+      throw new Error("Unable to restore document resources", { cause: error });
     }
-    for (const id of previous.keys()) this.prepared.add(id);
   }
 
   async getBlob(id: string) {
@@ -172,23 +139,38 @@ export class ResourceService {
     return file;
   }
 
-  async importStream(asset: Omit<DocumentAsset, "source">, stream: ReadableStream<Uint8Array>): Promise<DocumentAsset> {
+  async importStream(
+    asset: DocumentAsset,
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<DocumentAsset> {
     this.assertActive();
-    if (!asset.id?.trim() || ["__proto__", "prototype", "constructor"].includes(asset.id)) throw new Error("Invalid resource id");
-    if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(asset.mimeType)) throw new Error("Invalid resource MIME type");
-    if (!Number.isSafeInteger(asset.size) || asset.size <= 0) throw new Error("Invalid resource size");
+    validateResource(asset);
     assertWithinAssetLimit(asset.mimeType, asset.size, this.limits);
     const previous = await this.storage.get(asset.id);
     try {
-      await this.storage.putStream(asset.id, asset.mimeType, stream);
+      let received = 0;
+      const bounded = stream.pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk, controller) {
+            received += chunk.byteLength;
+            if (received > asset.size) throw new Error("Imported resource metadata mismatch");
+            controller.enqueue(chunk);
+          },
+        }),
+      );
+      await this.storage.putStream(asset.id, asset.mimeType, bounded);
       const file = await this.storage.get(asset.id);
-      if (!file || file.size !== asset.size || file.type.toLowerCase() !== asset.mimeType.toLowerCase()) {
+      if (
+        !file ||
+        file.size !== asset.size ||
+        file.type.toLowerCase() !== asset.mimeType.toLowerCase()
+      ) {
         throw new Error(`Imported resource metadata mismatch: ${asset.id}`);
       }
-      const imported = { ...asset, mimeType: asset.mimeType.toLowerCase(), source: await toDataUrl(file) };
-      validateResource(imported);
-      this.prepared.add(asset.id);
-      return imported;
+      if ((await hashBlob(file, asset.mimeType)) !== asset.id)
+        throw new Error("Imported resource hash mismatch");
+      this.cacheAsset(asset, file);
+      return structuredClone(asset);
     } catch (error) {
       if (previous) await this.storage.put(asset.id, previous);
       else await this.storage.delete(asset.id);
@@ -203,15 +185,7 @@ export class ResourceService {
       const size = validateResource(asset);
       assertWithinAssetLimit(asset.mimeType, size, this.limits);
       const existing = Object.hasOwn(draft.assets, asset.id) ? draft.assets[asset.id] : undefined;
-      const duplicate = Object.values(draft.assets).find((candidate) =>
-        candidate.mimeType.toLowerCase() === asset.mimeType.toLowerCase()
-        && candidate.size === asset.size
-        && candidate.source === asset.source);
-      if (duplicate) {
-        aliases.set(asset.id, duplicate.id);
-        continue;
-      }
-      if (existing && (existing.size !== asset.size || existing.mimeType !== asset.mimeType || existing.source !== asset.source)) {
+      if (existing && (existing.size !== asset.size || existing.mimeType !== asset.mimeType)) {
         throw new Error(`Resource id collision: ${asset.id}`);
       }
       aliases.set(asset.id, asset.id);
@@ -223,7 +197,9 @@ export class ResourceService {
 
   capture(draft: EditorDocument, source: string): string {
     this.assertActive();
-    const asset = Object.values(draft.assets).find((candidate) => candidate.source === source);
+    const asset = Object.values(draft.assets).find(
+      (candidate) => this.cache.get(candidate.id)?.url === source,
+    );
     if (!asset) throw new Error("Runtime media must be imported through ResourceService.prepare");
     return asset.id;
   }
@@ -232,9 +208,12 @@ export class ResourceService {
     const visit = (value: JsonValue) => {
       if (!value || typeof value !== "object") return;
       if (!Array.isArray(value)) {
-        if (typeof value.assetId === "string") value.assetId = aliases.get(value.assetId) ?? value.assetId;
+        if (typeof value.assetId === "string")
+          value.assetId = aliases.get(value.assetId) ?? value.assetId;
         if (Array.isArray(value.assetIds)) {
-          value.assetIds = value.assetIds.map((id) => typeof id === "string" ? aliases.get(id) ?? id : id);
+          value.assetIds = value.assetIds.map((id) =>
+            typeof id === "string" ? (aliases.get(id) ?? id) : id,
+          );
         }
       }
       for (const child of Object.values(value)) visit(child);
@@ -246,9 +225,15 @@ export class ResourceService {
   resolve(id: string, document?: EditorDocument): string {
     this.assertActive();
     const snapshot = document ?? this.document.snapshot();
-    const asset = Object.hasOwn(snapshot.assets, id) ? snapshot.assets[id] : document ? undefined : this.retained.get(id)?.asset;
+    const asset = Object.hasOwn(snapshot.assets, id)
+      ? snapshot.assets[id]
+      : document
+        ? undefined
+        : this.retained.get(id)?.asset;
     if (!asset) throw new Error(`Missing document resource: ${id}`);
-    return asset.source;
+    const cached = this.cache.get(id);
+    if (!cached) throw new Error(`Resource has not been hydrated: ${id}`);
+    return cached.url;
   }
 
   validate(document: EditorDocument) {
@@ -258,7 +243,8 @@ export class ResourceService {
       assertWithinAssetLimit(asset.mimeType, size, this.limits);
       total += size;
     }
-    if (total > this.limits.maxDocumentBytes) throw new Error("Document resource size limit exceeded");
+    if (total > this.limits.maxDocumentBytes)
+      throw new Error("Document resource size limit exceeded");
   }
 
   retain(ids: Iterable<string>): () => void {
@@ -267,15 +253,21 @@ export class ResourceService {
     const snapshot = this.document.snapshot();
     const assets = new Map<string, DocumentAsset>();
     for (const id of retained) {
-      const asset = Object.hasOwn(snapshot.assets, id) ? snapshot.assets[id] : this.retained.get(id)?.asset;
+      const asset = Object.hasOwn(snapshot.assets, id)
+        ? snapshot.assets[id]
+        : this.retained.get(id)?.asset;
       if (!asset) throw new Error(`Missing document resource: ${id}`);
       const previous = this.retained.get(id);
-      if (previous && (previous.asset.size !== asset.size || previous.asset.mimeType !== asset.mimeType || previous.asset.source !== asset.source)) {
+      if (
+        previous &&
+        (previous.asset.size !== asset.size || previous.asset.mimeType !== asset.mimeType)
+      ) {
         throw new Error(`Retained resource id collision: ${id}`);
       }
       assets.set(id, structuredClone(asset));
     }
-    for (const [id, asset] of assets) this.retained.set(id, { count: (this.retained.get(id)?.count ?? 0) + 1, asset });
+    for (const [id, asset] of assets)
+      this.retained.set(id, { count: (this.retained.get(id)?.count ?? 0) + 1, asset });
     let released = false;
     return () => {
       if (released) return;
@@ -286,7 +278,6 @@ export class ResourceService {
         if (count > 0 && record) this.retained.set(id, { ...record, count });
         else {
           this.retained.delete(id);
-          this.removeIfUnused(id);
         }
       }
     };
@@ -307,10 +298,9 @@ export class ResourceService {
     });
     removed.forEach((id) => this.removeIfUnused(id));
     const assets = this.document.snapshot().assets;
-    for (const id of this.prepared) {
-      if (Object.hasOwn(assets, id) || this.retained.has(id)) continue;
-      this.removeIfUnused(id);
-      count++;
+    for (const id of this.cache.keys()) {
+      if (removed.includes(id) || Object.hasOwn(assets, id) || this.retained.has(id)) continue;
+      if (this.removeIfUnused(id)) count++;
     }
     return count;
   }
@@ -318,13 +308,32 @@ export class ResourceService {
   dispose() {
     this.disposed = true;
     this.retained.clear();
-    for (const id of this.prepared) this.removeIfUnused(id);
+    this.referenceSources.clear();
+    for (const cached of this.cache.values()) URL.revokeObjectURL(cached.url);
+    this.cache.clear();
+  }
+
+  protect(source: () => Iterable<string>): () => void {
+    this.referenceSources.add(source);
+    return () => this.referenceSources.delete(source);
   }
 
   private removeIfUnused(id: string) {
-    if (Object.hasOwn(this.document.snapshot().assets, id) || this.retained.has(id)) return;
-    this.prepared.delete(id);
-    void this.storage.delete(id).catch((error) => console.warn(`Unable to remove asset ${id}:`, error));
+    if (Object.hasOwn(this.document.snapshot().assets, id) || this.retained.has(id)) return false;
+    for (const source of this.referenceSources) if (new Set(source()).has(id)) return false;
+    const cached = this.cache.get(id);
+    if (cached) URL.revokeObjectURL(cached.url);
+    this.cache.delete(id);
+    void this.storage
+      .delete(id)
+      .catch((error) => console.warn(`Unable to remove asset ${id}:`, error));
+    return true;
+  }
+
+  private cacheAsset(asset: DocumentAsset, file: Blob) {
+    this.assertActive();
+    if (!this.cache.has(asset.id))
+      this.cache.set(asset.id, { asset: structuredClone(asset), url: URL.createObjectURL(file) });
   }
 
   private assertActive() {
@@ -332,26 +341,18 @@ export class ResourceService {
   }
 }
 
-async function toDataUrl(file: Blob) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const chunks: string[] = [];
-  const chunkSize = 0x6000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    chunks.push(btoa(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize))));
+async function hashBlob(file: Blob, mimeType: string): Promise<string> {
+  const hasher = sha256.create();
+  hasher.update(new TextEncoder().encode(`${mimeType.toLowerCase()}\0`));
+  const reader = file.stream().getReader();
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      hasher.update(chunk.value);
+    }
+  } finally {
+    reader.releaseLock();
   }
-  return `data:${file.type.toLowerCase()};base64,${chunks.join("")}`;
-}
-
-async function fromDataUrl(asset: DocumentAsset) {
-  const prefix = `data:${asset.mimeType};base64,`;
-  const encoded = asset.source.slice(prefix.length);
-  const chunks: Uint8Array[] = [];
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < encoded.length; offset += chunkSize) {
-    const binary = atob(encoded.slice(offset, offset + chunkSize));
-    chunks.push(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
-  }
-  const file = new Blob(chunks.map((chunk) => chunk.buffer as ArrayBuffer), { type: asset.mimeType.toLowerCase() });
-  if (file.size !== asset.size) throw new Error(`Embedded resource size mismatch: ${asset.id}`);
-  return file;
+  return `asset-${Array.from(hasher.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }

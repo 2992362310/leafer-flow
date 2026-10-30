@@ -1,7 +1,8 @@
 import { DocumentStore } from "../document/document-store";
 import type { ResourceService } from "../document/resources";
+import { validateDocument } from "../document/model";
 
-const STORAGE_KEY = "leafer-flow.document.v5";
+const STORAGE_KEY = "leafer-flow.document.v6";
 const IDB_DB_NAME = "leafer-flow-documents";
 const IDB_STORE_NAME = "autosave";
 const IDB_KEY = "current";
@@ -107,7 +108,9 @@ export class AutoSave {
 
       if (!raw || this.disposed) return { loaded: false };
       const document = JSON.parse(raw);
+      validateDocument(document);
       await this.resources?.hydrateAssets(document.assets);
+      if (this.disposed) return { loaded: false };
       this.document.replace(document, "load", "Restore document");
       return { loaded: true };
     } catch (error) {

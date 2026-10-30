@@ -15,4 +15,5 @@ export { NodeTypeRegistry } from './core/node-type-registry';
 export type { NodeTypeContribution, NodeRenderContext } from './api/node-type';
 export { ResourceService } from './document/resources';
 export type { ResourceLimits } from './document/resources';
+export type { MediaState } from './core/media-controller';
 export type { ElementStatePatch, LayerOrderAction, ElementPlacement, AlignAction } from './document/element-operations';

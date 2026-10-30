@@ -28,7 +28,6 @@ export interface DocumentAsset {
   id: string;
   mimeType: string;
   size: number;
-  source: string;
 }
 
 export type FlowDocumentSettings = {
@@ -43,7 +42,7 @@ export type FlowDocumentSettings = {
 
 export interface EditorDocument {
   schema: "leafer-flow.document";
-  version: 5;
+  version: 6;
   id: string;
   nodes: DocumentNode[];
   edges: DocumentEdge[];
@@ -54,7 +53,7 @@ export interface EditorDocument {
 export function createDocument(): EditorDocument {
   return {
     schema: "leafer-flow.document",
-    version: 5,
+    version: 6,
     id: crypto.randomUUID(),
     nodes: [],
     edges: [],
@@ -65,7 +64,7 @@ export function createDocument(): EditorDocument {
 
 export function validateDocument(value: unknown): asserts value is EditorDocument {
   assertObject(value);
-  if (value.schema !== "leafer-flow.document" || value.version !== 5) {
+  if (value.schema !== "leafer-flow.document" || value.version !== 6) {
     throw new Error("Unsupported document schema or version");
   }
   assertId(value.id);

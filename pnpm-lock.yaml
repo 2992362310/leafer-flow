@@ -176,6 +176,9 @@ catalogs:
     fflate:
       specifier: ^0.8.3
       version: 0.8.3
+    image-dimensions:
+      specifier: ^2.6.0
+      version: 2.6.0
     leafer:
       specifier: ^2.3.2
       version: 2.3.2
@@ -315,6 +318,9 @@ importers:
       fflate:
         specifier: 'catalog:'
         version: 0.8.3
+      image-dimensions:
+        specifier: 'catalog:'
+        version: 2.6.0
       leafer:
         specifier: 'catalog:'
         version: 2.3.2(@leafer-ui/interface@2.3.2)(@leafer/interface@2.3.2)
@@ -1557,6 +1563,11 @@ packages:
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
+
+  image-dimensions@2.6.0:
+    resolution: {integrity: sha512-j1cgVnvl0ltv7tYImMYMlrkYeDB43oSUiQv3zodkImsFbJWmJZ6M5e5N9k5/8zdMVjrtYzRbmcqTqpxvyh29vw==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   is-docker@3.0.0:
     resolution: {integrity: sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ==}
@@ -3566,6 +3577,8 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
     optional: true
+
+  image-dimensions@2.6.0: {}
 
   is-docker@3.0.0: {}
 

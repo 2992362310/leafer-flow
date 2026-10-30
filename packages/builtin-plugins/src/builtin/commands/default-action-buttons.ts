@@ -66,6 +66,18 @@ const DEFAULT_ACTION_BUTTON_GROUPS: ActionButtonGroupContribution[] = [
         command: ACTION_NAME.INSERT_VIDEO,
         icon: "video",
       },
+      {
+        id: "insert-audio",
+        label: "插入音频",
+        command: ACTION_NAME.INSERT_AUDIO,
+        icon: "audio",
+      },
+      {
+        id: "prune-resources",
+        label: "清理未使用资源",
+        command: "document.resources.prune",
+        icon: "clear",
+      },
     ],
   },
   {

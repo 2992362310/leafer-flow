@@ -69,6 +69,13 @@ export const systemIcons = {
     viewBox: "0 0 24 24",
     title: "视频",
   },
+  audio: {
+    path: "M9 18V5l12-2v13M9 8l12-2M9 18a3 3 0 1 1-3-3c1.66 0 3 1.34 3 3zm12-2a3 3 0 1 1-3-3c1.66 0 3 1.34 3 3z",
+    viewBox: "0 0 24 24",
+    title: "音频",
+  },
+  play: { path: "m8 5 11 7-11 7V5z", viewBox: "0 0 24 24", title: "播放" },
+  pause: { path: "M7 4h3v16H7zM14 4h3v16h-3z", viewBox: "0 0 24 24", title: "暂停" },
   "file-code": {
     path: "M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10zM13 3v7h7m-11 4-2 2 2 2m6-4 2 2-2 2m-2-5-2 6",
     viewBox: "0 0 24 24",
