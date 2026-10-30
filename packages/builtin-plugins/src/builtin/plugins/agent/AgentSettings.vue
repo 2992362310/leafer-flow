@@ -79,10 +79,12 @@ async function handleTest() {
 </script>
 
 <template>
-  <div class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h3 class="text-sm font-bold">AI 助手设置</h3>
-      <button class="btn btn-ghost btn-xs" @click="emit('close')">✕</button>
+  <div class="agent-settings">
+    <div class="settings-heading">
+      <h3>模型连接</h3>
+      <button class="settings-back" title="返回对话" @click="emit('close')">
+        <Icon name="arrow-up" class="h-3 w-3 -rotate-90" aria-hidden="true" />返回对话
+      </button>
     </div>
 
     <label class="form-control w-full">
@@ -112,11 +114,12 @@ async function handleTest() {
       <div class="label p-1">
         <span class="label-text text-xs">API Key{{ localConfig.provider === 'ollama' ? '（可选）' : '' }}</span>
       </div>
-      <div class="join w-full">
+      <div class="settings-key">
         <input v-model="localConfig.apiKey" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..."
-          class="input input-bordered input-xs join-item flex-1" />
-        <button class="btn btn-xs join-item" @click="showApiKey = !showApiKey">
-          {{ showApiKey ? "隐藏" : "显示" }}
+          class="input input-bordered input-xs w-full" />
+        <button class="settings-key-toggle" :title="showApiKey ? '隐藏密钥' : '显示密钥'"
+          :aria-label="showApiKey ? '隐藏密钥' : '显示密钥'" @click="showApiKey = !showApiKey">
+          <Icon :name="showApiKey ? 'hidden' : 'visible'" class="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </label>
@@ -168,12 +171,176 @@ async function handleTest() {
     </div>
 
     <!-- 按钮组 -->
-    <div class="flex gap-2">
-      <button class="btn btn-xs flex-1" :class="{ 'btn-disabled': testStatus === 'testing' }"
-        :disabled="testStatus === 'testing'" @click="handleTest">
+    <div class="settings-actions">
+      <button class="settings-test" :disabled="testStatus === 'testing'" @click="handleTest">
         {{ testStatus === "testing" ? "测试中..." : "测试工具调用" }}
       </button>
-      <button class="btn btn-primary btn-xs flex-1" @click="handleSave">保存设置</button>
+      <button class="settings-save" @click="handleSave">保存设置</button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.agent-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 3px;
+}
+
+.settings-heading h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.settings-back {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 0;
+  color: var(--agent-accent, #087b6b);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.form-control {
+  display: block;
+  min-width: 0;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 7px;
+  white-space: normal;
+}
+
+.label-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.label-text-alt {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.form-control>.label:last-child:not(:first-child) {
+  padding: 6px 0 0;
+}
+
+.input,
+.select {
+  min-width: 0;
+  width: 100%;
+  height: 35px;
+  min-height: 35px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 6px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  padding-inline: 10px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.select {
+  padding-right: 28px;
+}
+
+.input::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--agent-accent, #087b6b);
+  outline: 2px solid color-mix(in oklab, var(--agent-accent, #087b6b) 12%, transparent);
+  outline-offset: 0;
+}
+
+.range {
+  color: var(--agent-accent, #087b6b);
+  --range-bg: var(--color-base-200);
+}
+
+.settings-key {
+  position: relative;
+}
+
+.settings-key input {
+  padding-right: 38px;
+}
+
+.settings-key-toggle {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  cursor: pointer;
+}
+
+.settings-key-toggle:hover {
+  background: var(--color-base-200);
+  color: var(--agent-accent, #087b6b);
+}
+
+.settings-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-base-200);
+}
+
+.settings-actions button {
+  min-height: 35px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-test {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.settings-test:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.settings-actions .settings-save {
+  background: var(--agent-accent, #087b6b);
+  border-color: var(--agent-accent, #087b6b);
+  color: var(--color-base-100);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--agent-accent, #087b6b);
+  outline-offset: 3px;
+}
+</style>

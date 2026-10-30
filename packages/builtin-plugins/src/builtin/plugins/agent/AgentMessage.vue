@@ -32,44 +32,140 @@ function resultText(call: ToolCallResult): string {
 </script>
 
 <template>
-  <div class="chat" :class="role === 'user' ? 'chat-end' : 'chat-start'">
-    <div class="chat-header text-[10px] opacity-50">
-      {{ role === "user" ? "你" : "模型回复" }}
+  <article v-if="content || toolCalls?.length || isLoading" class="agent-message" :class="`agent-message--${role}`">
+    <div class="message-author">
+      <Icon v-if="role === 'assistant'" name="agent" class="h-3.5 w-3.5" aria-hidden="true" />
+      <span>{{ role === "user" ? "你" : "AI 助手" }}</span>
     </div>
-    <div class="chat-bubble text-xs max-w-[90%] min-w-0 break-words" :class="{
-      'chat-bubble-primary': role === 'user',
-      'chat-bubble-neutral': role === 'assistant',
-    }">
-      <!-- 加载状态 -->
-      <div v-if="isLoading" class="flex items-center gap-2">
-        <span class="loading loading-dots loading-xs"></span>
-        <span>思考中...</span>
+    <div v-if="isLoading" class="message-thinking" role="status">
+      <span class="loading loading-dots loading-xs"></span>
+      <span>思考中</span>
+    </div>
+    <template v-else>
+      <div v-if="toolCalls?.length" class="tool-records" aria-label="编辑器执行结果">
+        <details v-for="(call, index) in toolCalls" :key="index" class="tool-record"
+          :class="{ 'tool-record--failed': !call.success }" :open="!call.success">
+          <summary>
+            <Icon :name="call.success ? 'success' : 'error'" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span class="tool-name">{{ call.name }}</span>
+            <span class="tool-status">{{ call.success ? (call.name === 'ask_user' ? '已回答' : '已完成') : '执行失败' }}</span>
+            <Icon name="arrow-down" class="tool-chevron h-3 w-3 shrink-0" aria-hidden="true" />
+          </summary>
+          <div class="tool-result" :role="call.success ? 'status' : 'alert'">{{ resultText(call) }}</div>
+        </details>
       </div>
-
-      <!-- 消息内容 -->
-      <template v-else>
-        <!-- 工具调用结果 -->
-        <div v-if="toolCalls && toolCalls.length > 0" class="space-y-2">
-          <div class="text-[11px] font-semibold">编辑器执行结果</div>
-          <div v-for="(call, index) in toolCalls" :key="index" class="rounded p-2 border"
-            :class="call.success ? 'bg-base-200/50 border-base-300' : 'bg-error/15 border-error/50 text-error'"
-            :role="call.success ? 'status' : 'alert'">
-            <div class="flex items-center gap-1 text-[11px] font-medium mb-1">
-              <Icon :name="call.success ? 'success' : 'error'" class="h-3 w-3 shrink-0" aria-hidden="true" />
-              {{ call.success ? (call.name === 'ask_user' ? '已回答' : '成功') : '失败' }} · {{ call.name }}
-            </div>
-            <div class="text-[11px]" :class="{ 'opacity-70': call.success }">{{ resultText(call) }}</div>
-          </div>
-        </div>
-
-        <!-- Markdown 内容 -->
-        <div v-if="content" class="markdown-body" :class="{ 'mt-2': toolCalls?.length }" v-html="renderedContent"></div>
-      </template>
-    </div>
-  </div>
+      <div v-if="content" class="markdown-body" v-html="renderedContent"></div>
+    </template>
+  </article>
 </template>
 
 <style scoped>
+.agent-message {
+  min-width: 0;
+  color: var(--color-base-content);
+  font-size: 13px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.message-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: color-mix(in oklab, var(--color-base-content) 52%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.agent-message--assistant .message-author :first-child {
+  color: var(--agent-accent, #087b6b);
+}
+
+.agent-message--user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.agent-message--user .markdown-body {
+  max-width: 90%;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, #087b6b) 14%, var(--color-base-200));
+  border-radius: 8px 8px 2px 8px;
+  background: color-mix(in oklab, var(--agent-accent, #087b6b) 7%, var(--color-base-100));
+}
+
+.message-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  font-size: 12px;
+}
+
+.tool-records {
+  margin-bottom: 12px;
+  border-block: 1px solid var(--color-base-200);
+}
+
+.tool-record+.tool-record {
+  border-top: 1px solid var(--color-base-200);
+}
+
+.tool-record summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 35px;
+  padding: 5px 2px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--agent-accent, #087b6b);
+}
+
+.tool-record summary::-webkit-details-marker {
+  display: none;
+}
+
+.tool-name {
+  flex: 1;
+  min-width: 0;
+  color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.tool-status {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.tool-chevron {
+  transition: transform 150ms ease;
+}
+
+.tool-record[open] .tool-chevron {
+  transform: rotate(180deg);
+}
+
+.tool-result {
+  padding: 0 2px 10px 23px;
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.tool-record--failed summary,
+.tool-record--failed .tool-result {
+  color: var(--color-error);
+}
+
+.markdown-body {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3),
@@ -105,6 +201,14 @@ function resultText(call: ToolCallResult): string {
   margin-bottom: 0.5em;
 }
 
+.markdown-body :deep(ul) {
+  list-style: disc;
+}
+
+.markdown-body :deep(ol) {
+  list-style: decimal;
+}
+
 .markdown-body :deep(li) {
   margin-bottom: 0.15em;
 }
@@ -118,9 +222,10 @@ function resultText(call: ToolCallResult): string {
 }
 
 .markdown-body :deep(pre) {
-  background-color: rgba(0, 0, 0, 0.1);
-  padding: 0.5em;
+  background: var(--color-base-200);
+  padding: 12px;
   border-radius: 4px;
+  max-width: 100%;
   overflow-x: auto;
   margin-bottom: 0.5em;
 }
@@ -139,6 +244,9 @@ function resultText(call: ToolCallResult): string {
 }
 
 .markdown-body :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin-bottom: 0.5em;
   font-size: 0.85em;
