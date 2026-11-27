@@ -3,6 +3,7 @@ export { default as EditorTopBar } from './EditorTopBar.vue';
 export { default as EditorActionBar } from './EditorActionBar.vue';
 export { default as EditorToolbar } from './EditorToolbar.vue';
 export { default as EditorButton } from './EditorButton.vue';
+export { default as FloatingPanelShell } from './FloatingPanelShell.vue';
 export { default as EditorLog } from './EditorLog.vue';
 export { default as EditorPanel } from './EditorPanel.vue';
 export { default as LayerPanel } from './LayerTree/LayerPanel.vue';

@@ -8,6 +8,7 @@ import {
   type ITextInputData,
   type IUI,
 } from "leafer";
+import { Linker } from "@leafer-in/linker";
 import { FLOW_BOX_SIZE_PROP } from "./flow-node-shape";
 
 export type ConnectorRouteType = "orthogonal" | "bezier" | "straight" | "custom";
@@ -109,7 +110,7 @@ const CONNECTOR_LABEL_OFFSET_X = "__connectorLabelOffsetX";
 const CONNECTOR_LABEL_OFFSET_Y = "__connectorLabelOffsetY";
 
 export class Connector extends Group {
-  readonly wire: Path;
+  readonly wire: Linker;
   readonly hitArea: Path;
   readonly fromHandle: Rect;
   readonly toHandle: Rect;
@@ -155,9 +156,8 @@ export class Connector extends Group {
       editable: false,
       hittable: true,
     });
-    this.wire = new Path({
+    this.wire = new Linker({
       name: "连接线主体",
-      path: "M 0 0",
       fill: "transparent",
       stroke: this.options.stroke || "#278bfe",
       strokeWidth: this.options.strokeWidth ?? 2,
@@ -445,14 +445,10 @@ export class Connector extends Group {
       if (!endpoints?.from?.linkPoint || !endpoints?.to?.linkPoint) return;
 
       let points: IPointData[];
-      let path: string;
 
       if (this.waypoints.length > 0) {
-        // 有中间点时，路径经过所有中间点
         const allPoints = [endpoints.from.linkPoint, ...this.waypoints, endpoints.to.linkPoint];
         points = allPoints;
-        path = this.buildWaypointPath(allPoints);
-        // 更新中间点 handle 位置
         this.waypoints.forEach((wp, i) => {
           const handle = this.waypointHandles[i];
           if (handle) {
@@ -478,13 +474,26 @@ export class Connector extends Group {
           defaultResult,
         });
         points = override?.points || defaultResult.points;
-        path = override?.path || defaultResult.path;
+        if (override?.points && override.points.length > 2) {
+          this.waypoints = override.points.slice(1, -1).map(clonePoint);
+        }
       }
 
-      this.lastRoutePoints = points.map(clonePoint);
-      this.hitArea.path = path;
+      this.wire.lineType = this.routeType === "straight" && !this.waypoints.length
+        ? "straight"
+        : this.routeType === "bezier" && !this.waypoints.length
+          ? "curve"
+          : "polyline";
+      this.wire.startPoint = toLinkerPoint(this.wire, endpoints.from);
+      this.wire.endPoint = toLinkerPoint(this.wire, endpoints.to);
+      this.wire.points = this.waypoints.length
+        ? this.waypoints.map((point) => this.wire.createLinkerPoint(point).point as IPointData)
+        : undefined;
+      this.wire.__updatePath();
+      this.lastRoutePoints = readLinkerRoutePoints(this.wire);
+      if (this.lastRoutePoints.length < 2) this.lastRoutePoints = points.map(clonePoint);
+      this.hitArea.path = this.wire.__.path;
       this.hitArea.strokeWidth = Math.max(getNumericProperty(this.wire, "strokeWidth", 2) + 10, 12);
-      this.wire.path = path;
       this.positionHandles(endpoints.from.linkPoint, endpoints.to.linkPoint);
       this.syncAttachedLabels();
       notifyConnectorGeometryUpdated(this);
@@ -1076,6 +1085,80 @@ function pointEndpoint(point: IPointData, side: ConnectorSide): ConnectorPoint {
     padding: 0,
     linkPoint: clonePoint(point),
     paddingPoint: clonePoint(point),
+  };
+}
+
+function toLinkerPoint(linker: Linker, endpoint: ConnectorPoint) {
+  if (!endpoint.node) {
+    return linker.createLinkerPoint(endpoint.linkPoint);
+  }
+
+  const point = endpoint.side === "left"
+    ? { x: 0, y: endpoint.percent, type: "percent" as const }
+    : endpoint.side === "right"
+      ? { x: 1, y: endpoint.percent, type: "percent" as const }
+      : endpoint.side === "top"
+        ? { x: endpoint.percent, y: 0, type: "percent" as const }
+        : { x: endpoint.percent, y: 1, type: "percent" as const };
+  const offset = endpoint.margin > 0
+    ? {
+      x: endpoint.side === "left" ? -endpoint.margin : endpoint.side === "right" ? endpoint.margin : 0,
+      y: endpoint.side === "top" ? -endpoint.margin : endpoint.side === "bottom" ? endpoint.margin : 0,
+    }
+    : undefined;
+
+  return { id: endpoint.node, direction: endpoint.side, point, offset };
+}
+
+function readLinkerRoutePoints(linker: Linker): IPointData[] {
+  const path = linker.__.path ?? [];
+  const points: IPointData[] = [];
+  let current: IPointData | undefined;
+  let index = 0;
+
+  while (index < path.length) {
+    const command = path[index++];
+    if (command === 1 || command === 2) {
+      current = { x: path[index++], y: path[index++] };
+      points.push(linker.getWorldPointByLocal(current));
+    } else if (command === 5 && current) {
+      const control1 = { x: path[index++], y: path[index++] };
+      const control2 = { x: path[index++], y: path[index++] };
+      const end = { x: path[index++], y: path[index++] };
+      for (let step = 1; step <= 8; step++) {
+        points.push(linker.getWorldPointByLocal(cubicBezierPoint(current, control1, control2, end, step / 8)));
+      }
+      current = end;
+    } else if (command === 7 && current) {
+      const control = { x: path[index++], y: path[index++] };
+      const end = { x: path[index++], y: path[index++] };
+      for (let step = 1; step <= 8; step++) {
+        points.push(linker.getWorldPointByLocal(quadraticBezierPoint(current, control, end, step / 8)));
+      }
+      current = end;
+    } else if (command === 11) {
+      continue;
+    } else {
+      break;
+    }
+  }
+
+  return points;
+}
+
+function cubicBezierPoint(start: IPointData, control1: IPointData, control2: IPointData, end: IPointData, t: number) {
+  const inverse = 1 - t;
+  return {
+    x: inverse ** 3 * start.x + 3 * inverse ** 2 * t * control1.x + 3 * inverse * t ** 2 * control2.x + t ** 3 * end.x,
+    y: inverse ** 3 * start.y + 3 * inverse ** 2 * t * control1.y + 3 * inverse * t ** 2 * control2.y + t ** 3 * end.y,
+  };
+}
+
+function quadraticBezierPoint(start: IPointData, control: IPointData, end: IPointData, t: number) {
+  const inverse = 1 - t;
+  return {
+    x: inverse ** 2 * start.x + 2 * inverse * t * control.x + t ** 2 * end.x,
+    y: inverse ** 2 * start.y + 2 * inverse * t * control.y + t ** 2 * end.y,
   };
 }
 

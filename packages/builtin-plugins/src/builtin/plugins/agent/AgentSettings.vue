@@ -122,6 +122,9 @@ async function handleTest() {
           <Icon :name="showApiKey ? 'hidden' : 'visible'" class="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
+      <div class="label p-1">
+        <span class="label-text-alt text-[10px] opacity-70">API Key 仅保存在当前标签页会话，关闭标签页后需重新输入</span>
+      </div>
     </label>
 
     <!-- 模型 -->

@@ -66,6 +66,51 @@ const TARGET_IDS_PARAMETER: ToolParameter = {
   description: "目标文档 ID 列表，来自搜索或创建结果；省略时使用当前选区",
 };
 
+const MAX_CANVAS_INFO_NODES = 80;
+const MAX_CANVAS_INFO_EDGES = 100;
+
+function findNodeText(node: DocumentNode): string {
+  if (typeof node.data.text === "string") return node.data.text;
+  for (const child of node.children) {
+    const text = findNodeText(child);
+    if (text) return text;
+  }
+  return "";
+}
+
+function summarizeCanvasNodes(nodes: DocumentNode[], limit = MAX_CANVAS_INFO_NODES) {
+  const summaries: Array<Record<string, unknown>> = [];
+  let total = 0;
+  const labels = new Map<string, string>();
+  const visit = (items: DocumentNode[], parentId: string | null) => {
+    for (const node of items) {
+      total++;
+      if (node.label) {
+        const label = findNodeText(node);
+        if (label) labels.set(node.label.edgeId, label.slice(0, 100));
+      }
+      if (summaries.length < limit) {
+        const { x, y, width, height, kind, name } = node.data;
+        summaries.push({
+          id: node.id,
+          parentId,
+          type: node.type,
+          ...(typeof kind === "string" ? { kind } : {}),
+          ...(typeof name === "string" ? { name } : {}),
+          ...(findNodeText(node) ? { text: findNodeText(node).slice(0, 160) } : {}),
+          ...(typeof x === "number" ? { x } : {}),
+          ...(typeof y === "number" ? { y } : {}),
+          ...(typeof width === "number" ? { width } : {}),
+          ...(typeof height === "number" ? { height } : {}),
+        });
+      }
+      visit(node.children, node.id);
+    }
+  };
+  visit(nodes, null);
+  return { summaries, total, labels };
+}
+
 function getTargetIds(editor: Editor, args: Record<string, unknown>): string[] {
   if (args.ids === undefined) {
     return (editor.app.editor.list ?? []).map((element) => editor.renderer.getId(element));
@@ -108,6 +153,9 @@ export interface AgentTool {
   parameters: { type: "object"; properties: Record<string, ToolParameter>; required?: string[] };
   execute: (editor: Editor, args: Record<string, unknown>, context?: AgentToolContext) => Promise<string> | string;
   category: ToolCategory;
+  confirmation?: (editor: Editor) => import("./agent-question").UserQuestion | undefined;
+  confirmationAction?: string;
+  transaction?: boolean;
 }
 
 export function validateToolArguments(tool: AgentTool, args: Record<string, unknown>) {
@@ -163,19 +211,79 @@ function commandTool(
   };
 }
 
+function selectedActionConfirmation(editor: Editor, action: string) {
+  const selectedIds = [...new Set((editor.app.editor.list ?? []).map((element) => editor.renderer.getId(element)))];
+  const document = editor.document.snapshot();
+  if (selectedIds.length === 0) return undefined;
+  const nodes = selectedIds.map((id) => editor.document.getNode(id)).filter(Boolean);
+  const edges = selectedIds.filter((id) => document.edges.some((edge) => edge.id === id));
+  const examples = nodes.slice(0, 3).map((node) => findNodeText(node!) || String(node!.data.name ?? node!.type));
+  const remaining = selectedIds.length - nodes.length - edges.length;
+  const targets = [
+    ...examples,
+    ...(edges.length ? [`${edges.length} 条连接线`] : []),
+    ...(remaining > 0 ? [`另有 ${remaining} 个元素`] : []),
+  ].filter(Boolean).join("、");
+  return {
+    question: `将${action}当前选中的 ${selectedIds.length} 个元素${targets ? `（${targets}）` : ""}？`,
+    options: ["继续执行", "取消"],
+    multiple: false,
+  };
+}
+
+function canvasActionConfirmation(editor: Editor, action: "clear" | "load") {
+  const document = editor.document.snapshot();
+  const nodeCount = summarizeCanvasNodes(document.nodes).total;
+  const edgeCount = document.edges.length;
+  const impact = `${nodeCount} 个节点和 ${edgeCount} 条连接线`;
+  return {
+    question: action === "clear"
+      ? `清空画布上的 ${impact}？`
+      : `打开新文件会替换当前画布上的 ${impact}，要继续吗？`,
+    options: ["继续执行", "取消"],
+    multiple: false,
+  };
+}
+
+function mediaCommandTool(name: string, label: string, action: string): AgentTool {
+  return {
+    ...commandTool(name, `通过文件选择器插入${label}；仅在用户明确要求插入媒体时使用。`, "file", action),
+    transaction: false,
+    confirmationAction: "打开文件选择器",
+    confirmation: () => ({
+      question: `请选择要插入的${label}文件。文件只会导入到当前画布，不会上传给模型。`,
+      options: ["打开文件选择器", "取消"],
+      multiple: false,
+    }),
+  };
+}
+
 const AGENT_TOOLS: AgentTool[] = [
   // 文件操作
   commandTool("save_file", "保存当前流程图文件", "file", ACTION_NAME.SAVE),
-  commandTool("load_file", "加载流程图文件", "file", ACTION_NAME.LOAD),
+  {
+    ...commandTool("load_file", "加载流程图文件（会替换当前画布）", "file", ACTION_NAME.LOAD),
+    transaction: false,
+    confirmation: (editor) => canvasActionConfirmation(editor, "load"),
+  },
+  mediaCommandTool("insert_image", "图片", ACTION_NAME.INSERT_IMAGE),
+  mediaCommandTool("insert_video", "视频", ACTION_NAME.INSERT_VIDEO),
+  mediaCommandTool("insert_audio", "音频", ACTION_NAME.INSERT_AUDIO),
   commandTool("export_png", "导出为 PNG 图片", "file", ACTION_NAME.EXPORT_PNG),
   commandTool("export_svg", "导出为 SVG 矢量图", "file", ACTION_NAME.EXPORT_SVG),
 
   // 编辑操作
   commandTool("undo", "撤销上一步操作", "edit", ACTION_NAME.UNDO),
   commandTool("redo", "重做上一步操作", "edit", ACTION_NAME.REDO),
-  commandTool("delete", "删除选中的元素", "edit", ACTION_NAME.DELETE),
+  {
+    ...commandTool("delete", "删除选中的元素（执行前会确认影响范围）", "edit", ACTION_NAME.DELETE),
+    confirmation: (editor) => selectedActionConfirmation(editor, "删除"),
+  },
   commandTool("copy", "复制选中的元素", "edit", ACTION_NAME.COPY),
-  commandTool("cut", "剪切选中的元素", "edit", ACTION_NAME.CUT),
+  {
+    ...commandTool("cut", "剪切选中的元素（执行前会确认影响范围）", "edit", ACTION_NAME.CUT),
+    confirmation: (editor) => selectedActionConfirmation(editor, "剪切"),
+  },
   commandTool("paste", "粘贴复制的元素", "edit", ACTION_NAME.PASTE),
   commandTool("duplicate", "复制选中元素到偏移位置", "edit", ACTION_NAME.DUPLICATE),
   commandTool("select_all", "选中画布上所有元素", "edit", ACTION_NAME.SELECT_ALL),
@@ -625,21 +733,49 @@ const AGENT_TOOLS: AgentTool[] = [
   commandTool("zoom_reset", "重置缩放为 100%", "view", ACTION_NAME.ZOOM_RESET),
 
   // 画布操作
-  commandTool("clear_canvas", "清空画布上的所有元素", "canvas", ACTION_NAME.CLEAR_CANVAS),
+  {
+    ...commandTool("clear_canvas", "清空画布上的所有元素（执行前会确认影响范围）", "canvas", ACTION_NAME.CLEAR_CANVAS),
+    confirmation: (editor) => canvasActionConfirmation(editor, "clear"),
+  },
   {
     name: "get_canvas_info",
     category: "canvas",
-    description: "获取画布信息（元素数量、缩放比例等）",
+    description: "获取有限量的画布逻辑节点、文字、坐标、连线端点及当前选区，绘制或验证前使用。大画布结果会截断，可继续按关键词搜索具体节点。",
     parameters: {
       type: "object",
-      properties: {},
+      properties: {
+        max_nodes: { type: "integer", minimum: 1, maximum: MAX_CANVAS_INFO_NODES, description: "最多返回多少节点，默认 80" },
+        max_edges: { type: "integer", minimum: 1, maximum: MAX_CANVAS_INFO_EDGES, description: "最多返回多少连线，默认 100" },
+      },
       required: [],
     },
-    execute: (editor) => {
-      const elementCount = editor.app.tree.children.length;
+    execute: (editor, args) => {
+      const document = editor.document.snapshot();
+      const maxNodes = typeof args.max_nodes === "number" ? args.max_nodes : MAX_CANVAS_INFO_NODES;
+      const maxEdges = typeof args.max_edges === "number" ? args.max_edges : MAX_CANVAS_INFO_EDGES;
+      const { summaries: nodes, total: nodeCount, labels } = summarizeCanvasNodes(document.nodes, maxNodes);
       const scale = editor.app.tree.scaleX || 1;
       const zoomPercent = Math.round(scale * 100);
-      return `画布上有 ${elementCount} 个元素，当前缩放 ${zoomPercent}%`;
+      const selectedIds = [...new Set((editor.app.editor.list ?? []).map((element) => editor.renderer.getId(element)))];
+      const edges = document.edges.slice(0, maxEdges).map((edge) => ({
+        id: edge.id,
+        parentId: edge.parentId,
+        from: edge.from,
+        to: edge.to,
+        routeType: edge.data.routeType ?? document.settings.connectorRouteType ?? "orthogonal",
+        ...(labels.has(edge.id) ? { label: labels.get(edge.id) } : {}),
+      }));
+      return JSON.stringify({
+        documentId: document.id,
+        rootNodeCount: document.nodes.length,
+        nodeCount,
+        edgeCount: document.edges.length,
+        zoomPercent,
+        selectedIds,
+        nodes,
+        edges,
+        truncated: nodeCount > nodes.length || document.edges.length > edges.length,
+      });
     },
   },
   {
@@ -858,7 +994,7 @@ const AGENT_TOOLS: AgentTool[] = [
       const tool = AGENT_TOOLS.find((item) => item.name === args.tool_name);
       if (!tool) throw new Error(`工具不存在: ${String(args.tool_name)}`);
       const { name, description, category, parameters } = tool;
-      return JSON.stringify({ name, description, category, parameters });
+      return JSON.stringify({ name, description, category, parameters, requires_confirmation: Boolean(tool.confirmation) });
     },
   },
 ];

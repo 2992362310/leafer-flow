@@ -4,6 +4,7 @@ import { TOOL_NAME } from "@leafer-flow/core/constants";
 import { useDraggable } from "../composables/useDraggable";
 import { usePanelDock, usePanelMode } from "../composables/usePanelDock";
 import PanelFlyoutWrapper from "./PanelFlyoutWrapper.vue";
+import FloatingPanelShell from "./FloatingPanelShell.vue";
 
 const STATUS_BAR_POSITION_KEY = "leafer-flow-status-bar-position";
 
@@ -61,50 +62,42 @@ const statusClass = computed(() => (isSelectMode.value ? "alert-success" : "aler
 </script>
 
 <template>
-  <div v-if="mode === 'float'" class="card bg-base-100 shadow-lg w-64 fixed z-20" :class="{ 'h-12': isCollapsed }"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
-    <div class="card-body p-3">
-      <div class="flex justify-between items-center mb-2 cursor-move select-none" @mousedown="startDrag">
-        <h3 class="card-title text-sm flex items-center">
-          <Icon name="info" class="h-4 w-4 mr-1" />
-          状态信息
-        </h3>
-        <div class="flex space-x-1">
-          <button @click.stop="togglePanelDock('status-bar')" @mousedown.stop
-            class="btn btn-xs btn-ghost btn-square hover:text-primary transition-colors duration-200" title="收纳到右侧槽">
-            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
-          </button>
-          <button @click.stop="toggleCollapse()" @mousedown.stop
-            class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
-            :title="isCollapsed ? '展开状态' : '折叠状态'">
-            <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
-          </button>
-        </div>
+  <FloatingPanelShell v-if="mode === 'float'" title="状态信息" icon="info" :position="position" :width="256"
+    max-height="min(40vh, 20rem)" @drag-start="startDrag">
+    <template #actions>
+      <button type="button" @click.stop="togglePanelDock('status-bar')" class="btn btn-xs btn-ghost btn-square"
+        title="收纳到右侧槽" aria-label="收纳状态信息到右侧槽">
+        <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+      </button>
+      <button type="button" @click.stop="toggleCollapse()" class="btn btn-xs btn-ghost btn-square"
+        :title="isCollapsed ? '展开状态' : '折叠状态'" :aria-label="isCollapsed ? '展开状态' : '折叠状态'"
+        :aria-expanded="!isCollapsed">
+        <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
+      </button>
+    </template>
+
+    <div v-show="!isCollapsed" class="space-y-2 p-3 pt-2 text-xs" @click.stop>
+      <div v-if="elementCount !== undefined">
+        <div class="badge badge-ghost text-xs">元素总数：{{ elementCount }}</div>
       </div>
 
-      <div v-show="!isCollapsed" class="text-xs space-y-2">
-        <div v-if="elementCount !== undefined">
-          <div class="badge badge-ghost text-xs">元素总数：{{ elementCount }}</div>
-        </div>
+      <div>
+        <div class="badge badge-neutral text-xs">当前工具：{{ currentToolName }}</div>
+      </div>
 
-        <div>
-          <div class="badge badge-neutral text-xs">当前工具：{{ currentToolName }}</div>
-        </div>
+      <div v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
+        class="alert alert-warning py-2 px-3 text-xs">
+        <Icon name="warning" class="stroke-current shrink-0 h-4 w-4" />
+        <span>正在绘制 {{ currentToolName }}（ESC 或右键取消）</span>
+      </div>
 
-        <div v-if="isDrawing && selectedTool && selectedTool !== TOOL_NAME.SELECT"
-          class="alert alert-warning py-2 px-3 text-xs">
-          <Icon name="warning" class="stroke-current shrink-0 h-4 w-4" />
-          <span>正在绘制 {{ currentToolName }}（ESC 或右键取消）</span>
-        </div>
-
-        <div class="alert py-2 px-3 text-xs" :class="statusClass">
-          <Icon v-if="isSelectMode" name="select" class="stroke-current shrink-0 h-4 w-4" />
-          <Icon v-else name="draw_circle" class="stroke-current shrink-0 h-4 w-4" />
-          <span>{{ toolStatus }}</span>
-        </div>
+      <div class="alert py-2 px-3 text-xs" :class="statusClass">
+        <Icon v-if="isSelectMode" name="select" class="stroke-current shrink-0 h-4 w-4" />
+        <Icon v-else name="draw_circle" class="stroke-current shrink-0 h-4 w-4" />
+        <span>{{ toolStatus }}</span>
       </div>
     </div>
-  </div>
+  </FloatingPanelShell>
 
   <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="status-bar" title="状态信息" icon="info" :width="256">
     <div class="p-3 text-xs space-y-2">

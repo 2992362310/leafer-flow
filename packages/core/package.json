@@ -65,6 +65,7 @@
     "./utils/selection": "./src/utils/selection.ts"
   },
   "dependencies": {
+    "@leafer-in/linker": "catalog:",
     "@leafer-ui/interface": "catalog:",
     "@noble/hashes": "catalog:",
     "fflate": "catalog:",

@@ -5,6 +5,7 @@ import type { IconName } from "../assets/icons";
 import { useDraggable } from "../composables/useDraggable";
 import { usePanelDock, usePanelMode } from "../composables/usePanelDock";
 import PanelFlyoutWrapper from "./PanelFlyoutWrapper.vue";
+import FloatingPanelShell from "./FloatingPanelShell.vue";
 
 const EVENT_LOG_POSITION_KEY = "leafer-flow-event-log-position";
 
@@ -109,34 +110,26 @@ defineExpose({
 </script>
 
 <template>
-  <div v-if="mode === 'float'" class="card bg-base-100 shadow-lg w-96 fixed z-20" :class="{ 'h-12': isCollapsed }"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }">
-    <div class="card-body p-3">
-      <div class="flex justify-between items-center mb-2 cursor-move select-none" @mousedown="startDrag">
-        <h3 class="card-title text-sm flex items-center">
-          <Icon name="activity" class="h-4 w-4 mr-1" />
-          事件日志
-        </h3>
-        <div class="flex space-x-1">
-          <button @click.stop="togglePanelDock('event-log')" @mousedown.stop
-            class="btn btn-xs btn-ghost btn-square hover:text-primary transition-colors duration-200" title="收纳到右侧槽">
-            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
-          </button>
-          <button @click="toggleCollapse" @mousedown.stop
-            class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200"
-            :title="isCollapsed ? '展开日志' : '折叠日志'">
-            <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
-          </button>
-          <button @click="handleClear" @mousedown.stop
-            class="btn btn-xs btn-ghost hover:text-primary transition-colors duration-200" title="清空日志">
-            <Icon name="clear" class="h-3 w-3" />
-            <span class="ml-1">清空</span>
-          </button>
-        </div>
-      </div>
-      <div v-show="!isCollapsed" class="text-xs space-y-1 max-h-60 overflow-y-auto event-log-container">
-        <div v-for="log in eventLog" :key="log.id"
-          class="flex items-start p-2 rounded transition-all duration-150 ease-in-out transform hover:-translate-y-0.5"
+  <FloatingPanelShell v-if="mode === 'float'" title="事件日志" icon="activity" :position="position" :width="384"
+    max-height="min(50vh, 24rem)" @drag-start="startDrag">
+    <template #actions>
+      <button type="button" @click.stop="togglePanelDock('event-log')" class="btn btn-xs btn-ghost btn-square"
+        title="收纳到右侧槽" aria-label="收纳事件日志到右侧槽">
+        <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+      </button>
+      <button type="button" @click.stop="toggleCollapse" class="btn btn-xs btn-ghost btn-square"
+        :title="isCollapsed ? '展开日志' : '折叠日志'" :aria-label="isCollapsed ? '展开日志' : '折叠日志'"
+        :aria-expanded="!isCollapsed">
+        <Icon :name="isCollapsed ? 'arrow-up' : 'arrow-down'" class="h-3 w-3" />
+      </button>
+      <button type="button" @click.stop="handleClear" class="btn btn-xs btn-ghost" title="清空日志" aria-label="清空日志">
+        <Icon name="clear" class="h-3 w-3" />
+        <span class="ml-1">清空</span>
+      </button>
+    </template>
+    <div v-show="!isCollapsed" class="event-log-container max-h-60 overflow-y-auto p-3 pt-2 text-xs" @click.stop>
+      <div class="space-y-1">
+        <div v-for="log in eventLog" :key="log.id" class="flex items-start rounded p-2 transition-colors"
           :class="getLogClass(log)">
           <Icon :name="getLogIcon(log)" class="h-4 w-4 mr-2 mt-0.5 shrink-0" :class="getLogClass(log)" />
           <span class="mr-2 whitespace-nowrap font-mono">{{ formatTime(log.timestamp) }}</span>
@@ -148,7 +141,7 @@ defineExpose({
         </div>
       </div>
     </div>
-  </div>
+  </FloatingPanelShell>
 
   <PanelFlyoutWrapper v-else-if="mode === 'flyout'" panel-id="event-log" title="事件日志" icon="activity" :width="384">
     <div class="p-3">

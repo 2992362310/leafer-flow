@@ -7,6 +7,7 @@ import type { PropertyPanelContext } from "@leafer-flow/core/api/property-panel"
 import PropertyPanelHost from "./EditorPanel/PropertyPanelHost.vue";
 import { usePanelDock, usePanelMode } from "../composables/usePanelDock";
 import PanelFlyoutWrapper from "./PanelFlyoutWrapper.vue";
+import FloatingPanelShell from "./FloatingPanelShell.vue";
 
 const props = defineProps<{ editor: Editor | undefined }>();
 
@@ -52,27 +53,20 @@ const visiblePanels = computed(() => {
 
 <template>
   <Transition name="slide-fade">
-    <div v-if="panelState.hasSelection.value && propertyPanelContext && mode === 'float'"
-      class="card shadow-xl border border-base-200 backdrop-blur-sm bg-base-100/90 fixed z-10 overflow-hidden transition-[height]"
-      :style="{ left: `${position.x}px`, top: `${position.y}px`, width: '16rem' }" @pointerdown.stop @click.stop>
-      <div class="flex justify-between items-center p-2 bg-base-200/50 cursor-move select-none" @mousedown="startDrag">
-        <div class="flex items-center gap-1.5 text-xs font-bold">
-          <Icon name="sliders" class="h-4 w-4" />
-          属性
-        </div>
-        <div class="flex items-center gap-0.5">
-          <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('property-panel')"
-            @mousedown.stop>
-            <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
-          </button>
-          <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop
-            :title="isCollapsed ? '展开属性' : '折叠属性'">
-            <span class="text-sm">{{ isCollapsed ? "∨" : "∧" }}</span>
-          </button>
-        </div>
-      </div>
+    <FloatingPanelShell v-if="panelState.hasSelection.value && propertyPanelContext && mode === 'float'" title="属性"
+      icon="sliders" :position="position" :width="256" max-height="min(70vh, 38rem)" :z-index="10"
+      @drag-start="startDrag">
+      <template #actions>
+        <button class="btn btn-ghost btn-xs btn-square" title="收纳到右侧槽" @click.stop="togglePanelDock('property-panel')">
+          <Icon name="arrow-up" class="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <button class="btn btn-ghost btn-xs btn-square" @click.stop="toggleCollapse(isDragging)" @mousedown.stop
+          :title="isCollapsed ? '展开属性' : '折叠属性'">
+          <span class="text-sm">{{ isCollapsed ? "∨" : "∧" }}</span>
+        </button>
+      </template>
 
-      <div class="card-body p-3 pt-2 max-h-[50vh] overflow-y-auto" v-show="!isCollapsed">
+      <div class="min-h-0 flex-1 overflow-y-auto p-3 pt-2" v-show="!isCollapsed">
         <div v-if="panelState.isMultiSelection.value" class="alert alert-info py-2 px-3 text-xs">
           已选择 {{ panelState.selectedElements.value.length }} 个元素，可批量修改样式
         </div>
@@ -80,7 +74,7 @@ const visiblePanels = computed(() => {
         <PropertyPanelHost v-if="props.editor && propertyPanelContext" :editor="props.editor"
           :context="propertyPanelContext" :panel-state="panelState" :panels="visiblePanels" />
       </div>
-    </div>
+    </FloatingPanelShell>
   </Transition>
 
   <PanelFlyoutWrapper v-if="mode === 'flyout'" panel-id="property-panel" title="属性" icon="sliders" :width="256">

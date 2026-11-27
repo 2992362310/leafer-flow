@@ -4,7 +4,7 @@ import type { ResourceService } from "./resources";
 
 const MANIFEST = "document.json";
 const MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
-const MAX_PACKAGE_BYTES = 110 * 1024 * 1024;
+const MAX_PACKAGE_BYTES = 650 * 1024 * 1024;
 
 export async function exportDocumentPackage(
     document: EditorDocument,
@@ -16,9 +16,17 @@ export async function exportDocumentPackage(
     if (manifest.length > MAX_MANIFEST_BYTES) throw new Error("Document manifest exceeds 4 MiB");
     const chunks: BlobPart[] = [];
     let failure: Error | null = null;
+    let packageSize = 0;
     const zip = new Zip((error, chunk) => {
         if (error) failure = error;
-        else chunks.push(chunk.slice().buffer as ArrayBuffer);
+        else {
+            packageSize += chunk.length;
+            if (packageSize > MAX_PACKAGE_BYTES) {
+                failure = new Error("Document package exceeds the size limit");
+                return;
+            }
+            chunks.push(chunk.slice().buffer as ArrayBuffer);
+        }
     });
     const entry = new ZipPassThrough(MANIFEST);
     zip.add(entry);

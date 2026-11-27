@@ -3,15 +3,16 @@ packages:
   - packages/*
 
 catalog:
-  vue: ^3.5.44
-  vue-router: ^5.4.0
-  leafer: ^2.3.2
-  leafer-editor: ^2.3.2
-  "@leafer-ui/interface": ^2.3.2
+  vue: ^3.5.46
+  vue-router: ^5.5.1
+  leafer: ^2.3.4
+  leafer-editor: ^2.3.4
+  "@leafer-ui/interface": ^2.3.4
+  "@leafer-in/linker": ^2.3.4
   leafer-x-easy-snap: ^1.11.0
   fflate: ^0.8.3
-  '@noble/hashes': ^2.4.0
-  dompurify: ^3.4.17
+  "@noble/hashes": ^2.4.0
+  dompurify: ^3.5.0
   image-dimensions: ^2.6.0
 
 catalogMode: prefer
@@ -24,230 +25,230 @@ minimumReleaseAgeExcludePrune: true
 hoist: false
 
 packageExtensions:
-  "@leafer/canvas-web@2.3.2":
+  "@leafer/canvas-web@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/canvas@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/canvas@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/data@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/data@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/debug@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/debug@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/file@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/file@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/list@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/list@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/math@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/math@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/path@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/path@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/platform@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/platform@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/decorator@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/decorator@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/display@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/display@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/display-module@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/display-module@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/event@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/event@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/helper@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/helper@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/image@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/image@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/layout@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/layout@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/task@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/task@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/layouter@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/layouter@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/renderer@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/renderer@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/selector@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/selector@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer/watcher@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer/watcher@2.3.4":
     dependencies:
-      "@leafer/core": 2.3.2
-      "@leafer/interface": 2.3.2
-  "@leafer-editor/partner@2.3.2":
+      "@leafer/core": 2.3.4
+      "@leafer/interface": 2.3.4
+  "@leafer-editor/partner@2.3.4":
     dependencies:
-      "@leafer-in/interface": 2.3.2
-  "@leafer-ui/app@2.3.2":
+      "@leafer-in/interface": 2.3.4
+  "@leafer-ui/app@2.3.4":
     dependencies:
-      "@leafer-ui/draw": 2.3.2
-      "@leafer-ui/interface": 2.3.2
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/data@2.3.2":
+      "@leafer-ui/draw": 2.3.4
+      "@leafer-ui/interface": 2.3.4
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/data@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/display@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/display@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/bounds@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/bounds@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/color@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/color@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/event@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/event@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/hit@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/hit@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/interaction@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/interaction@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/external@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/external@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/decorator@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/decorator@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/render@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/render@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/effect@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/effect@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/interaction-web@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/interaction-web@2.3.4":
     dependencies:
-      "@leafer/interface": 2.3.2
-  "@leafer-ui/paint@2.3.2":
+      "@leafer/interface": 2.3.4
+  "@leafer-ui/paint@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/text@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/text@2.3.4":
     dependencies:
-      "@leafer-ui/interface": 2.3.2
-  "@leafer-ui/core@2.3.2":
+      "@leafer-ui/interface": 2.3.4
+  "@leafer-ui/core@2.3.4":
     dependencies:
-      "@leafer/core": 2.3.2
-  "@leafer-in/linker@2.3.2":
+      "@leafer/core": 2.3.4
+  "@leafer-in/linker@2.3.4":
     dependencies:
-      "@leafer-ui/core": 2.3.2
-  "@leafer-in/stroke-sides@2.3.2":
+      "@leafer-ui/core": 2.3.4
+  "@leafer-in/stroke-sides@2.3.4":
     dependencies:
-      "@leafer-ui/core": 2.3.2
-      "@leafer/core": 2.3.2
+      "@leafer-ui/core": 2.3.4
+      "@leafer/core": 2.3.4
   "leafer-x-easy-snap@1.11.0":
     dependencies:
-      "@leafer-in/editor": 2.3.2
-      "@leafer-ui/core": 2.3.2
-      "@leafer-ui/interface": 2.3.2
+      "@leafer-in/editor": 2.3.4
+      "@leafer-ui/core": 2.3.4
+      "@leafer-ui/interface": 2.3.4
 
 overrides:
-  "leafer-x-ruler>@leafer-in/editor": 2.3.2
-  "leafer-x-ruler>@leafer-in/text-editor": 2.3.2
-  "leafer-x-ruler>@leafer-ui/interface": 2.3.2
+  "leafer-x-ruler>@leafer-in/editor": 2.3.4
+  "leafer-x-ruler>@leafer-in/text-editor": 2.3.4
+  "leafer-x-ruler>@leafer-ui/interface": 2.3.4
 
 minimumReleaseAgeExclude:
-  - "@leafer-editor/partner@2.3.2"
-  - "@leafer-editor/web@2.3.2"
-  - "@leafer-in/animate@2.3.2"
-  - "@leafer-in/arrow@2.3.2"
-  - "@leafer-in/bg-runner@2.3.2"
-  - "@leafer-in/box@2.3.2"
-  - "@leafer-in/bright@2.3.2"
-  - "@leafer-in/color@2.3.2"
-  - "@leafer-in/corner@2.3.2"
-  - "@leafer-in/editor@2.3.2"
-  - "@leafer-in/export@2.3.2"
-  - "@leafer-in/film@2.3.2"
-  - "@leafer-in/filter@2.3.2"
-  - "@leafer-in/find@2.3.2"
-  - "@leafer-in/flow@2.3.2"
-  - "@leafer-in/html@2.3.2"
-  - "@leafer-in/image-filter@2.3.2"
-  - "@leafer-in/interface@2.3.2"
-  - "@leafer-in/linker@2.3.2"
-  - "@leafer-in/motion-path@2.3.2"
-  - "@leafer-in/motion-text@2.3.2"
-  - "@leafer-in/position@2.3.2"
-  - "@leafer-in/resize@2.3.2"
-  - "@leafer-in/robot@2.3.2"
-  - "@leafer-in/scale-fixed@2.3.2"
-  - "@leafer-in/scroll@2.3.2"
-  - "@leafer-in/scroller@2.3.2"
-  - "@leafer-in/state@2.3.2"
-  - "@leafer-in/stroke-sides@2.3.2"
-  - "@leafer-in/text-editor@2.3.2"
-  - "@leafer-in/transition@2.3.2"
-  - "@leafer-in/video@2.3.2"
-  - "@leafer-in/view@2.3.2"
-  - "@leafer-in/viewport@2.3.2"
-  - "@leafer-ui/app@2.3.2"
-  - "@leafer-ui/bounds@2.3.2"
-  - "@leafer-ui/color@2.3.2"
-  - "@leafer-ui/core@2.3.2"
-  - "@leafer-ui/data@2.3.2"
-  - "@leafer-ui/decorator@2.3.2"
-  - "@leafer-ui/display-module@2.3.2"
-  - "@leafer-ui/display@2.3.2"
-  - "@leafer-ui/draw@2.3.2"
-  - "@leafer-ui/effect@2.3.2"
-  - "@leafer-ui/event@2.3.2"
-  - "@leafer-ui/external@2.3.2"
-  - "@leafer-ui/hit@2.3.2"
-  - "@leafer-ui/interaction-web@2.3.2"
-  - "@leafer-ui/interaction@2.3.2"
-  - "@leafer-ui/interface@2.3.2"
-  - "@leafer-ui/paint@2.3.2"
-  - "@leafer-ui/partner@2.3.2"
-  - "@leafer-ui/render@2.3.2"
-  - "@leafer-ui/text@2.3.2"
-  - "@leafer-ui/web@2.3.2"
-  - "@leafer/canvas-web@2.3.2"
-  - "@leafer/canvas@2.3.2"
-  - "@leafer/core@2.3.2"
-  - "@leafer/data@2.3.2"
-  - "@leafer/debug@2.3.2"
-  - "@leafer/decorator@2.3.2"
-  - "@leafer/display-module@2.3.2"
-  - "@leafer/display@2.3.2"
-  - "@leafer/event@2.3.2"
-  - "@leafer/file@2.3.2"
-  - "@leafer/helper@2.3.2"
-  - "@leafer/image-web@2.3.2"
-  - "@leafer/image@2.3.2"
-  - "@leafer/interface@2.3.2"
-  - "@leafer/layout@2.3.2"
-  - "@leafer/layouter@2.3.2"
-  - "@leafer/list@2.3.2"
-  - "@leafer/math@2.3.2"
-  - "@leafer/partner@2.3.2"
-  - "@leafer/path@2.3.2"
-  - "@leafer/platform@2.3.2"
-  - "@leafer/renderer@2.3.2"
-  - "@leafer/selector@2.3.2"
-  - "@leafer/task@2.3.2"
-  - "@leafer/watcher@2.3.2"
-  - "@leafer/web-core@2.3.2"
-  - "@leafer/web@2.3.2"
-  - leafer-editor@2.3.2
-  - leafer-ui@2.3.2
-  - leafer@2.3.2
+  - "@leafer-editor/partner@2.3.4"
+  - "@leafer-editor/web@2.3.4"
+  - "@leafer-in/animate@2.3.4"
+  - "@leafer-in/arrow@2.3.4"
+  - "@leafer-in/bg-runner@2.3.4"
+  - "@leafer-in/box@2.3.4"
+  - "@leafer-in/bright@2.3.4"
+  - "@leafer-in/color@2.3.4"
+  - "@leafer-in/corner@2.3.4"
+  - "@leafer-in/editor@2.3.4"
+  - "@leafer-in/export@2.3.4"
+  - "@leafer-in/film@2.3.4"
+  - "@leafer-in/filter@2.3.4"
+  - "@leafer-in/find@2.3.4"
+  - "@leafer-in/flow@2.3.4"
+  - "@leafer-in/html@2.3.4"
+  - "@leafer-in/image-filter@2.3.4"
+  - "@leafer-in/interface@2.3.4"
+  - "@leafer-in/linker@2.3.4"
+  - "@leafer-in/motion-path@2.3.4"
+  - "@leafer-in/motion-text@2.3.4"
+  - "@leafer-in/position@2.3.4"
+  - "@leafer-in/resize@2.3.4"
+  - "@leafer-in/robot@2.3.4"
+  - "@leafer-in/scale-fixed@2.3.4"
+  - "@leafer-in/scroll@2.3.4"
+  - "@leafer-in/scroller@2.3.4"
+  - "@leafer-in/state@2.3.4"
+  - "@leafer-in/stroke-sides@2.3.4"
+  - "@leafer-in/text-editor@2.3.4"
+  - "@leafer-in/transition@2.3.4"
+  - "@leafer-in/video@2.3.4"
+  - "@leafer-in/view@2.3.4"
+  - "@leafer-in/viewport@2.3.4"
+  - "@leafer-ui/app@2.3.4"
+  - "@leafer-ui/bounds@2.3.4"
+  - "@leafer-ui/color@2.3.4"
+  - "@leafer-ui/core@2.3.4"
+  - "@leafer-ui/data@2.3.4"
+  - "@leafer-ui/decorator@2.3.4"
+  - "@leafer-ui/display-module@2.3.4"
+  - "@leafer-ui/display@2.3.4"
+  - "@leafer-ui/draw@2.3.4"
+  - "@leafer-ui/effect@2.3.4"
+  - "@leafer-ui/event@2.3.4"
+  - "@leafer-ui/external@2.3.4"
+  - "@leafer-ui/hit@2.3.4"
+  - "@leafer-ui/interaction-web@2.3.4"
+  - "@leafer-ui/interaction@2.3.4"
+  - "@leafer-ui/interface@2.3.4"
+  - "@leafer-ui/paint@2.3.4"
+  - "@leafer-ui/partner@2.3.4"
+  - "@leafer-ui/render@2.3.4"
+  - "@leafer-ui/text@2.3.4"
+  - "@leafer-ui/web@2.3.4"
+  - "@leafer/canvas-web@2.3.4"
+  - "@leafer/canvas@2.3.4"
+  - "@leafer/core@2.3.4"
+  - "@leafer/data@2.3.4"
+  - "@leafer/debug@2.3.4"
+  - "@leafer/decorator@2.3.4"
+  - "@leafer/display-module@2.3.4"
+  - "@leafer/display@2.3.4"
+  - "@leafer/event@2.3.4"
+  - "@leafer/file@2.3.4"
+  - "@leafer/helper@2.3.4"
+  - "@leafer/image-web@2.3.4"
+  - "@leafer/image@2.3.4"
+  - "@leafer/interface@2.3.4"
+  - "@leafer/layout@2.3.4"
+  - "@leafer/layouter@2.3.4"
+  - "@leafer/list@2.3.4"
+  - "@leafer/math@2.3.4"
+  - "@leafer/partner@2.3.4"
+  - "@leafer/path@2.3.4"
+  - "@leafer/platform@2.3.4"
+  - "@leafer/renderer@2.3.4"
+  - "@leafer/selector@2.3.4"
+  - "@leafer/task@2.3.4"
+  - "@leafer/watcher@2.3.4"
+  - "@leafer/web-core@2.3.4"
+  - "@leafer/web@2.3.4"
+  - leafer-editor@2.3.4
+  - leafer-ui@2.3.4
+  - leafer@2.3.4
 
 allowBuilds:
   less: true

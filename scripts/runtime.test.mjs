@@ -432,6 +432,10 @@ test('document packages stream binary assets and restore metadata-only documents
   const snapshot = state.document.snapshot();
   const file = await archive.exportDocumentPackage(snapshot, state.resources);
   const restored = createDocumentRuntime();
+  await assert.rejects(
+    archive.importDocumentPackage({ size: 650 * 1024 * 1024 + 1 }, restored.resources),
+    /package exceeds the size limit/,
+  );
   const imported = await archive.importDocumentPackage(file, restored.resources);
   restored.document.replace(imported, 'load', 'Package');
   assert.deepEqual(structuredClone(imported), snapshot);
@@ -531,6 +535,55 @@ test('videos have a separate asset limit while sharing the document resource lim
   assert.doesNotThrow(() => resources.validateFile(new Blob(['12345678'], { type: 'video/mp4' })));
   assert.throws(() => resources.validateFile(new Blob(['123456789'], { type: 'video/mp4' })), /Video resource.*size limit/);
   assert.throws(() => resources.validateFile(new Blob(['12345'], { type: 'image/png' })), /Resource.*size limit/);
+});
+
+test('default media limits support larger files while bounding total document assets', () => {
+  const { resources } = createDocumentRuntime();
+  const mib = 1024 * 1024;
+  const virtualFile = (size, type) => ({ size, type });
+  assert.doesNotThrow(() => resources.validateFile(virtualFile(512 * mib, 'video/mp4')));
+  assert.throws(() => resources.validateFile(virtualFile(512 * mib + 1, 'video/mp4')), /Video resource.*size limit/);
+  assert.doesNotThrow(() => resources.validateFile(virtualFile(100 * mib, 'image/png')));
+  assert.throws(() => resources.validateFile(virtualFile(100 * mib + 1, 'image/png')), /Resource.*size limit/);
+
+  const asset = (key, size, mimeType) => ({
+    id: `asset-${key.repeat(64)}`,
+    size,
+    mimeType,
+  });
+  assert.doesNotThrow(() => resources.validate({
+    assets: {
+      video: asset('a', 512 * mib, 'video/mp4'),
+      image: asset('b', 100 * mib, 'image/png'),
+      audio: asset('c', 28 * mib, 'audio/mpeg'),
+    }
+  }));
+  assert.throws(() => resources.validate({
+    assets: {
+      video: asset('a', 512 * mib, 'video/mp4'),
+      image: asset('b', 100 * mib, 'image/png'),
+      audio: asset('c', 28 * mib + 1, 'audio/mpeg'),
+    }
+  }), /Document resource size limit/);
+});
+
+test('resource imports stop before writing when browser storage is exhausted', async () => {
+  const resourceModule = loadModule('packages/core/src/document/resources.ts', {
+    './binary-asset-store': {},
+    '@noble/hashes/sha2.js': coreRequire('@noble/hashes/sha2.js'),
+  }, {
+    navigator: { storage: { estimate: async () => ({ quota: 100, usage: 100 }) } },
+    Blob,
+    TextEncoder,
+    Uint8Array,
+  });
+  let writes = 0;
+  const resources = new resourceModule.ResourceService({}, {}, {
+    async get() { return undefined; },
+    async put() { writes++; },
+  });
+  await assert.rejects(resources.prepare(new Blob(['video'], { type: 'video/mp4' })), /Not enough browser storage/);
+  assert.equal(writes, 0);
 });
 
 test('resources retain pinned assets and cleanup is undoable without losing content', async () => {
@@ -1109,9 +1162,9 @@ test('nested history batches commit once', () => {
   assert.equal(state.history.undoCount, 2);
 });
 
-function loadAgentTools() {
+function loadAgentTools(actionNames = {}) {
   return loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-tools.ts', {
-    '@leafer-flow/core/constants': { ACTION_NAME: {}, TOOL_NAME: { DRAW_RECT: 'rect' } },
+    '@leafer-flow/core/constants': { ACTION_NAME: actionNames, TOOL_NAME: { DRAW_RECT: 'rect' } },
     '../../../templates/defs': {},
     '../../../templates/insert': {},
     '../../templates/registry': {},
@@ -1441,7 +1494,7 @@ test('agent rejects mixed question and mutation batches before any tool executes
   assert.ok(response.toolCalls.every(result => !result.success));
 });
 
-test('agent panel restores model history, guards busy actions and saves only settled messages', async () => {
+test('agent panel checkpoints an in-flight turn and restores it after interruption', async () => {
   const service = createAgentService();
   const config = { maxHistoryMessages: 3 };
   service.updateConfig(config);
@@ -1468,17 +1521,21 @@ test('agent panel restores model history, guards busy actions and saves only set
   });
   const panel = useAgentChat({});
   assert.equal(panel.historyCount.value, 2);
+  assert.equal(panel.hasRestoredHistory.value, true);
   panel.inputMessage.value = 'new question';
   const pending = panel.send();
   await uiVue.nextTick();
   panel.clear();
   await panel.compress();
   assert.equal(panel.messages.value.length, 4);
-  assert.equal(writes, 0);
+  assert.equal(writes, 1);
+  assert.deepEqual(JSON.parse(storage.get('leafer-flow.plugin.agent.history')).at(-1), {
+    role: 'user', content: 'new question',
+  });
   release();
   await pending;
   assert.equal(panel.historyCount.value, 4);
-  assert.equal(writes, 1);
+  assert.ok(writes >= 2);
   const saved = JSON.parse(storage.get('leafer-flow.plugin.agent.history'));
   assert.ok(saved.at(-1).content.endsWith('new answer'));
   assert.match(saved.at(-1).content, /未执行画布操作/);
@@ -1487,6 +1544,7 @@ test('agent panel restores model history, guards busy actions and saves only set
   assert.equal(panel.shouldCompress.value, true);
   panel.clear();
   assert.equal(panel.historyCount.value, 0);
+  assert.equal(panel.hasRestoredHistory.value, false);
 });
 
 test('agent panel validates answers, settles once and clears pending questions on cancel', async () => {
@@ -1521,7 +1579,8 @@ test('agent panel validates answers, settles once and clears pending questions o
     await opened;
     assert.equal(panel.pendingQuestion.value.question, '方向？');
     assert.equal(panel.isBusy.value, true);
-    assert.equal(writes, 0);
+    assert.ok(writes >= 1);
+    assert.equal(saved[0].role, 'user');
     panel.answerQuestion({ selected: ['非法选项'], text: '' });
     assert.ok(panel.pendingQuestion.value);
     assert.ok(panel.error.value);
@@ -1533,7 +1592,8 @@ test('agent panel validates answers, settles once and clears pending questions o
     await pending;
     assert.equal(panel.pendingQuestion.value, undefined);
     assert.equal(panel.isBusy.value, false);
-    assert.equal(writes, 1);
+    assert.ok(writes > 1);
+    assert.equal(saved[0].role, 'user');
     assert.equal(requests, cancel ? 1 : 2);
     const toolResult = JSON.parse(saved.find(message => message.role === 'tool').content);
     assert.equal(toolResult.success, !cancel);
@@ -1541,10 +1601,137 @@ test('agent panel validates answers, settles once and clears pending questions o
   }
 });
 
+test('agent confirms destructive tools before opening a history transaction', async () => {
+  for (const proceed of [true, false]) {
+    let depth = 0;
+    let mutations = 0;
+    let question;
+    let requests = 0;
+    const tool = {
+      name: 'clear_canvas',
+      category: 'canvas',
+      description: 'clear',
+      parameters: { type: 'object', properties: {} },
+      confirmation: () => ({ question: '清空全部元素？', options: ['继续执行', '取消'], multiple: false }),
+      execute() { mutations++; return 'cleared'; },
+    };
+    const service = createAgentService({}, {
+      getAgentTools: () => [tool],
+      validateToolArguments() { },
+    });
+    assert.equal(service.tools.get('clear_canvas')?.confirmation, tool.confirmation);
+    service.editor = {
+      beginTransaction() { depth++; },
+      endTransaction() { depth--; },
+    };
+    service.requestChat = async () => ++requests === 1 ? {
+      content: '',
+      toolCalls: [{ id: 'clear', type: 'function', function: { name: 'clear_canvas', arguments: '{}' } }],
+    } : { content: '完成', toolCalls: [] };
+
+    const response = await service.processMessage('清空画布', {
+      onQuestion: async prompt => {
+        assert.equal(depth, 0);
+        question = prompt;
+        return { selected: [proceed ? '继续执行' : '取消'], text: '' };
+      },
+    });
+    assert.ok(question, JSON.stringify(response.toolCalls));
+    assert.equal(question.question, '清空全部元素？');
+    assert.equal(mutations, proceed ? 1 : 0);
+    assert.equal(response.toolCalls[0].success, proceed);
+    assert.equal(depth, 0);
+  }
+});
+
+test('agent media insertion uses local file actions and requires user confirmation', async () => {
+  const actionNames = { INSERT_IMAGE: 'insertImage', INSERT_VIDEO: 'insertVideo', INSERT_AUDIO: 'insertAudio' };
+  const tools = loadAgentTools(actionNames).getAgentTools();
+  for (const [name, action, mediaLabel] of [
+    ['insert_image', 'insertImage', '图片'],
+    ['insert_video', 'insertVideo', '视频'],
+    ['insert_audio', 'insertAudio', '音频'],
+  ]) {
+    const tool = tools.find(candidate => candidate.name === name);
+    assert.ok(tool);
+    assert.equal(tool.transaction, false);
+    assert.match(tool.confirmation({}).question, new RegExp(mediaLabel));
+    let executed;
+    await tool.execute({ commands: { async execute(command) { executed = command; return { success: true, message: '已插入' }; } } }, {});
+    assert.equal(executed, action);
+  }
+});
+
+test('agent media confirmation waits outside transactions and only then opens the native picker', async () => {
+  let depth = 0;
+  let openedPicker = 0;
+  let requests = 0;
+  const tool = {
+    name: 'insert_image', category: 'file', description: 'insert image',
+    parameters: { type: 'object', properties: {} },
+    transaction: false,
+    confirmationAction: '打开文件选择器',
+    confirmation: () => ({ question: '请选择图片文件。', options: ['打开文件选择器', '取消'], multiple: false }),
+    execute() { assert.equal(depth, 0); openedPicker++; return '已插入'; },
+  };
+  const service = createAgentService({}, { getAgentTools: () => [tool], validateToolArguments() { } });
+  service.editor = {
+    beginTransaction() { depth++; },
+    endTransaction() { depth--; },
+  };
+  service.requestChat = async () => ++requests === 1 ? {
+    content: '',
+    toolCalls: [{ id: 'image', type: 'function', function: { name: 'insert_image', arguments: '{}' } }],
+  } : { content: '完成', toolCalls: [] };
+  const response = await service.processMessage('插入一张图片', {
+    onQuestion: async prompt => {
+      assert.equal(depth, 0);
+      assert.match(prompt.question, /图片文件/);
+      return { selected: ['打开文件选择器'], text: '' };
+    },
+  });
+  assert.equal(openedPicker, 1, JSON.stringify(response.toolCalls));
+  assert.equal(depth, 0);
+  assert.equal(response.toolCalls[0].success, true);
+});
+
+test('agent rejects mixed confirmation and mutation batches before any tool executes', async () => {
+  let executions = 0;
+  let questions = 0;
+  const tools = [
+    {
+      name: 'edit', category: 'edit', description: 'edit',
+      parameters: { type: 'object', properties: {} },
+      execute() { executions++; return 'edited'; },
+    },
+    {
+      name: 'clear_canvas', category: 'canvas', description: 'clear',
+      parameters: { type: 'object', properties: {} },
+      confirmation: () => ({ question: '清空？', options: ['继续执行', '取消'], multiple: false }),
+      execute() { executions++; return 'cleared'; },
+    },
+  ];
+  const service = createAgentService({}, { getAgentTools: () => tools, validateToolArguments() { } });
+  service.requestChat = async () => ({
+    content: '',
+    toolCalls: tools.map(tool => ({
+      id: tool.name, type: 'function', function: { name: tool.name, arguments: '{}' },
+    })),
+  });
+  const response = await service.processMessage('同时编辑并清空', {
+    onQuestion: async () => { questions++; return { selected: ['继续执行'], text: '' }; },
+  });
+  assert.equal(questions, 0);
+  assert.equal(executions, 0);
+  assert.ok(response.toolCalls.every(result => !result.success));
+});
+
 test('agent drawing guidance inspects context and does not default to templates', async () => {
   const service = createAgentService();
   service.requestChat = async (_config, messages) => {
     assert.match(messages[0].content, /开始绘制前先查询画布/);
+    assert.match(messages[0].content, /任何创建、修改、删除或连接操作后，都要用 get_canvas_info 复查/);
+    assert.match(messages[0].content, /只修复差异，不要重复执行整批操作/);
     assert.match(messages[0].content, /模板不是默认绘制方式/);
     assert.doesNotMatch(messages[0].content, /流程图优先使用 insert_template/);
     return { content: '请确认业务步骤', toolCalls: [] };
@@ -1681,8 +1868,12 @@ test('agent catalog shares shape enums and exposes categories from the actual to
   const details = JSON.parse(tools.find(tool => tool.name === 'get_tool_details').execute({}, { tool_name: 'modify_text' }));
   assert.equal(details.category, 'text');
   assert.ok(details.parameters.properties.ids);
+  const clearDetails = JSON.parse(tools.find(tool => tool.name === 'get_tool_details').execute({}, { tool_name: 'clear_canvas' }));
+  assert.equal(clearDetails.requires_confirmation, true);
+  const mediaDetails = JSON.parse(tools.find(tool => tool.name === 'get_tool_details').execute({}, { tool_name: 'insert_image' }));
+  assert.equal(mediaDetails.requires_confirmation, true);
   const skills = JSON.parse(tools.find(tool => tool.name === 'list_skills').execute({}, {}));
-  assert.equal(skills.length, 4);
+  assert.equal(skills.length, 5);
   const skill = JSON.parse(tools.find(tool => tool.name === 'get_skill').execute({}, { name: 'create_flowchart' }));
   assert.ok(skill.tools.includes('batch_create_shapes'));
   assert.ok(skill.steps.length > 0);
@@ -1797,8 +1988,14 @@ test('agent chooses connector ports from page bounds and rejects overlapping nod
 
 test('agent configuration accepts only the current complete format and bounded settings', () => {
   let stored;
+  let sessionKey;
   const configModule = loadModule('packages/builtin-plugins/src/builtin/plugins/agent/agent-config.ts', {}, {
     URL, localStorage: { getItem: () => stored, setItem(_key, value) { stored = value; } },
+    sessionStorage: {
+      getItem: () => sessionKey ?? null,
+      setItem(_key, value) { sessionKey = value; },
+      removeItem() { sessionKey = undefined; },
+    },
   });
   const config = { ...configModule.loadAgentConfig(), apiKey: 'example' };
   assert.equal(configModule.isConfigValid(config), true);
@@ -1811,10 +2008,83 @@ test('agent configuration accepts only the current complete format and bounded s
   assert.equal(configModule.isConfigValid({ ...config, provider: 'custom', apiKey: '' }), false);
   configModule.saveAgentConfig(config);
   assert.equal(configModule.loadAgentConfig().apiKey, 'example');
+  assert.equal(sessionKey, 'example');
+  assert.equal(JSON.parse(stored).apiKey, '');
+  stored = JSON.stringify({ ...config, apiKey: 'legacy-key' });
+  sessionKey = 'current-session-key';
+  assert.equal(configModule.loadAgentConfig().apiKey, 'current-session-key');
+  assert.equal(sessionKey, 'current-session-key');
+  sessionKey = undefined;
+  stored = JSON.stringify({ ...config, apiKey: 'legacy-key' });
+  assert.equal(configModule.loadAgentConfig().apiKey, 'legacy-key');
+  assert.equal(JSON.parse(stored).apiKey, '');
   assert.equal(configModule.isConfigValid({ ...config, apiUrl: 'javascript:example' }), false);
   assert.throws(() => configModule.saveAgentConfig({ ...config, maxHistoryMessages: -1 }));
   stored = JSON.stringify({ apiKey: 'old-format' });
+  sessionKey = undefined;
   assert.equal(configModule.loadAgentConfig().apiKey, '');
+});
+
+test('agent canvas info returns bounded logical nodes, text, connections and truncation metadata', () => {
+  const tool = loadAgentTools().getAgentTools().find(candidate => candidate.name === 'get_canvas_info');
+  const document = {
+    nodes: [
+      { id: 'start-id', type: 'Task', version: 1, data: { x: 10, y: 20, width: 120, height: 72, text: 'Start' }, children: [] },
+      {
+        id: 'end-id', type: 'Task', version: 1, data: { x: 300, y: 20, width: 120, height: 72 }, children: [
+          { id: 'end-text', type: 'Text', version: 1, data: { text: 'Finish' }, children: [] },
+        ]
+      },
+    ],
+    edges: [{
+      id: 'edge-id', parentId: null,
+      from: { nodeId: 'start-id', port: { side: 'right', percent: 0.5 } },
+      to: { nodeId: 'end-id', port: { side: 'left', percent: 0.5 } },
+      data: { routeType: 'orthogonal' },
+    }],
+  };
+  const editor = {
+    document: { snapshot: () => document },
+    app: { tree: { children: [{}, {}], scaleX: 1.25 }, editor: { list: [] } },
+    renderer: { getId: element => element.id },
+  };
+  const summary = JSON.parse(tool.execute(editor, {}));
+  assert.equal(summary.nodeCount, 3);
+  assert.equal(summary.edgeCount, 1);
+  assert.equal(summary.zoomPercent, 125);
+  assert.equal(summary.nodes.find(node => node.id === 'end-id').text, 'Finish');
+  assert.equal(summary.edges[0].from.nodeId, 'start-id');
+  assert.equal(summary.edges[0].to.port.side, 'left');
+  assert.equal(summary.truncated, false);
+
+  document.nodes = Array.from({ length: 130 }, (_, index) => ({
+    id: `node-${index}`, type: 'Task', version: 1, data: { x: index, y: 0 }, children: [],
+  }));
+  const large = JSON.parse(tool.execute(editor, {}));
+  assert.equal(large.nodeCount, 130);
+  assert.equal(large.nodes.length, 80);
+  assert.equal(large.truncated, true);
+});
+
+test('agent automatically includes a bounded live canvas snapshot in model context', () => {
+  const service = createAgentService({}, loadAgentTools());
+  service.editor = {
+    document: {
+      snapshot: () => ({
+        id: 'doc-live',
+        nodes: [{ id: 'node-live', type: 'Task', version: 1, data: { x: 25, y: 40, text: 'Live node' }, children: [] }],
+        edges: [],
+      })
+    },
+    app: { tree: { children: [{}], scaleX: 1 }, editor: { list: [] } },
+    renderer: { getId: element => element.id },
+  };
+  delete service.getCanvasContext;
+  const context = service.getCanvasContext();
+  assert.match(context, /doc-live/);
+  assert.match(context, /node-live/);
+  assert.match(context, /Live node/);
+  assert.match(context, /截断/);
 });
 
 test('agent search returns document ids and style/text tools target them without changing selection', async () => {

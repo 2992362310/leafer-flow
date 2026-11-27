@@ -57,6 +57,7 @@ const {
   inputMessage,
   activeTool,
   pendingQuestion,
+  hasRestoredHistory,
   answerQuestion,
   error,
   messages: displayMessages,
@@ -161,6 +162,9 @@ function handleKeydown(e: KeyboardEvent) {
           <AgentSettings :config="config" @save="handleSaveConfig" @close="showSettings = false" />
         </div>
         <template v-else>
+          <div v-if="hasRestoredHistory" class="agent-resume-notice" role="status">
+            已恢复本地对话。若上次中断，请先核对画布与工具执行结果再继续。
+          </div>
           <div v-if="shouldCompress && isReady" class="agent-history-notice">
             <span>上下文 {{ historyCount }} / {{ maxHistory }}</span>
             <button :disabled="isBusy" @click="handleCompressHistory">{{ isCompressing ? '压缩中...' : '压缩历史' }}</button>
@@ -428,6 +432,16 @@ function handleKeydown(e: KeyboardEvent) {
   border-bottom: 1px solid var(--color-base-200);
   color: var(--agent-muted);
   font-size: 11px;
+}
+
+.agent-resume-notice {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  border-bottom: 1px solid color-mix(in oklab, var(--agent-accent) 18%, transparent);
+  color: color-mix(in oklab, var(--agent-accent) 80%, var(--color-base-content));
+  background: color-mix(in oklab, var(--agent-accent) 6%, var(--color-base-100));
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .agent-history-notice button {

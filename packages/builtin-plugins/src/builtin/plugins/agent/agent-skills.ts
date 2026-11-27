@@ -47,6 +47,17 @@ const AGENT_SKILLS = [
             "中断后先查询画布，已完成的修改不会自动回滚，不要盲目重复操作。",
         ],
     },
+    {
+        name: "insert_media",
+        description: "按用户要求从本机选择并插入图片、视频或音频",
+        tools: ["insert_image", "insert_video", "insert_audio", "get_canvas_info"],
+        steps: [
+            "仅在用户明确要求插入媒体时调用对应工具；工具会显示确认卡片并打开本机文件选择器。",
+            "媒体文件由用户亲自选择并保存在当前文档资源中，不要要求用户把媒体内容发给模型，也不要声称已分析媒体内容。",
+            "用户取消选择或导入失败时如实报告，不要重复打开选择器。",
+            "导入成功后查询画布确认节点数量和资源节点状态，再报告结果。",
+        ],
+    },
 ] as const;
 
 export function getAgentSkills() {

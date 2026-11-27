@@ -2,7 +2,7 @@ import type Editor from "@leafer-flow/core/editor";
 import { type AgentConfig, isConfigValid } from "./agent-config";
 import { getAgentTools, validateToolArguments } from "./agent-tools";
 import { requestChat, type ChatMessage, type ToolCall } from "./agent-client";
-import { waitForUserAnswer, type AgentToolContext, type UserAnswer, type UserQuestion } from "./agent-question";
+import { validateUserAnswer, waitForUserAnswer, type AgentToolContext, type UserAnswer, type UserQuestion } from "./agent-question";
 
 export interface AgentResponse {
   content: string;
@@ -43,6 +43,7 @@ export interface StreamCallbacks {
   onToken?: (token: string) => void;
   onToolCall?: (toolCall: { name: string; arguments: Record<string, unknown> }) => void;
   onToolResult?: (result: ToolCallResult) => void;
+  onHistoryUpdate?: (messages: ChatMessage[]) => void;
   onQuestion?: (question: UserQuestion, signal: AbortSignal) => Promise<UserAnswer>;
 }
 
@@ -54,6 +55,8 @@ const SYSTEM_PROMPT = `你是 Leafer Flow 编辑器的 AI 助手，使用工具�
 - 批量创建使用 batch_create_shapes，文字使用 modify_text，样式与几何属性使用 set_style。
 - 文字和样式工具自动处理节点内部结构，不要修改渲染子元素。
 - 工具结果 success=false 代表失败，不要宣称已完成。中断后先查询画布再决定是否重试，避免重复创建。
+- delete、cut、clear_canvas、load_file 等工具会显示影响范围并单独要求确认；用户取消时不得重试或换工具绕过确认。
+- insert_image、insert_video、insert_audio 会请求用户确认并打开本机文件选择器；媒体只进入当前文档，不会上传给模型或自动分析。
 - 只有真实工具调用能修改画布，不得用文字模拟“工具执行”或声称未调用工具的操作成功。
 - 参数名必须逐字使用 Schema 中的键，不要翻译或添加参数；校验失败后按错误提示修正，不要原样重复。
 - 开始绘制前先查询画布，结合用户需求和已有内容确定节点、关系与布局；不要收到“画流程图”等笼统请求就立即插入模板。
@@ -61,6 +64,9 @@ const SYSTEM_PROMPT = `你是 Leafer Flow 编辑器的 AI 助手，使用工具�
 - 模板不是默认绘制方式。仅在用户明确要求使用模板，或已确认预设模板的节点和关系符合需求时使用 insert_template；不能仅凭主题相近就套用，不要先插入无关模板再解释。
 - 定制流程按用户的实际步骤和分支组织节点；重复节点优先 batch_create_shapes，显式设置间距，避免节点重叠。
 - 按节点宽高预留间隔，再使用 connect_elements 连接文档 ID；不要用普通箭头覆盖节点。完成后查询核对文字、关系和布局。
+- 任何创建、修改、删除或连接操作后，都要用 get_canvas_info 复查实际节点、文字、位置、边端点及选区；核对创建工具返回的文档 ID，发现不符只修复差异，不要重复执行整批操作。
+- get_canvas_info 标记 truncated 时，使用 search_elements 按关键词或名称查找目标；不得把摘要未列出当作目标不存在。
+- 每轮模型请求都会附带当前文档模型的有限量快照；执行工具后必须以新快照核验结果，必要时继续查询具体目标。
 - 多步骤任务先用一两句话说明绘制思路，然后继续调用工具完成创建、连接和检查，不要只给计划，也不要逐步等待用户批准。
 - 复杂任务先 list_skills/get_skill 读取相应工作流；能力及参数通过 list_tools/get_tool_details 查询。
 - 关键需求不明确时调用 ask_user，提供简短问题和 2-6 个选项，允许用户补充文字；multiple=true 支持多选。
@@ -189,6 +195,14 @@ export class AgentService {
   }
 
   getCanvasContext(): string {
+    const canvasInfo = this.tools.get("get_canvas_info");
+    if (canvasInfo) {
+      try {
+        return `\n[文档模型实时画布快照；截断表示摘要有省略，不表示目标不存在]\n${canvasInfo.execute(this.editor, { max_nodes: 24, max_edges: 32 })}`;
+      } catch {
+        // Fall back to the basic runtime summary if document projection is unavailable.
+      }
+    }
     try {
       const elementCount = this.editor.app.tree.children.length;
       const scale = this.editor.app.tree.scaleX || 1;
@@ -271,6 +285,8 @@ export class AgentService {
     const operation = this.startOperation();
     this.history.push({ role: "user", content: userMessage });
     this.trimHistory();
+    const checkpointHistory = () => callbacks.onHistoryUpdate?.(this.getHistory());
+    checkpointHistory();
     const allToolCalls: ToolCallResult[] = [];
     let toolCallCount = 0;
     let toolRoundCount = 0;
@@ -304,13 +320,22 @@ export class AgentService {
           content: replyContent,
           ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
         });
+        checkpointHistory();
         if (!toolCalls.length) return { content: replyContent, toolCalls: allToolCalls, warning };
 
         toolRoundCount++;
-        const invalidQuestionBatch = toolCalls.length > 1 && toolCalls.some((call) => call.function.name === "ask_user");
+        const invalidInteractionBatch = toolCalls.length > 1 && toolCalls.some((call) => {
+          const tool = this.tools.get(call.function.name);
+          return call.function.name === "ask_user" || Boolean(tool?.confirmation);
+        });
         for (const toolCall of toolCalls) {
           operation.signal.throwIfAborted();
-          let result: ToolCallResult;
+          let result: ToolCallResult = {
+            name: toolCall.function.name,
+            arguments: {},
+            success: false,
+            result: "操作未执行。",
+          };
           if (toolCallCount >= MAX_TOOL_CALLS) {
             result = {
               name: toolCall.function.name,
@@ -318,26 +343,70 @@ export class AgentService {
               success: false,
               result: "已达到工具调用上限，此操作未执行。",
             };
-          } else if (invalidQuestionBatch) {
+          } else if (invalidInteractionBatch) {
             toolCallCount++;
             result = {
               name: toolCall.function.name,
               arguments: {},
               success: false,
-              result: "ask_user 必须单独调用。此批次所有操作均未执行，请先询问并等待用户回答。",
+              result: "需要用户确认或回答的工具必须单独调用。此批次所有操作均未执行，请先逐项询问并等待用户回答。",
             };
           } else {
             toolCallCount++;
             const onQuestion = callbacks.onQuestion;
-            const context: AgentToolContext = {
-              askUser: onQuestion ? (question) => waitForUserAnswer(question, onQuestion, operation.signal) : undefined,
-            };
             const isQuestion = toolCall.function.name === "ask_user";
-            if (!isQuestion) this.editor.beginTransaction();
-            try {
-              result = await this.executeToolCall(toolCall, callbacks.onToolCall, context);
-            } finally {
-              if (!isQuestion) this.editor.endTransaction();
+            const tool = this.tools.get(toolCall.function.name);
+            let confirmed = true;
+            if (tool?.confirmation) {
+              if (!onQuestion) {
+                result = {
+                  name: toolCall.function.name,
+                  arguments: {},
+                  success: false,
+                  result: "当前环境无法确认此操作，未执行。",
+                };
+                confirmed = false;
+              } else {
+                try {
+                  const question = tool.confirmation(this.editor);
+                  if (question) {
+                    const answer = validateUserAnswer(
+                      question,
+                      await waitForUserAnswer(question, onQuestion, operation.signal),
+                    );
+                    if (!answer.selected.includes(tool.confirmationAction ?? "继续执行")) {
+                      result = {
+                        name: toolCall.function.name,
+                        arguments: {},
+                        success: false,
+                        result: "用户取消了操作，未执行。不要重试。",
+                      };
+                      confirmed = false;
+                    }
+                  }
+                } catch (error) {
+                  operation.signal.throwIfAborted();
+                  result = {
+                    name: toolCall.function.name,
+                    arguments: {},
+                    success: false,
+                    result: `确认失败，未执行: ${error instanceof Error ? error.message : "未知错误"}`,
+                  };
+                  confirmed = false;
+                }
+              }
+            }
+            if (confirmed) {
+              const context: AgentToolContext = {
+                askUser: onQuestion ? (question) => waitForUserAnswer(question, onQuestion, operation.signal) : undefined,
+              };
+              const ownsTransaction = !isQuestion && tool?.transaction !== false;
+              if (ownsTransaction) this.editor.beginTransaction();
+              try {
+                result = await this.executeToolCall(toolCall, callbacks.onToolCall, context);
+              } finally {
+                if (ownsTransaction) this.editor.endTransaction();
+              }
             }
           }
           allToolCalls.push(result);
@@ -346,6 +415,7 @@ export class AgentService {
             tool_call_id: toolCall.id,
             content: JSON.stringify(result),
           });
+          checkpointHistory();
           callbacks.onToolResult?.(result);
         }
         if (toolCallCount >= MAX_TOOL_CALLS || toolRoundCount >= MAX_TOOL_ROUNDS) {
@@ -360,6 +430,7 @@ export class AgentService {
         : `处理消息时出错: ${error instanceof Error ? error.message : "未知错误"}`;
       this.completePendingCalls();
       this.history.push({ role: "assistant", content });
+      checkpointHistory();
       return { content, toolCalls: allToolCalls, warning: content };
     } finally {
       this.completePendingCalls();

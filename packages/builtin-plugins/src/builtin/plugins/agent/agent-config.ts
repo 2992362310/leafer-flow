@@ -32,6 +32,25 @@ const DEFAULT_CONFIG: AgentConfig = {
 };
 
 const STORAGE_KEY = "leafer-flow.plugin.agent.config";
+const API_KEY_STORAGE_KEY = `${STORAGE_KEY}.api-key`;
+
+function readSessionApiKey() {
+  try {
+    return sessionStorage.getItem(API_KEY_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeSessionApiKey(apiKey: string) {
+  try {
+    if (apiKey) sessionStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+    else sessionStorage.removeItem(API_KEY_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function isStoredConfig(value: unknown): value is AgentConfig {
   if (!value || typeof value !== "object") return false;
@@ -56,7 +75,20 @@ export function loadAgentConfig(): AgentConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const saved: unknown = raw ? JSON.parse(raw) : null;
-    return isStoredConfig(saved) ? saved : { ...DEFAULT_CONFIG };
+    if (!isStoredConfig(saved)) return { ...DEFAULT_CONFIG };
+
+    const sessionApiKey = readSessionApiKey();
+    const migratedApiKey = !sessionApiKey && saved.apiKey && writeSessionApiKey(saved.apiKey)
+      ? saved.apiKey
+      : "";
+    if (saved.apiKey) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, apiKey: "" }));
+      } catch {
+        // Keep a valid session config even when the legacy key cannot be rewritten.
+      }
+    }
+    return { ...saved, apiKey: sessionApiKey || migratedApiKey };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
@@ -64,8 +96,12 @@ export function loadAgentConfig(): AgentConfig {
 
 export function saveAgentConfig(config: AgentConfig): void {
   if (!isStoredConfig(config)) throw new Error("无效的 AI 助手配置");
+  if (config.apiKey && !writeSessionApiKey(config.apiKey)) {
+    throw new Error("无法安全保存 API Key 到当前标签页会话，请检查浏览器存储设置");
+  }
+  if (!config.apiKey) writeSessionApiKey("");
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, apiKey: "" }));
   } catch (error) {
     console.warn("保存 Agent 配置失败", error);
   }

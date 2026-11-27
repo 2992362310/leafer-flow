@@ -9,12 +9,12 @@ export interface ResourceLimits {
   maxDocumentBytes: number;
 }
 
-export const VIDEO_ASSET_MAX_BYTES = 80 * 1024 * 1024;
+export const VIDEO_ASSET_MAX_BYTES = 512 * 1024 * 1024;
 
 const DEFAULT_LIMITS: ResourceLimits = {
-  maxAssetBytes: 20 * 1024 * 1024,
+  maxAssetBytes: 100 * 1024 * 1024,
   maxVideoBytes: VIDEO_ASSET_MAX_BYTES,
-  maxDocumentBytes: 100 * 1024 * 1024,
+  maxDocumentBytes: 640 * 1024 * 1024,
 };
 
 function maxBytesForMimeType(mimeType: string, limits: ResourceLimits) {
@@ -26,6 +26,20 @@ function assertWithinAssetLimit(mimeType: string, size: number, limits: Resource
   if (size > maxBytes) {
     const label = mimeType.toLowerCase().startsWith("video/") ? "Video resource" : "Resource";
     throw new Error(`${label} exceeds the per-file size limit`);
+  }
+}
+
+async function assertStorageCapacity(size: number) {
+  if (typeof navigator === "undefined" || !navigator.storage?.estimate) return;
+  let estimate: StorageEstimate;
+  try {
+    estimate = await navigator.storage.estimate();
+  } catch {
+    return;
+  }
+  if (typeof estimate.quota === "number" && typeof estimate.usage === "number"
+    && estimate.quota - estimate.usage < size) {
+    throw new Error("Not enough browser storage for this resource");
   }
 }
 
@@ -106,8 +120,10 @@ export class ResourceService {
     const id = await hashBlob(file, mimeType);
     this.assertActive();
     const existing = await this.storage.get(id);
-    if (!existing || existing.size !== file.size || existing.type !== mimeType)
+    if (!existing || existing.size !== file.size || existing.type !== mimeType) {
+      await assertStorageCapacity(file.size);
       await this.storage.put(id, file);
+    }
     const asset = { id, mimeType, size: file.size };
     this.cacheAsset(asset, file);
     return asset;
@@ -147,6 +163,7 @@ export class ResourceService {
     validateResource(asset);
     assertWithinAssetLimit(asset.mimeType, asset.size, this.limits);
     const previous = await this.storage.get(asset.id);
+    if (!previous) await assertStorageCapacity(asset.size);
     try {
       let received = 0;
       const bounded = stream.pipeThrough(

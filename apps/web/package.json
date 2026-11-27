@@ -10,21 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "leafer": "catalog:",
-    "vue": "catalog:",
-    "vue-router": "catalog:",
+    "@leafer-flow/builtin-plugins": "workspace:*",
     "@leafer-flow/core": "workspace:*",
     "@leafer-flow/ui": "workspace:*",
-    "@leafer-flow/builtin-plugins": "workspace:*"
+    "leafer": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-vue": "^6.0.10",
-    "daisyui": "^5.7.50",
+    "@tailwindcss/vite": "^4.3.5",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "daisyui": "^5.8.2",
     "jiti": "^2.7.0",
     "less": "^4.9.1",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.3.5",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.8",
     "vite-plugin-vue-devtools": "^8.2.1"
   }
 }

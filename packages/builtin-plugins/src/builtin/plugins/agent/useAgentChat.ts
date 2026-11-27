@@ -43,6 +43,7 @@ export function useAgentChat(editor: Editor) {
   const pendingQuestion = shallowRef<UserQuestion>();
   let resolveQuestion: ((answer: UserAnswer) => void) | undefined;
   const history = shallowRef<ChatMessage[]>([]);
+  const hasRestoredHistory = ref(false);
   const messages = ref<DisplayMessage[]>([]);
   const isReady = computed(() => isConfigValid(config.value));
   const isBusy = computed(() => status.value !== "idle");
@@ -83,9 +84,9 @@ export function useAgentChat(editor: Editor) {
     messages.value = displayHistory(history.value);
   }
 
-  function persist() {
+  function persist(messages = history.value) {
     try {
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.value));
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(messages));
     } catch (cause) {
       error.value = `保存对话失败: ${cause instanceof Error ? cause.message : "未知错误"}`;
     }
@@ -93,7 +94,10 @@ export function useAgentChat(editor: Editor) {
 
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (raw) service.restoreHistory(JSON.parse(raw));
+    if (raw) {
+      service.restoreHistory(JSON.parse(raw));
+      hasRestoredHistory.value = service.getHistory().length > 0;
+    }
     sync();
   } catch {
     service.clearHistory();
@@ -117,6 +121,9 @@ export function useAgentChat(editor: Editor) {
     try {
       const result = await service.processMessage(text, {
         onQuestion: askQuestion,
+        onHistoryUpdate(messages) {
+          persist(messages);
+        },
         onToken(token) {
           if (!disposed) reply.content += token;
         },
@@ -161,6 +168,7 @@ export function useAgentChat(editor: Editor) {
   function clear() {
     if (isBusy.value) return;
     service.clearHistory();
+    hasRestoredHistory.value = false;
     error.value = "";
     sync();
     persist();
@@ -172,11 +180,16 @@ export function useAgentChat(editor: Editor) {
       error.value = "请填写有效的 API 地址、API Key、模型和参数";
       return false;
     }
-    saveAgentConfig(value);
-    service.updateConfig(value);
-    config.value = value;
-    error.value = "";
-    return true;
+    try {
+      saveAgentConfig(value);
+      service.updateConfig(value);
+      config.value = value;
+      error.value = "";
+      return true;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : "无法保存模型配置";
+      return false;
+    }
   }
 
   onUnmounted(() => {
@@ -190,6 +203,7 @@ export function useAgentChat(editor: Editor) {
     inputMessage,
     activeTool,
     pendingQuestion,
+    hasRestoredHistory,
     answerQuestion,
     error,
     messages,

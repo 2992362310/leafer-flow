@@ -8,10 +8,8 @@ const props = withDefaults(
     columns?: number;
     /** Highlight toggle buttons whose panelId is in this set. */
     activePanelIds?: ReadonlySet<string> | readonly string[];
-    tooltipPlacement?: "top" | "bottom";
   }>(),
   {
-    tooltipPlacement: "bottom",
   },
 );
 
@@ -33,10 +31,6 @@ function isItemActive(panelId?: string) {
   return Boolean(panelId && activeIdSet.value.has(panelId));
 }
 
-const tooltipClass = computed(() =>
-  props.tooltipPlacement === "top" ? "tooltip tooltip-top" : "tooltip tooltip-bottom",
-);
-
 const useGridLayout = computed(() => typeof props.columns === "number" && props.columns > 0);
 
 const containerClass = computed(() => {
@@ -55,23 +49,14 @@ const containerStyle = computed<Record<string, string> | undefined>(() => {
 <template>
   <div :class="containerClass" :style="containerStyle">
     <template v-for="group in props.groups" :key="group.id">
-      <div
-        v-for="item in group.items"
-        :key="item.id"
-        :class="tooltipClass"
-        :data-tip="item.label"
-      >
-        <button
-          @click="handleClick(item.command)"
-          class="btn btn-sm h-10 w-10 px-0"
-          :class="
-            item.danger
+      <div v-for="item in group.items" :key="item.id" :class="useGridLayout ? 'w-10 min-w-0 justify-self-center' : ''">
+        <button type="button" @click="handleClick(item.command)" class="btn btn-sm h-10 w-10 px-0" :title="item.label"
+          :aria-label="item.label" :aria-pressed="item.panelId ? isItemActive(item.panelId) : undefined" :class="item.danger
               ? 'btn-error bg-red-50 hover:bg-red-100 border-none text-red-500'
               : isItemActive(item.panelId)
                 ? 'btn-primary'
                 : undefined
-          "
-        >
+            ">
           <Icon :name="item.icon ?? group.icon" class="h-5 w-5" />
         </button>
       </div>
